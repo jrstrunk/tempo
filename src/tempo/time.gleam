@@ -137,19 +137,32 @@ pub fn set_nano(time: tempo.Time, nanosecond: Int) -> Result(tempo.Time, Nil) {
   new_nano(time.hour, time.minute, time.second, nanosecond)
 }
 
-pub fn set_second_precision(time: tempo.Time) -> tempo.Time {
-  tempo.Time(time.hour, time.minute, time.second, time.nanosecond)
+pub fn to_second_precision(time: tempo.Time) -> tempo.Time {
+  // Drop any milliseconds
+  tempo.Time(time.hour, time.minute, time.second, 0)
 }
 
-pub fn set_milli_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeMilli(time.hour, time.minute, time.second, time.nanosecond)
+pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
+  tempo.TimeMilli(
+    time.hour,
+    time.minute,
+    time.second,
+    // Drop any microseconds
+    { time.nanosecond / 1_000_000 } * 1_000_000,
+  )
 }
 
-pub fn set_micro_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeMicro(time.hour, time.minute, time.second, time.nanosecond)
+pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
+  tempo.TimeMicro(
+    time.hour,
+    time.minute,
+    time.second,
+    // Drop any nanoseconds
+    { time.nanosecond / 1000 } * 1000,
+  )
 }
 
-pub fn set_nano_precision(time: tempo.Time) -> tempo.Time {
+pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
   tempo.TimeNano(time.hour, time.minute, time.second, time.nanosecond)
 }
 
@@ -316,10 +329,10 @@ pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> Duration {
 pub fn add_duration(a: tempo.Time, b: Duration) -> tempo.Time {
   let new_time = time_to_nanoseconds(a) + b.nanoseconds |> nanoseconds_to_time
   case a {
-    tempo.Time(_, _, _, _) -> set_second_precision(new_time)
-    tempo.TimeMilli(_, _, _, _) -> set_milli_precision(new_time)
-    tempo.TimeMicro(_, _, _, _) -> set_micro_precision(new_time)
-    tempo.TimeNano(_, _, _, _) -> set_nano_precision(new_time)
+    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
+    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
+    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
+    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
   }
 }
 
@@ -327,10 +340,10 @@ pub fn add_duration(a: tempo.Time, b: Duration) -> tempo.Time {
 pub fn substract_duration(a: tempo.Time, b: Duration) -> tempo.Time {
   let new_time = time_to_nanoseconds(a) - b.nanoseconds |> nanoseconds_to_time
   case a {
-    tempo.Time(_, _, _, _) -> set_second_precision(new_time)
-    tempo.TimeMilli(_, _, _, _) -> set_milli_precision(new_time)
-    tempo.TimeMicro(_, _, _, _) -> set_micro_precision(new_time)
-    tempo.TimeNano(_, _, _, _) -> set_nano_precision(new_time)
+    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
+    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
+    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
+    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
   }
 }
 

@@ -624,3 +624,35 @@ pub fn get_difference_test() {
   |> time.as_minutes
   |> should.equal(-25)
 }
+
+pub fn to_second_precision_test() {
+  time.literal("13:42:11.195423")
+  |> time.to_second_precision
+  |> should.equal(time.literal("13:42:11"))
+}
+
+pub fn to_milli_precision_test() {
+  time.literal("13:42:11.195423")
+  |> time.to_milli_precision
+  |> should.equal(time.literal("13:42:11.195"))
+
+  time.literal("13:42:11")
+  |> time.to_milli_precision
+  |> should.equal(time.literal("13:42:11.000"))
+}
+
+pub fn to_micro_precision_test() {
+  time.literal("13:42:11.1954237")
+  |> time.to_micro_precision
+  |> should.equal(time.literal("13:42:11.195423"))
+
+  time.literal("13:42:11")
+  |> time.to_micro_precision
+  |> should.equal(time.literal("13:42:11.000000"))
+}
+
+pub fn to_nano_precision_test() {
+  time.literal("13:42:11.1954237")
+  |> time.to_nano_precision
+  |> should.equal(time.literal("13:42:11.195423700"))
+}
