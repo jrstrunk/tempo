@@ -214,7 +214,7 @@ pub fn from_unix_utc(unix_ts: Int) {
   tempo.Date(y, month, d)
 }
 
-pub fn from_unix_utc_milli(unix_ts: Int) {
+pub fn from_unix_milli_utc(unix_ts: Int) {
   from_unix_utc(unix_ts / 1000)
 }
 

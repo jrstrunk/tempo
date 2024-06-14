@@ -316,10 +316,10 @@ pub fn from_unix_utc_test() {
   date.from_unix_utc(267_840_000)
   |> should.equal(date.literal("1978-06-28"))
 
-  date.from_unix_utc_milli(267_840_000_000)
+  date.from_unix_milli_utc(267_840_000_000)
   |> should.equal(date.literal("1978-06-28"))
 
-  date.from_unix_utc_milli(267_839_999_999)
+  date.from_unix_milli_utc(267_839_999_999)
   |> should.equal(date.literal("1978-06-27"))
 }
 
