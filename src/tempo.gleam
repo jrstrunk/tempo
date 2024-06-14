@@ -13,6 +13,15 @@ pub type Date {
   Date(year: Int, month: Month, day: Int)
 }
 
+// Second precision is defined as different variants to have a way to 
+// preserve precision when going to and from strings or other representations.
+pub type Time {
+  Time(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  TimeMilli(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  TimeMicro(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  TimeNano(hour: Int, minute: Int, second: Int, nanosecond: Int)
+}
+
 pub type Month {
   Jan
   Feb
