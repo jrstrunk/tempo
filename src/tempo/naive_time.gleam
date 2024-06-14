@@ -6,13 +6,13 @@ import gleam/string_builder
 import tempo
 import tempo/date
 
-pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.Time, Nil) {
-  tempo.Time(hour, minute, second, 0) |> validate
+pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.NaiveTime, Nil) {
+  tempo.NaiveTime(hour, minute, second, 0) |> validate
 }
 
 /// Useful for declaring time literals that you know are valid within your 
 /// program. Will crash if an invalid time is provided.
-pub fn literal(time: String) -> tempo.Time {
+pub fn literal(time: String) -> tempo.NaiveTime {
   let assert Ok(time) = from_string(time)
   let assert Ok(time) = validate(time)
   time
@@ -47,8 +47,8 @@ pub fn now_utc() {
 }
 
 @internal
-pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
-  let assert Ok(time) = tempo.Time(hour, minute, second, 0) |> validate
+pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.NaiveTime {
+  let assert Ok(time) = tempo.NaiveTime(hour, minute, second, 0) |> validate
   time
 }
 
@@ -57,14 +57,14 @@ pub fn new_milli(
   minute: Int,
   second: Int,
   millisecond: Int,
-) -> Result(tempo.Time, Nil) {
-  tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000) |> validate
+) -> Result(tempo.NaiveTime, Nil) {
+  tempo.NaiveTimeMilli(hour, minute, second, millisecond * 1_000_000) |> validate
 }
 
 @internal
-pub fn test_literal_milli(hour: Int, minute: Int, second: Int, millisecond: Int) -> tempo.Time {
+pub fn test_literal_milli(hour: Int, minute: Int, second: Int, millisecond: Int) -> tempo.NaiveTime {
   let assert Ok(time) =
-    tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000) |> validate
+    tempo.NaiveTimeMilli(hour, minute, second, millisecond * 1_000_000) |> validate
   time
 }
 
@@ -73,14 +73,14 @@ pub fn new_micro(
   minute: Int,
   second: Int,
   microsecond: Int,
-) -> Result(tempo.Time, Nil) {
-  tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
+) -> Result(tempo.NaiveTime, Nil) {
+  tempo.NaiveTimeMicro(hour, minute, second, microsecond * 1000) |> validate
 }
 
 @internal
-pub fn test_literal_micro(hour: Int, minute: Int, second: Int, microsecond: Int) -> tempo.Time {
+pub fn test_literal_micro(hour: Int, minute: Int, second: Int, microsecond: Int) -> tempo.NaiveTime {
   let assert Ok(time) =
-    tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
+    tempo.NaiveTimeMicro(hour, minute, second, microsecond * 1000) |> validate
   time
 }
 
@@ -89,18 +89,18 @@ pub fn new_nano(
   minute: Int,
   second: Int,
   nanosecond: Int,
-) -> Result(tempo.Time, Nil) {
-  tempo.TimeNano(hour, minute, second, nanosecond) |> validate
+) -> Result(tempo.NaiveTime, Nil) {
+  tempo.NaiveTimeNano(hour, minute, second, nanosecond) |> validate
 }
 
 @internal
-pub fn test_literal_nano(hour: Int, minute: Int, second: Int, nanosecond: Int) -> tempo.Time {
+pub fn test_literal_nano(hour: Int, minute: Int, second: Int, nanosecond: Int) -> tempo.NaiveTime {
   let assert Ok(time) =
-    tempo.TimeNano(hour, minute, second, nanosecond) |> validate
+    tempo.NaiveTimeNano(hour, minute, second, nanosecond) |> validate
   time
 }
 
-fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
+fn validate(time: tempo.NaiveTime) -> Result(tempo.NaiveTime, Nil) {
   case
     {
       time.hour >= 0
@@ -117,62 +117,62 @@ fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
   {
     True ->
       case time {
-        tempo.Time(_, _, _, _) -> Ok(time)
-        tempo.TimeMilli(_, _, _, millis) if millis <= 999_000_000 -> Ok(time)
-        tempo.TimeMicro(_, _, _, micros) if micros <= 999_999_000 -> Ok(time)
-        tempo.TimeNano(_, _, _, nanos) if nanos <= 999_999_999 -> Ok(time)
+        tempo.NaiveTime(_, _, _, _) -> Ok(time)
+        tempo.NaiveTimeMilli(_, _, _, millis) if millis <= 999_000_000 -> Ok(time)
+        tempo.NaiveTimeMicro(_, _, _, micros) if micros <= 999_999_000 -> Ok(time)
+        tempo.NaiveTimeNano(_, _, _, nanos) if nanos <= 999_999_999 -> Ok(time)
         _ -> Error(Nil)
       }
     False -> Error(Nil)
   }
 }
 
-pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, Nil) {
+pub fn set_hour(time: tempo.NaiveTime, hour: Int) -> Result(tempo.NaiveTime, Nil) {
   case time {
-    tempo.Time(_, m, s, _) -> new(hour, m, s)
-    tempo.TimeMilli(_, m, s, n) -> new_milli(hour, m, s, n)
-    tempo.TimeMicro(_, m, s, n) -> new_micro(hour, m, s, n)
-    tempo.TimeNano(_, m, s, n) -> new_nano(hour, m, s, n)
+    tempo.NaiveTime(_, m, s, _) -> new(hour, m, s)
+    tempo.NaiveTimeMilli(_, m, s, n) -> new_milli(hour, m, s, n)
+    tempo.NaiveTimeMicro(_, m, s, n) -> new_micro(hour, m, s, n)
+    tempo.NaiveTimeNano(_, m, s, n) -> new_nano(hour, m, s, n)
   }
 }
 
-pub fn set_minute(time: tempo.Time, minute: Int) -> Result(tempo.Time, Nil) {
+pub fn set_minute(time: tempo.NaiveTime, minute: Int) -> Result(tempo.NaiveTime, Nil) {
   case time {
-    tempo.Time(h, _, s, _) -> new(h, minute, s)
-    tempo.TimeMilli(h, _, s, n) -> new_milli(h, minute, s, n)
-    tempo.TimeMicro(h, _, s, n) -> new_micro(h, minute, s, n)
-    tempo.TimeNano(h, _, s, n) -> new_nano(h, minute, s, n)
+    tempo.NaiveTime(h, _, s, _) -> new(h, minute, s)
+    tempo.NaiveTimeMilli(h, _, s, n) -> new_milli(h, minute, s, n)
+    tempo.NaiveTimeMicro(h, _, s, n) -> new_micro(h, minute, s, n)
+    tempo.NaiveTimeNano(h, _, s, n) -> new_nano(h, minute, s, n)
   }
 }
 
-pub fn set_second(time: tempo.Time, second: Int) -> Result(tempo.Time, Nil) {
+pub fn set_second(time: tempo.NaiveTime, second: Int) -> Result(tempo.NaiveTime, Nil) {
   case time {
-    tempo.Time(h, m, _, _) -> new(h, m, second)
-    tempo.TimeMilli(h, m, _, n) -> new_milli(h, m, second, n)
-    tempo.TimeMicro(h, m, _, n) -> new_micro(h, m, second, n)
-    tempo.TimeNano(h, m, _, n) -> new_nano(h, m, second, n)
+    tempo.NaiveTime(h, m, _, _) -> new(h, m, second)
+    tempo.NaiveTimeMilli(h, m, _, n) -> new_milli(h, m, second, n)
+    tempo.NaiveTimeMicro(h, m, _, n) -> new_micro(h, m, second, n)
+    tempo.NaiveTimeNano(h, m, _, n) -> new_nano(h, m, second, n)
   }
 }
 
-pub fn set_milli(time: tempo.Time, millisecond: Int) -> Result(tempo.Time, Nil) {
+pub fn set_milli(time: tempo.NaiveTime, millisecond: Int) -> Result(tempo.NaiveTime, Nil) {
   new_milli(time.hour, time.minute, time.second, millisecond)
 }
 
-pub fn set_micro(time: tempo.Time, microsecond: Int) -> Result(tempo.Time, Nil) {
+pub fn set_micro(time: tempo.NaiveTime, microsecond: Int) -> Result(tempo.NaiveTime, Nil) {
   new_micro(time.hour, time.minute, time.second, microsecond)
 }
 
-pub fn set_nano(time: tempo.Time, nanosecond: Int) -> Result(tempo.Time, Nil) {
+pub fn set_nano(time: tempo.NaiveTime, nanosecond: Int) -> Result(tempo.NaiveTime, Nil) {
   new_nano(time.hour, time.minute, time.second, nanosecond)
 }
 
-pub fn to_second_precision(time: tempo.Time) -> tempo.Time {
+pub fn to_second_precision(time: tempo.NaiveTime) -> tempo.NaiveTime {
   // Drop any milliseconds
-  tempo.Time(time.hour, time.minute, time.second, 0)
+  tempo.NaiveTime(time.hour, time.minute, time.second, 0)
 }
 
-pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeMilli(
+pub fn to_milli_precision(time: tempo.NaiveTime) -> tempo.NaiveTime {
+  tempo.NaiveTimeMilli(
     time.hour,
     time.minute,
     time.second,
@@ -181,8 +181,8 @@ pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
   )
 }
 
-pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeMicro(
+pub fn to_micro_precision(time: tempo.NaiveTime) -> tempo.NaiveTime {
+  tempo.NaiveTimeMicro(
     time.hour,
     time.minute,
     time.second,
@@ -191,11 +191,11 @@ pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
   )
 }
 
-pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeNano(time.hour, time.minute, time.second, time.nanosecond)
+pub fn to_nano_precision(time: tempo.NaiveTime) -> tempo.NaiveTime {
+  tempo.NaiveTimeNano(time.hour, time.minute, time.second, time.nanosecond)
 }
 
-pub fn to_string(time: tempo.Time) -> String {
+pub fn to_string(time: tempo.NaiveTime) -> String {
   string_builder.from_strings([
     time.hour |> int.to_string |> string.pad_left(2, with: "0"),
     ":",
@@ -205,20 +205,20 @@ pub fn to_string(time: tempo.Time) -> String {
   ])
   |> fn(sb) {
     case time {
-      tempo.Time(_, _, _, _) -> sb
-      tempo.TimeMilli(_, _, _, nanos) ->
+      tempo.NaiveTime(_, _, _, _) -> sb
+      tempo.NaiveTimeMilli(_, _, _, nanos) ->
         string_builder.append(sb, ".")
         |> string_builder.append(
           { nanos / 1_000_000 }
           |> int.to_string
           |> string.pad_left(3, with: "0"),
         )
-      tempo.TimeMicro(_, _, _, nanos) ->
+      tempo.NaiveTimeMicro(_, _, _, nanos) ->
         string_builder.append(sb, ".")
         |> string_builder.append(
           { nanos / 1000 } |> int.to_string |> string.pad_left(6, with: "0"),
         )
-      tempo.TimeNano(_, _, _, nanos) ->
+      tempo.NaiveTimeNano(_, _, _, nanos) ->
         string_builder.append(sb, ".")
         |> string_builder.append(
           nanos |> int.to_string |> string.pad_left(9, with: "0"),
@@ -228,7 +228,7 @@ pub fn to_string(time: tempo.Time) -> String {
   |> string_builder.to_string
 }
 
-pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
+pub fn from_string(time: String) -> Result(tempo.NaiveTime, Nil) {
   case string.split(time, ":") {
     [hour, minute, second] ->
       case int.parse(hour), int.parse(minute), string.split(second, ".") {
@@ -241,7 +241,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
                 int.parse(second_fraction |> string.pad_right(3, with: "0"))
               {
                 Ok(second), Ok(milli) ->
-                  Ok(tempo.TimeMilli(hour, minute, second, milli * 1_000_000))
+                  Ok(tempo.NaiveTimeMilli(hour, minute, second, milli * 1_000_000))
                 _, _ -> Error(Nil)
               }
             len if len <= 6 ->
@@ -250,7 +250,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
                 int.parse(second_fraction |> string.pad_right(6, with: "0"))
               {
                 Ok(second), Ok(micro) ->
-                  Ok(tempo.TimeMicro(hour, minute, second, micro * 1000))
+                  Ok(tempo.NaiveTimeMicro(hour, minute, second, micro * 1000))
                 _, _ -> Error(Nil)
               }
             len if len <= 9 ->
@@ -259,7 +259,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
                 int.parse(second_fraction |> string.pad_right(9, with: "0"))
               {
                 Ok(second), Ok(nano) ->
-                  Ok(tempo.TimeNano(hour, minute, second, nano))
+                  Ok(tempo.NaiveTimeNano(hour, minute, second, nano))
                 _, _ -> Error(Nil)
               }
             _ -> Error(Nil)
@@ -268,7 +268,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
 
         Ok(hour), Ok(minute), _ ->
           case int.parse(second) {
-            Ok(second) -> Ok(tempo.Time(hour, minute, second, 0))
+            Ok(second) -> Ok(tempo.NaiveTime(hour, minute, second, 0))
             _ -> Error(Nil)
           }
 
@@ -279,7 +279,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
   |> result.try(validate)
 }
 
-pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
+pub fn compare(a: tempo.NaiveTime, to b: tempo.NaiveTime) -> order.Order {
   case a.hour == b.hour {
     True ->
       case a.minute == b.minute {
@@ -314,23 +314,23 @@ pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
   }
 }
 
-pub fn is_earlier(a: tempo.Time, than b: tempo.Time) -> Bool {
+pub fn is_earlier(a: tempo.NaiveTime, than b: tempo.NaiveTime) -> Bool {
   compare(a, b) == order.Lt
 }
 
-pub fn is_earlier_or_equal(a: tempo.Time, than b: tempo.Time) -> Bool {
+pub fn is_earlier_or_equal(a: tempo.NaiveTime, than b: tempo.NaiveTime) -> Bool {
   compare(a, b) == order.Lt || compare(a, b) == order.Eq
 }
 
-pub fn is_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
+pub fn is_equal(a: tempo.NaiveTime, to b: tempo.NaiveTime) -> Bool {
   compare(a, b) == order.Eq
 }
 
-pub fn is_later(a: tempo.Time, than b: tempo.Time) -> Bool {
+pub fn is_later(a: tempo.NaiveTime, than b: tempo.NaiveTime) -> Bool {
   compare(a, b) == order.Gt
 }
 
-pub fn is_later_or_equal(a: tempo.Time, than b: tempo.Time) -> Bool {
+pub fn is_later_or_equal(a: tempo.NaiveTime, than b: tempo.NaiveTime) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
@@ -338,16 +338,16 @@ pub opaque type Duration {
   Duration(nanoseconds: Int)
 }
 
-pub fn to_duration(time: tempo.Time) -> Duration {
+pub fn to_duration(time: tempo.NaiveTime) -> Duration {
   time_to_nanoseconds(time) |> Duration
 }
 
-pub fn difference(a: tempo.Time, from b: tempo.Time) -> Duration {
+pub fn difference(a: tempo.NaiveTime, from b: tempo.NaiveTime) -> Duration {
   time_to_nanoseconds(b) - time_to_nanoseconds(a)
   |> Duration
 }
 
-pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> Duration {
+pub fn difference_abs(a: tempo.NaiveTime, from b: tempo.NaiveTime) -> Duration {
   case time_to_nanoseconds(b) - time_to_nanoseconds(a) {
     diff if diff < 0 -> -diff |> Duration
     diff -> diff |> Duration
@@ -355,29 +355,29 @@ pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> Duration {
 }
 
 /// Can not account for leap seconds.
-pub fn add_duration(a: tempo.Time, b: Duration) -> tempo.Time {
+pub fn add_duration(a: tempo.NaiveTime, b: Duration) -> tempo.NaiveTime {
   let new_time = time_to_nanoseconds(a) + b.nanoseconds |> nanoseconds_to_time
   case a {
-    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
-    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
-    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
-    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
+    tempo.NaiveTime(_, _, _, _) -> to_second_precision(new_time)
+    tempo.NaiveTimeMilli(_, _, _, _) -> to_milli_precision(new_time)
+    tempo.NaiveTimeMicro(_, _, _, _) -> to_micro_precision(new_time)
+    tempo.NaiveTimeNano(_, _, _, _) -> to_nano_precision(new_time)
   }
 }
 
 /// Can not account for leap seconds.
-pub fn substract_duration(a: tempo.Time, b: Duration) -> tempo.Time {
+pub fn substract_duration(a: tempo.NaiveTime, b: Duration) -> tempo.NaiveTime {
   let new_time = time_to_nanoseconds(a) - b.nanoseconds |> nanoseconds_to_time
   case a {
-    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
-    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
-    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
-    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
+    tempo.NaiveTime(_, _, _, _) -> to_second_precision(new_time)
+    tempo.NaiveTimeMilli(_, _, _, _) -> to_milli_precision(new_time)
+    tempo.NaiveTimeMicro(_, _, _, _) -> to_micro_precision(new_time)
+    tempo.NaiveTimeNano(_, _, _, _) -> to_nano_precision(new_time)
   }
 }
 
 @internal
-pub fn time_to_nanoseconds(time: tempo.Time) -> Int {
+pub fn time_to_nanoseconds(time: tempo.NaiveTime) -> Int {
   hours_to_nanoseconds(time.hour)
   + minutes_to_nanoseconds(time.minute)
   + seconds_to_nanoseconds(time.second)
@@ -385,7 +385,7 @@ pub fn time_to_nanoseconds(time: tempo.Time) -> Int {
 }
 
 @internal
-pub fn nanoseconds_to_time(nanoseconds: Int) -> tempo.Time {
+pub fn nanoseconds_to_time(nanoseconds: Int) -> tempo.NaiveTime {
   let in_range_ns = nanoseconds % 86_400_000_000_000
 
   let adj_ns = case in_range_ns < 0 {
@@ -410,7 +410,7 @@ pub fn nanoseconds_to_time(nanoseconds: Int) -> tempo.Time {
     - seconds
     * 1_000_000_000
 
-  tempo.TimeNano(hours, minutes, seconds, nanoseconds)
+  tempo.NaiveTimeNano(hours, minutes, seconds, nanoseconds)
 }
 
 pub fn new_duration(hours hr: Int, minutes min: Int, seconds sec: Int) {

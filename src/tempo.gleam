@@ -21,10 +21,19 @@ pub type Date {
 // Second precision is defined as different variants to have a way to 
 // preserve precision when going to and from strings or other representations.
 pub type Time {
-  Time(hour: Int, minute: Int, second: Int, nanosecond: Int)
-  TimeMilli(hour: Int, minute: Int, second: Int, nanosecond: Int)
-  TimeMicro(hour: Int, minute: Int, second: Int, nanosecond: Int)
-  TimeNano(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  Time(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
+  TimeMilli(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
+  TimeMicro(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
+  TimeNano(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
+}
+
+// Second precision is defined as different variants to have a way to 
+// preserve precision when going to and from strings or other representations.
+pub type NaiveTime {
+  NaiveTime(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  NaiveTimeMilli(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  NaiveTimeMicro(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  NaiveTimeNano(hour: Int, minute: Int, second: Int, nanosecond: Int)
 }
 
 pub type Month {
