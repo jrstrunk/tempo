@@ -4,17 +4,46 @@ import gleam/result
 import gleam/string
 import gleam/string_builder
 import tempo
+import tempo/date
 
 pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.Time, Nil) {
   tempo.Time(hour, minute, second, 0) |> validate
 }
 
 /// Useful for declaring time literals that you know are valid within your 
-/// program, but will crash if an invalid time is provided.
+/// program. Will crash if an invalid time is provided.
 pub fn literal(time: String) -> tempo.Time {
   let assert Ok(time) = from_string(time)
   let assert Ok(time) = validate(time)
   time
+}
+
+pub fn now_local() {
+  let now_ts_nano = tempo.now_utc()
+
+  // Subtract the nanoseconds that are responsible for the date and the local
+  // offset nanoseconds.
+  nanoseconds_to_time(
+    now_ts_nano
+    - {
+      date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000))
+      * 1_000_000_000
+    }
+    + tempo.local_offset_nano(),
+  )
+}
+
+pub fn now_utc() {
+  let now_ts_nano = tempo.now_utc()
+
+  // Subtract the nanoseconds that are responsible for the date.
+  nanoseconds_to_time(
+    now_ts_nano
+    - {
+      date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000))
+      * 1_000_000_000
+    },
+  )
 }
 
 @internal

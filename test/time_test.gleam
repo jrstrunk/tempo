@@ -8,7 +8,17 @@ pub fn main() {
   gleeunit.main()
 }
 
-pub fn new_test() {
+pub fn time_now_test() {
+  time.now_local()
+  |> time.is_later_or_equal(than: time.literal("00:00:00"))
+  |> should.be_true
+
+  time.now_utc()
+  |> time.is_later_or_equal(than: time.literal("00:00:00"))
+  |> should.be_true
+}
+
+pub fn new_time_test() {
   time.new(0, 0, 0)
   |> should.equal(Ok(tempo.Time(0, 0, 0, 0)))
 

@@ -25,6 +25,16 @@ pub fn literal(date: String) -> tempo.Date {
   date
 }
 
+pub fn current_local() {
+  { tempo.now_utc() + tempo.local_offset_nano() } / 1_000_000_000
+  |> from_unix_utc
+}
+
+pub fn current_utc() {
+  tempo.now_utc() / 1_000_000_000
+  |> from_unix_utc
+}
+
 /// Parses a date string in the format `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, `YYYY MM DD`,
 /// `YYYY M D`, or `YYYYMMDD`.

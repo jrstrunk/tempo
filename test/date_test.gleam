@@ -1,4 +1,5 @@
 import gleam/order
+import gleam/string
 import gleeunit
 import gleeunit/should
 import tempo
@@ -6,6 +7,18 @@ import tempo/date
 
 pub fn main() {
   gleeunit.main()
+}
+
+pub fn date_current_test() {
+  date.current_utc()
+  |> date.to_string
+  |> string.length
+  |> should.equal(10)
+
+  date.current_local()
+  |> date.to_string
+  |> string.length
+  |> should.equal(10)
 }
 
 pub fn new_date_test() {
