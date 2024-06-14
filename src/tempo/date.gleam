@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/int
 import gleam/list
 import gleam/order
@@ -86,7 +87,7 @@ pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
   #(date.year, month.to_int(date.month), date.day)
 }
 
-pub fn compare(a: tempo.Date, b: tempo.Date) -> order.Order {
+pub fn compare(a: tempo.Date, to b: tempo.Date) -> order.Order {
   case a.year == b.year {
     True ->
       case a.month == b.month {
@@ -178,6 +179,38 @@ pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
   to_unix_utc(date) * 1000
 }
 
+// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
+pub fn from_unix_utc(unix_ts: Int) {
+  let z = unix_ts / 86_400 + 719_468
+  let era =
+    case z >= 0 {
+      True -> z
+      False -> z - 146_096
+    }
+    / 146_097
+  let doe = z - era * 146_097
+  let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
+  let y = yoe + era * 400
+  let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
+  let mp = { 5 * doy + 2 } / 153
+  let d = doy - { 153 * mp + 2 } / 5 + 1
+  let m =
+    mp
+    + case mp < 10 {
+      True -> 3
+      False -> -9
+    }
+  let y = y + bool.to_int(m <= 2)
+
+  let assert Ok(month) = month.from_int(m)
+
+  tempo.Date(y, month, d)
+}
+
+pub fn from_unix_utc_milli(unix_ts: Int) {
+  from_unix_utc(unix_ts / 1000)
+}
+
 pub fn add_days(date: tempo.Date, days: Int) -> tempo.Date {
   let days_left_this_month = month.get_days(date.month, date.year) - date.day
   case days < days_left_this_month {
@@ -265,7 +298,7 @@ pub fn to_weekday(date: tempo.Date) {
     4 -> tempo.Thu
     5 -> tempo.Fri
     6 -> tempo.Sat
-    _ -> panic as "Invalid day of week calculated after modulo 7"
+    _ -> panic as "Invalid day of week found after modulo by 7"
   }
 }
 

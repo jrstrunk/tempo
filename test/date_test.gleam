@@ -297,6 +297,20 @@ pub fn date_to_unix_test() {
   |> should.equal(1_733_356_800)
 }
 
+pub fn from_unix_utc_test() {
+  date.from_unix_utc(0)
+  |> should.equal(tempo.Date(1970, Jan, 1))
+
+  date.from_unix_utc(267_840_000)
+  |> should.equal(tempo.Date(1978, Jun, 28))
+
+  date.from_unix_utc_milli(267_840_000_000)
+  |> should.equal(tempo.Date(1978, Jun, 28))
+
+  date.from_unix_utc_milli(267_839_999_999)
+  |> should.equal(tempo.Date(1978, Jun, 27))
+}
+
 pub fn add_day_test() {
   tempo.Date(2024, Jun, 13)
   |> date.add_days(1)
