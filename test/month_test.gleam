@@ -16,9 +16,9 @@ pub fn get_next_test() {
 }
 
 pub fn get_prior_test() {
-    month.get_prior(tempo.Jan)
-    |> should.equal(tempo.Dec)
+  month.get_prior(tempo.Jan)
+  |> should.equal(tempo.Dec)
 
-    month.get_prior(tempo.Jul)
-    |> should.equal(tempo.Jun)
+  month.get_prior(tempo.Jul)
+  |> should.equal(tempo.Jun)
 }

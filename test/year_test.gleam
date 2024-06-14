@@ -1,6 +1,6 @@
-import tempo/year
 import gleeunit
 import gleeunit/should
+import tempo/year
 
 pub fn main() {
   gleeunit.main()
