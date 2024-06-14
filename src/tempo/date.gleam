@@ -18,6 +18,13 @@ pub fn new(
   from_tuple(#(year, month, day))
 }
 
+/// Useful for declaring date literals that you know are valid within your  
+/// program. Will crash if an invalid date is provided. 
+pub fn literal(date: String) -> tempo.Date {
+  let assert Ok(date) = from_string(date)
+  date
+}
+
 /// Parses a date string in the format `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, `YYYY MM DD`,
 /// `YYYY M D`, or `YYYYMMDD`.
