@@ -553,11 +553,11 @@ pub fn add_time_micro_test() {
 
 pub fn add_time_nano_test() {
   time.test_literal_nano(13, 45, 12, 2)
-  |> time.add_duration(duration.nenoseconds(3))
+  |> time.add_duration(duration.nanoseconds(3))
   |> should.equal(time.test_literal_nano(13, 45, 12, 5))
 
   time.test_literal_nano(13, 42, 2, 0)
-  |> time.add_duration(duration.nenoseconds(471_313_131))
+  |> time.add_duration(duration.nanoseconds(471_313_131))
   |> should.equal(time.test_literal_nano(13, 42, 2, 471_313_131))
 }
 
@@ -605,11 +605,11 @@ pub fn substract_time_micro_test() {
 
 pub fn substract_time_nano_test() {
   time.test_literal_nano(13, 45, 12, 2)
-  |> time.substract_duration(duration.nenoseconds(4))
+  |> time.substract_duration(duration.nanoseconds(4))
   |> should.equal(time.literal("13:45:11.999999998"))
 
   time.test_literal_nano(13, 42, 2, 354)
-  |> time.substract_duration(duration.nenoseconds(13))
+  |> time.substract_duration(duration.nanoseconds(13))
   |> should.equal(time.test_literal_nano(13, 42, 2, 341))
 }
 

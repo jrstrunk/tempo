@@ -41,7 +41,7 @@ pub fn microseconds(microseconds: Int) {
   microseconds * 1000 |> tempo.Duration
 }
 
-pub fn nenoseconds(nanoseconds: Int) {
+pub fn nanoseconds(nanoseconds: Int) {
   nanoseconds |> tempo.Duration
 }
 
