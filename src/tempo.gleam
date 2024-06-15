@@ -10,8 +10,7 @@ pub fn main() {
 }
 
 pub type Offset {
-  UTC
-  Local
+  Offset(minutes: Int)
 }
 
 pub type Date {
@@ -65,43 +64,3 @@ pub type DayOfWeek {
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal
 pub fn now_utc() -> Int
-
-@external(erlang, "tempo_ffi", "local_offset")
-@external(javascript, "./tempo_ffi.mjs", "local_offset")
-@internal
-pub fn local_offset_minutes() -> Int
-
-@internal
-pub fn local_offset_nano() -> Int {
-  local_offset_minutes() * 60_000_000_000
-}
-
-pub fn local_offset_str() -> String {
-  let local_offset_minutes = local_offset_minutes()
-
-  let #(is_negative, hours) = case local_offset_minutes / 60 {
-    h if h < 0 -> #(True, -h)
-    h -> #(False, h)
-  }
-
-  let mins = case local_offset_minutes % 60 {
-    m if m < 0 -> -m
-    m -> m
-  }
-
-  case is_negative, hours, mins {
-    _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_left(2, with: "0")
-
-    True, h, m ->
-      "-"
-      <> int.to_string(h) |> string.pad_left(2, with: "0")
-      <> ":"
-      <> int.to_string(m) |> string.pad_left(2, with: "0")
-
-    False, h, m ->
-      "+"
-      <> int.to_string(h) |> string.pad_left(2, with: "0")
-      <> ":"
-      <> int.to_string(m) |> string.pad_left(2, with: "0")
-  }
-}

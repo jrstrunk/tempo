@@ -8,6 +8,7 @@ import gleam/string_builder
 import tempo
 import tempo/month
 import tempo/year
+import tempo/offset
 
 /// Creates a new date and validates it.
 pub fn new(
@@ -26,7 +27,7 @@ pub fn literal(date: String) -> tempo.Date {
 }
 
 pub fn current_local() {
-  { tempo.now_utc() + tempo.local_offset_nano() } / 1_000_000_000
+  { tempo.now_utc() + offset.local_nano() } / 1_000_000_000
   |> from_unix_utc
 }
 
