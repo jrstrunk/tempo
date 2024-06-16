@@ -13,15 +13,6 @@ pub type Date {
   Date(year: Int, month: Month, day: Int)
 }
 
-// Second precision is defined as different variants to have a way to 
-// preserve precision when going to and from strings or other representations.
-pub type Time {
-  Time(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
-  TimeMilli(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
-  TimeMicro(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
-  TimeNano(hour: Int, minute: Int, second: Int, nanosecond: Int, offset: Int)
-}
-
 /// Do not use the `==` operator to check for time equality! Use the compare
 /// functions instead.
 ///

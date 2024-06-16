@@ -364,17 +364,17 @@ pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
 
 @internal
 pub fn time_to_nanoseconds(time: tempo.Time) -> Int {
-  duration.hours_to_nanoseconds(time.hour)
-  + duration.minutes_to_nanoseconds(time.minute)
-  + duration.seconds_to_nanoseconds(time.second)
+  { time.hour * duration.hour_nanoseconds }
+  + { time.minute * duration.minute_nanoseconds }
+  + { time.second * duration.second_nanoseconds }
   + time.nanosecond
 }
 
 pub fn nanoseconds_to_time(nanoseconds: Int) -> tempo.Time {
-  let in_range_ns = nanoseconds % 86_400_000_000_000
+  let in_range_ns = nanoseconds % duration.day_nanoseconds
 
   let adj_ns = case in_range_ns < 0 {
-    True -> in_range_ns + 86_400_000_000_000
+    True -> in_range_ns + duration.day_nanoseconds
     False -> in_range_ns
   }
 
