@@ -150,9 +150,10 @@ pub fn set_hour_test() {
   |> time.set_hour(23)
   |> should.equal(Ok(tempo.Time(23, 0, 0, 0)))
 
-  tempo.Time(0, 0, 0, 0)
+  time.literal("00:00:00")
   |> time.set_hour(24)
-  |> should.equal(Ok(tempo.Time(24, 0, 0, 0)))
+  |> should.be_ok
+  |> should.equal(time.literal("24:00"))
 
   tempo.Time(11, 31, 4, 0)
   |> time.set_hour(35)
@@ -354,7 +355,7 @@ pub fn from_string_nano_test() {
 }
 
 pub fn from_string_invalid_test() {
-  "0:00"
+  "19"
   |> time.from_string
   |> should.be_error
 

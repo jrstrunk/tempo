@@ -241,52 +241,54 @@ pub fn to_string(time: tempo.Time) -> String {
 }
 
 pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
-  case string.split(time, ":") {
-    [hour, minute, second] ->
-      case int.parse(hour), int.parse(minute), string.split(second, ".") {
-        Ok(hour), Ok(minute), [second, second_fraction] -> {
-          let second_fraction_length = string.length(second_fraction)
-          case second_fraction_length {
-            len if len <= 3 ->
-              case
-                int.parse(second),
-                int.parse(second_fraction |> string.pad_right(3, with: "0"))
-              {
-                Ok(second), Ok(milli) ->
-                  Ok(tempo.TimeMilli(hour, minute, second, milli * 1_000_000))
-                _, _ -> Error(Nil)
-              }
-            len if len <= 6 ->
-              case
-                int.parse(second),
-                int.parse(second_fraction |> string.pad_right(6, with: "0"))
-              {
-                Ok(second), Ok(micro) ->
-                  Ok(tempo.TimeMicro(hour, minute, second, micro * 1000))
-                _, _ -> Error(Nil)
-              }
-            len if len <= 9 ->
-              case
-                int.parse(second),
-                int.parse(second_fraction |> string.pad_right(9, with: "0"))
-              {
-                Ok(second), Ok(nano) ->
-                  Ok(tempo.TimeNano(hour, minute, second, nano))
-                _, _ -> Error(Nil)
-              }
-            _ -> Error(Nil)
-          }
-        }
-
-        Ok(hour), Ok(minute), _ ->
-          case int.parse(second) {
-            Ok(second) -> Ok(tempo.Time(hour, minute, second, 0))
-            _ -> Error(Nil)
-          }
-
-        _, _, _ -> Error(Nil)
-      }
+  use #(hour, minute, second) <- result.try(case string.split(time, ":") {
+    [hour, minute, second] -> Ok(#(hour, minute, second))
+    [hour, minute] -> Ok(#(hour, minute, "0"))
     _ -> Error(Nil)
+  })
+
+  case int.parse(hour), int.parse(minute), string.split(second, ".") {
+    Ok(hour), Ok(minute), [second, second_fraction] -> {
+      let second_fraction_length = string.length(second_fraction)
+      case second_fraction_length {
+        len if len <= 3 ->
+          case
+            int.parse(second),
+            int.parse(second_fraction |> string.pad_right(3, with: "0"))
+          {
+            Ok(second), Ok(milli) ->
+              Ok(tempo.TimeMilli(hour, minute, second, milli * 1_000_000))
+            _, _ -> Error(Nil)
+          }
+        len if len <= 6 ->
+          case
+            int.parse(second),
+            int.parse(second_fraction |> string.pad_right(6, with: "0"))
+          {
+            Ok(second), Ok(micro) ->
+              Ok(tempo.TimeMicro(hour, minute, second, micro * 1000))
+            _, _ -> Error(Nil)
+          }
+        len if len <= 9 ->
+          case
+            int.parse(second),
+            int.parse(second_fraction |> string.pad_right(9, with: "0"))
+          {
+            Ok(second), Ok(nano) ->
+              Ok(tempo.TimeNano(hour, minute, second, nano))
+            _, _ -> Error(Nil)
+          }
+        _ -> Error(Nil)
+      }
+    }
+
+    Ok(hour), Ok(minute), _ ->
+      case int.parse(second) {
+        Ok(second) -> Ok(tempo.Time(hour, minute, second, 0))
+        _ -> Error(Nil)
+      }
+
+    _, _, _ -> Error(Nil)
   }
   |> result.try(validate)
 }
@@ -388,28 +390,6 @@ pub fn nanoseconds_to_time(nanoseconds: Int) -> tempo.Time {
 
   let nanoseconds =
     adj_ns
-    - hours
-    * 3_600_000_000_000
-    - minutes
-    * 60_000_000_000
-    - seconds
-    * 1_000_000_000
-
-  tempo.TimeNano(hours, minutes, seconds, nanoseconds)
-}
-
-@internal
-pub fn nanoseconds_to_unbound_time(nanoseconds: Int) -> tempo.Time {
-  let hours = nanoseconds / 3_600_000_000_000
-
-  let minutes = { nanoseconds - hours * 3_600_000_000_000 } / 60_000_000_000
-
-  let seconds =
-    { nanoseconds - hours * 3_600_000_000_000 - minutes * 60_000_000_000 }
-    / 1_000_000_000
-
-  let nanoseconds =
-    nanoseconds
     - hours
     * 3_600_000_000_000
     - minutes
