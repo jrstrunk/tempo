@@ -307,6 +307,11 @@ pub fn from_string_test() {
   |> time.from_string
   |> should.equal(Ok(tempo.Time(4, 0, 1, 0)))
 
+  "04:00"
+  |> time.from_string
+  |> should.be_ok
+  |> should.equal(time.literal("04:00:00"))
+
   "16:05:23"
   |> time.from_string
   |> should.equal(Ok(tempo.Time(16, 5, 23, 0)))
@@ -352,6 +357,20 @@ pub fn from_string_nano_test() {
   "15:18:50.000000000"
   |> time.from_string
   |> should.equal(Ok(tempo.TimeNano(15, 18, 50, 0)))
+}
+
+pub fn from_condensed_string_test() {
+  "134211.314"
+  |> time.from_string
+  |> should.be_ok
+  |> should.equal(time.literal("13:42:11.314"))
+}
+
+pub fn from_condensed_hm_string_test() {
+  "1342"
+  |> time.from_string
+  |> should.be_ok
+  |> should.equal(time.literal("13:42:00"))
 }
 
 pub fn from_string_invalid_test() {
@@ -478,139 +497,139 @@ pub fn compare_different_precision_test() {
 
 pub fn nanoseconds_roundtrip_test() {
   time.literal("13:42:11")
-  |> time.time_to_nanoseconds
-  |> time.nanoseconds_to_time
+  |> time.to_nanoseconds
+  |> time.from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 11, 0))
 
   time.literal("13:42:11.002")
-  |> time.time_to_nanoseconds
-  |> time.nanoseconds_to_time
+  |> time.to_nanoseconds
+  |> time.from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 11, 2_000_000))
 
   time.literal("13:42:10.000300")
-  |> time.time_to_nanoseconds
-  |> time.nanoseconds_to_time
+  |> time.to_nanoseconds
+  |> time.from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 10, 300_000))
 
   time.literal("13:42:10.000000020")
-  |> time.time_to_nanoseconds
-  |> time.nanoseconds_to_time
+  |> time.to_nanoseconds
+  |> time.from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 10, 20))
 
   time.literal("0:0:0.000000300")
-  |> time.time_to_nanoseconds
+  |> time.to_nanoseconds
   |> should.equal(300)
 
   time.literal("0:0:6")
-  |> time.time_to_nanoseconds
+  |> time.to_nanoseconds
   |> should.equal(6_000_000_000)
 
-  time.nanoseconds_to_time(-3_000_000_000)
+  time.from_nanoseconds(-3_000_000_000)
   |> time.to_string
   |> should.equal("23:59:57.000000000")
 }
 
 pub fn add_time_test() {
   time.literal("13:42:11")
-  |> time.add_duration(duration.new(0, 3, 1))
+  |> time.add(duration: duration.new(0, 3, 1))
   |> should.equal(time.test_literal(13, 45, 12))
 
   time.test_literal(13, 42, 2)
-  |> time.add_duration(duration.hours(1))
+  |> time.add(duration: duration.hours(1))
   |> should.equal(time.test_literal(14, 42, 2))
 
   time.test_literal(13, 42, 2)
-  |> time.add_duration(duration.hours(11))
+  |> time.add(duration: duration.hours(11))
   |> should.equal(time.test_literal(0, 42, 2))
 
   time.test_literal(13, 4, 12)
-  |> time.add_duration(duration.hours(64))
+  |> time.add(duration: duration.hours(64))
   |> should.equal(time.test_literal(5, 4, 12))
 
   time.test_literal(13, 42, 2)
-  |> time.add_duration(duration.seconds(60 * 60 * 3))
+  |> time.add(duration: duration.seconds(60 * 60 * 3))
   |> should.equal(time.test_literal(16, 42, 2))
 }
 
 pub fn add_time_milli_test() {
   time.test_literal_milli(13, 45, 12, 2)
-  |> time.add_duration(duration.milliseconds(3))
+  |> time.add(duration: duration.milliseconds(3))
   |> should.equal(time.test_literal_milli(13, 45, 12, 5))
 
   time.test_literal_milli(13, 42, 2, 0)
-  |> time.add_duration(duration.milliseconds(1311))
+  |> time.add(duration: duration.milliseconds(1311))
   |> should.equal(time.test_literal_milli(13, 42, 3, 311))
 }
 
 pub fn add_time_micro_test() {
   time.test_literal_micro(13, 45, 12, 2)
-  |> time.add_duration(duration.microseconds(3))
+  |> time.add(duration: duration.microseconds(3))
   |> should.equal(time.test_literal_micro(13, 45, 12, 5))
 
   time.test_literal_micro(13, 42, 2, 0)
-  |> time.add_duration(duration.microseconds(1311))
+  |> time.add(duration: duration.microseconds(1311))
   |> should.equal(time.test_literal_micro(13, 42, 2, 1311))
 }
 
 pub fn add_time_nano_test() {
   time.test_literal_nano(13, 45, 12, 2)
-  |> time.add_duration(duration.nanoseconds(3))
+  |> time.add(duration: duration.nanoseconds(3))
   |> should.equal(time.test_literal_nano(13, 45, 12, 5))
 
   time.test_literal_nano(13, 42, 2, 0)
-  |> time.add_duration(duration.nanoseconds(471_313_131))
+  |> time.add(duration: duration.nanoseconds(471_313_131))
   |> should.equal(time.test_literal_nano(13, 42, 2, 471_313_131))
 }
 
 pub fn substract_time_test() {
   time.literal("13:42:11")
-  |> time.substract_duration(duration.new(0, 3, 1))
+  |> time.subtract(duration: duration.new(0, 3, 1))
   |> should.equal(time.test_literal(13, 39, 10))
 
   time.test_literal(13, 42, 2)
-  |> time.substract_duration(duration.hours(1))
+  |> time.subtract(duration: duration.hours(1))
   |> should.equal(time.test_literal(12, 42, 2))
 
   time.test_literal(13, 42, 2)
-  |> time.substract_duration(duration.hours(11))
+  |> time.subtract(duration: duration.hours(11))
   |> should.equal(time.test_literal(2, 42, 2))
 
   time.test_literal(13, 4, 12)
-  |> time.substract_duration(duration.hours(64))
+  |> time.subtract(duration: duration.hours(64))
   |> should.equal(time.test_literal(21, 4, 12))
 
   time.test_literal(13, 31, 2)
-  |> time.substract_duration(duration.seconds(60 * 60 * 3))
+  |> time.subtract(duration: duration.seconds(60 * 60 * 3))
   |> should.equal(time.test_literal(10, 31, 2))
 }
 
 pub fn substract_time_milli_test() {
   time.test_literal_milli(13, 45, 12, 2)
-  |> time.substract_duration(duration.milliseconds(3))
+  |> time.subtract(duration: duration.milliseconds(3))
   |> should.equal(time.test_literal_milli(13, 45, 11, 999))
 
   time.test_literal_milli(13, 42, 2, 354)
-  |> time.substract_duration(duration.milliseconds(11))
+  |> time.subtract(duration: duration.milliseconds(11))
   |> should.equal(time.test_literal_milli(13, 42, 2, 343))
 }
 
 pub fn substract_time_micro_test() {
   time.test_literal_micro(13, 45, 12, 2)
-  |> time.substract_duration(duration.microseconds(3))
+  |> time.subtract(duration: duration.microseconds(3))
   |> should.equal(time.test_literal_micro(13, 45, 11, 999_999))
 
   time.literal("13:42:2.000354")
-  |> time.substract_duration(duration.microseconds(11))
+  |> time.subtract(duration: duration.microseconds(11))
   |> should.equal(time.literal("13:42:2.000343"))
 }
 
 pub fn substract_time_nano_test() {
   time.test_literal_nano(13, 45, 12, 2)
-  |> time.substract_duration(duration.nanoseconds(4))
+  |> time.subtract(duration: duration.nanoseconds(4))
   |> should.equal(time.literal("13:45:11.999999998"))
 
   time.test_literal_nano(13, 42, 2, 354)
-  |> time.substract_duration(duration.nanoseconds(13))
+  |> time.subtract(duration: duration.nanoseconds(13))
   |> should.equal(time.test_literal_nano(13, 42, 2, 341))
 }
 

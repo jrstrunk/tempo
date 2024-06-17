@@ -25,7 +25,7 @@ pub fn now_local() {
 
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
-  nanoseconds_to_time(
+  from_nanoseconds(
     now_ts_nano
     - {
       date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000))
@@ -39,7 +39,7 @@ pub fn now_utc() {
   let now_ts_nano = tempo.now_utc()
 
   // Subtract the nanoseconds that are responsible for the date.
-  nanoseconds_to_time(
+  from_nanoseconds(
     now_ts_nano
     - {
       date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000))
@@ -204,7 +204,7 @@ pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
 /// by the offset value.
 pub fn apply_offset(time: tempo.Time, offset: tempo.Offset) -> tempo.Time {
   time
-  |> add_duration(offset.to_duration(offset))
+  |> add(duration: offset.to_duration(offset))
 }
 
 pub fn to_string(time: tempo.Time) -> String {
@@ -240,12 +240,41 @@ pub fn to_string(time: tempo.Time) -> String {
   |> string_builder.to_string
 }
 
+/// Accepts times in the formats `hh:mm:ss.s`, `hhmmss.s`, `hh:mm:ss`, 
+/// `hhmmss`, `hh:mm`, or `hhmm`.
 pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
-  use #(hour, minute, second) <- result.try(case string.split(time, ":") {
-    [hour, minute, second] -> Ok(#(hour, minute, second))
-    [hour, minute] -> Ok(#(hour, minute, "0"))
-    _ -> Error(Nil)
-  })
+  use #(hour, minute, second): #(String, String, String) <- result.try(
+    // Parse hh:mm:ss.s or hh:mm format
+    case string.split(time, ":") {
+      [hour, minute, second] -> Ok(#(hour, minute, second))
+      [hour, minute] -> Ok(#(hour, minute, "0"))
+      _ -> Error(Nil)
+    }
+    // Parse hhmmss.s or hhmm format
+    |> result.try_recover(fn(_) {
+      case string.length(time), string.contains(time, ".") {
+        6, False ->
+          Ok(#(
+            string.slice(time, at_index: 0, length: 2),
+            string.slice(time, at_index: 2, length: 2),
+            string.slice(time, at_index: 4, length: 2),
+          ))
+        4, False ->
+          Ok(#(
+            string.slice(time, at_index: 0, length: 2),
+            string.slice(time, at_index: 2, length: 2),
+            "0",
+          ))
+        l, True if l >= 7 ->
+          Ok(#(
+            string.slice(time, at_index: 0, length: 2),
+            string.slice(time, at_index: 2, length: 2),
+            string.slice(time, at_index: 4, length: 12),
+          ))
+        _, _ -> Error(Nil)
+      }
+    }),
+  )
 
   case int.parse(hour), int.parse(minute), string.split(second, ".") {
     Ok(hour), Ok(minute), [second, second_fraction] -> {
@@ -349,30 +378,31 @@ pub fn is_later_or_equal(a: tempo.Time, than b: tempo.Time) -> Bool {
 }
 
 pub fn to_duration(time: tempo.Time) -> tempo.Duration {
-  time_to_nanoseconds(time) |> tempo.Duration
+  to_nanoseconds(time) |> tempo.Duration
 }
 
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  time_to_nanoseconds(b) - time_to_nanoseconds(a)
+  to_nanoseconds(b) - to_nanoseconds(a)
   |> tempo.Duration
 }
 
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  case time_to_nanoseconds(b) - time_to_nanoseconds(a) {
+  case to_nanoseconds(b) - to_nanoseconds(a) {
     diff if diff < 0 -> -diff |> tempo.Duration
     diff -> diff |> tempo.Duration
   }
 }
 
 @internal
-pub fn time_to_nanoseconds(time: tempo.Time) -> Int {
+pub fn to_nanoseconds(time: tempo.Time) -> Int {
   { time.hour * duration.hour_nanoseconds }
   + { time.minute * duration.minute_nanoseconds }
   + { time.second * duration.second_nanoseconds }
   + time.nanosecond
 }
 
-pub fn nanoseconds_to_time(nanoseconds: Int) -> tempo.Time {
+@internal
+pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
   let in_range_ns = nanoseconds % duration.day_nanoseconds
 
   let adj_ns = case in_range_ns < 0 {
@@ -401,8 +431,8 @@ pub fn nanoseconds_to_time(nanoseconds: Int) -> tempo.Time {
 }
 
 /// Can not account for leap seconds.
-pub fn add_duration(a: tempo.Time, b: tempo.Duration) -> tempo.Time {
-  let new_time = time_to_nanoseconds(a) + b.nanoseconds |> nanoseconds_to_time
+pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
+  let new_time = to_nanoseconds(a) + b.nanoseconds |> from_nanoseconds
   case a {
     tempo.Time(_, _, _, _) -> to_second_precision(new_time)
     tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
@@ -412,12 +442,16 @@ pub fn add_duration(a: tempo.Time, b: tempo.Duration) -> tempo.Time {
 }
 
 /// Can not account for leap seconds.
-pub fn substract_duration(a: tempo.Time, b: tempo.Duration) -> tempo.Time {
-  let new_time = time_to_nanoseconds(a) - b.nanoseconds |> nanoseconds_to_time
+pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
+  let new_time = to_nanoseconds(a) - b.nanoseconds |> from_nanoseconds
   case a {
     tempo.Time(_, _, _, _) -> to_second_precision(new_time)
     tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
     tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
     tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
   }
+}
+
+pub fn as_duration(time: tempo.Time) -> tempo.Duration {
+  to_nanoseconds(time) |> tempo.Duration
 }
