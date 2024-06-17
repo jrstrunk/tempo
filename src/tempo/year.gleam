@@ -12,3 +12,10 @@ pub fn is_leap_year(year: Int) -> Bool {
     False -> False
   }
 }
+
+pub fn days(of year: Int) -> Int {
+  case is_leap_year(year) {
+    True -> 366
+    False -> 365
+  }
+}
