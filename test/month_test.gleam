@@ -8,17 +8,17 @@ pub fn main() {
 }
 
 pub fn get_next_test() {
-  month.get_next(tempo.Jan)
+  month.next(tempo.Jan)
   |> should.equal(tempo.Feb)
 
-  month.get_next(tempo.Dec)
+  month.next(tempo.Dec)
   |> should.equal(tempo.Jan)
 }
 
 pub fn get_prior_test() {
-  month.get_prior(tempo.Jan)
+  month.prior(tempo.Jan)
   |> should.equal(tempo.Dec)
 
-  month.get_prior(tempo.Jul)
+  month.prior(tempo.Jul)
   |> should.equal(tempo.Jun)
 }

@@ -1,3 +1,5 @@
+import gleam/list
+import gleam/result
 import tempo
 import tempo/year
 
@@ -106,7 +108,7 @@ pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
   }
 }
 
-pub fn get_days(month: tempo.Month, year: Int) -> Int {
+pub fn days(of month: tempo.Month, in year: Int) -> Int {
   case month {
     tempo.Jan -> 31
     tempo.Mar -> 31
@@ -130,7 +132,7 @@ pub fn get_days(month: tempo.Month, year: Int) -> Int {
   }
 }
 
-pub fn get_next(month: tempo.Month) -> tempo.Month {
+pub fn next(month: tempo.Month) -> tempo.Month {
   case month {
     tempo.Jan -> tempo.Feb
     tempo.Feb -> tempo.Mar
@@ -147,7 +149,7 @@ pub fn get_next(month: tempo.Month) -> tempo.Month {
   }
 }
 
-pub fn get_prior(month: tempo.Month) -> tempo.Month {
+pub fn prior(month: tempo.Month) -> tempo.Month {
   case month {
     tempo.Jan -> tempo.Dec
     tempo.Feb -> tempo.Jan
@@ -162,4 +164,47 @@ pub fn get_prior(month: tempo.Month) -> tempo.Month {
     tempo.Nov -> tempo.Oct
     tempo.Dec -> tempo.Nov
   }
+}
+
+type LeapSecond {
+  LeapSecond(month: tempo.Month, year: Int, seconds: Int)
+}
+
+const announced_leap_seconds = [
+  LeapSecond(tempo.Jun, 1972, seconds: 1),
+  LeapSecond(tempo.Dec, 1972, seconds: 1),
+  LeapSecond(tempo.Dec, 1973, seconds: 1),
+  LeapSecond(tempo.Dec, 1974, seconds: 1),
+  LeapSecond(tempo.Dec, 1975, seconds: 1),
+  LeapSecond(tempo.Dec, 1976, seconds: 1),
+  LeapSecond(tempo.Dec, 1977, seconds: 1),
+  LeapSecond(tempo.Dec, 1978, seconds: 1),
+  LeapSecond(tempo.Dec, 1979, seconds: 1),
+  LeapSecond(tempo.Jun, 1981, seconds: 1),
+  LeapSecond(tempo.Jun, 1982, seconds: 1),
+  LeapSecond(tempo.Jun, 1983, seconds: 1),
+  LeapSecond(tempo.Jun, 1985, seconds: 1),
+  LeapSecond(tempo.Dec, 1987, seconds: 1),
+  LeapSecond(tempo.Dec, 1989, seconds: 1),
+  LeapSecond(tempo.Dec, 1990, seconds: 1),
+  LeapSecond(tempo.Jun, 1992, seconds: 1),
+  LeapSecond(tempo.Jun, 1993, seconds: 1),
+  LeapSecond(tempo.Jun, 1994, seconds: 1),
+  LeapSecond(tempo.Dec, 1995, seconds: 1),
+  LeapSecond(tempo.Jun, 1997, seconds: 1),
+  LeapSecond(tempo.Dec, 1998, seconds: 1),
+  LeapSecond(tempo.Dec, 2005, seconds: 1),
+  LeapSecond(tempo.Dec, 2008, seconds: 1),
+  LeapSecond(tempo.Jun, 2012, seconds: 1),
+  LeapSecond(tempo.Jun, 2015, seconds: 1),
+  LeapSecond(tempo.Dec, 2016, seconds: 1),
+]
+
+// See https://en.wikipedia.org/wiki/Leap_second
+pub fn leap_seconds(of month: tempo.Month, in year: Int) {
+  list.find(announced_leap_seconds, fn(leap_second) {
+    leap_second.month == month && leap_second.year == year
+  })
+  |> result.map(fn(leap_second) { leap_second.seconds })
+  |> result.unwrap(0)
 }
