@@ -25,10 +25,12 @@ pub fn new_offset_test() {
   |> should.be_error
 }
 
-pub fn to_string_test() {
+pub fn to_string_zero_test() {
   offset.to_string(tempo.Offset(0))
   |> should.equal("-00:00")
+}
 
+pub fn to_string_test() {
   offset.to_string(tempo.Offset(-5))
   |> should.equal("-00:05")
 
@@ -75,6 +77,34 @@ pub fn from_string_test() {
 
   offset.from_string(":")
   |> should.be_error
+}
+
+pub fn from_string_z_test() {
+  offset.from_string("Z")
+  |> should.equal(Ok(tempo.Offset(0)))
+
+  offset.from_string("z")
+  |> should.equal(Ok(tempo.Offset(0)))
+}
+
+pub fn from_condensed_negative_string_test() {
+  offset.from_string("-0451")
+  |> should.equal(Ok(offset.literal("-04:51")))
+}
+
+pub fn from_condensed_posative_string_test() {
+  offset.from_string("+1005")
+  |> should.equal(Ok(offset.literal("+10:05")))
+}
+
+pub fn from_hour_negative_string_test() {
+  offset.from_string("-09")
+  |> should.equal(Ok(offset.literal("-09:00")))
+}
+
+pub fn from_hour_posative_string_test() {
+  offset.from_string("+11")
+  |> should.equal(Ok(offset.literal("+11:00")))
 }
 
 pub fn to_duration_test() {

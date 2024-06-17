@@ -1,4 +1,3 @@
-import gleam/bool
 import gleam/int
 import gleam/result
 import gleam/string
@@ -29,6 +28,9 @@ fn validate(offset: tempo.Offset) -> Result(tempo.Offset, Nil) {
   }
 }
 
+/// Will not return "Z" for a zero offset because it is probably not what
+/// the user wants without the context of a full datetime. Datetime modules
+/// building on this should cover formatting for Z themselves.
 pub fn to_string(offset: tempo.Offset) -> String {
   let #(is_negative, hours) = case offset.minutes / 60 {
     h if h <= 0 -> #(True, -h)
@@ -41,6 +43,8 @@ pub fn to_string(offset: tempo.Offset) -> String {
   }
 
   case is_negative, hours, mins {
+    _, 0, 0 -> "-00:00"
+
     _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_left(2, with: "0")
 
     True, h, m ->
@@ -58,29 +62,55 @@ pub fn to_string(offset: tempo.Offset) -> String {
 }
 
 pub fn from_string(offset: String) -> Result(tempo.Offset, Nil) {
-  case string.split(offset, ":") {
-    [hour, minute] -> {
-      use <- bool.guard(
-        when: string.length(hour) != 3 || string.length(minute) != 2,
-        return: Error(Nil),
-      )
-
-      case
-        string.slice(hour, at_index: 0, length: 1),
-        string.slice(hour, at_index: 1, length: 2)
-        |> int.parse,
-        int.parse(minute)
-      {
-        _, Ok(0), Ok(0) -> Ok(tempo.Offset(0))
-        "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-          Ok(tempo.Offset(-{ hour * 60 + minute }))
-        "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-          Ok(tempo.Offset(hour * 60 + minute))
-        _, _, _ -> Error(Nil)
-      }
-    }
+  // Parse Z format
+  case offset {
+    "Z" -> Ok(tempo.Offset(0))
+    "z" -> Ok(tempo.Offset(0))
     _ -> Error(Nil)
   }
+  |> result.try_recover(fn(_) {
+    use #(sign, hour, minute): #(String, String, String) <- result.try(
+      // Parse +-hh:mm format
+      case string.split(offset, ":") {
+        [hour, minute] ->
+          case string.length(hour), string.length(minute) {
+            3, 2 ->
+              Ok(#(
+                string.slice(hour, at_index: 0, length: 1),
+                string.slice(hour, at_index: 1, length: 2),
+                minute,
+              ))
+            _, _ -> Error(Nil)
+          }
+        _ ->
+          // Parse +-hhmm format or +-hh format
+          case string.length(offset) {
+            5 ->
+              Ok(#(
+                string.slice(offset, at_index: 0, length: 1),
+                string.slice(offset, at_index: 1, length: 2),
+                string.slice(offset, at_index: 3, length: 2),
+              ))
+            3 ->
+              Ok(#(
+                string.slice(offset, at_index: 0, length: 1),
+                string.slice(offset, at_index: 1, length: 2),
+                "0",
+              ))
+            _ -> Error(Nil)
+          }
+      },
+    )
+
+    case sign, int.parse(hour), int.parse(minute) {
+      _, Ok(0), Ok(0) -> Ok(tempo.Offset(0))
+      "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
+        Ok(tempo.Offset(-{ hour * 60 + minute }))
+      "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
+        Ok(tempo.Offset(hour * 60 + minute))
+      _, _, _ -> Error(Nil)
+    }
+  })
   |> result.try(validate)
 }
 
