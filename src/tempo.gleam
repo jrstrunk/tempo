@@ -44,16 +44,6 @@ pub type Month {
   Dec
 }
 
-pub type DayOfWeek {
-  Sun
-  Mon
-  Tue
-  Wed
-  Thu
-  Fri
-  Sat
-}
-
 @external(erlang, "tempo_ffi", "now")
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal

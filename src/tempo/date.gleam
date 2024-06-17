@@ -10,6 +10,16 @@ import tempo/month
 import tempo/offset
 import tempo/year
 
+pub type DayOfWeek {
+  Sun
+  Mon
+  Tue
+  Wed
+  Thu
+  Fri
+  Sat
+}
+
 /// Creates a new date and validates it.
 pub fn new(
   year year: Int,
@@ -309,20 +319,20 @@ pub fn to_weekday(date: tempo.Date) {
     { year_code + month_code + century_code + date.day - leap_year_code } % 7
 
   case day_of_week {
-    0 -> tempo.Sun
-    1 -> tempo.Mon
-    2 -> tempo.Tue
-    3 -> tempo.Wed
-    4 -> tempo.Thu
-    5 -> tempo.Fri
-    6 -> tempo.Sat
+    0 -> Sun
+    1 -> Mon
+    2 -> Tue
+    3 -> Wed
+    4 -> Thu
+    5 -> Fri
+    6 -> Sat
     _ -> panic as "Invalid day of week found after modulo by 7"
   }
 }
 
 pub fn is_weekend(date: tempo.Date) -> Bool {
   case to_weekday(date) {
-    tempo.Sat | tempo.Sun -> True
+    Sat | Sun -> True
     _ -> False
   }
 }
