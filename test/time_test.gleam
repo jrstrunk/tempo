@@ -1,9 +1,9 @@
+import gleam/io
 import gleam/order
 import gleeunit
 import gleeunit/should
 import tempo
 import tempo/duration
-import tempo/offset
 import tempo/time
 
 pub fn main() {
@@ -634,32 +634,28 @@ pub fn substract_time_nano_test() {
 }
 
 pub fn get_difference_test() {
-  time.literal("13:42:11")
-  |> time.difference(from: time.literal("13:42:12"))
-  |> should.equal(duration.new(0, 0, 1))
-
-  time.literal("13:42:11")
-  |> time.difference(from: time.literal("13:42:12"))
+  time.literal("13:42:12")
+  |> time.difference(from: time.literal("13:42:11"))
   |> duration.as_seconds
   |> should.equal(1)
 
-  time.literal("08:42:11")
-  |> time.difference(from: time.literal("08:42:13"))
+  time.literal("08:42:13")
+  |> time.difference(from: time.literal("08:42:11"))
   |> duration.as_milliseconds
   |> should.equal(2000)
 
-  time.literal("13:42:11")
-  |> time.difference(from: time.literal("15:42:12"))
+  time.literal("15:42:11")
+  |> time.difference(from: time.literal("13:42:11"))
   |> duration.as_hours
   |> should.equal(2)
 
-  time.test_literal(13, 0, 11)
-  |> time.difference(from: time.literal("15:42:12"))
+  time.literal("15:42:12")
+  |> time.difference(from: time.literal("13:00:11"))
   |> duration.as_hours_fractional
   |> should.equal(2.700277777777778)
 
-  time.test_literal(13, 55, 11)
-  |> time.difference(from: time.literal("13:30:11"))
+  time.literal("13:30:11")
+  |> time.difference(from: time.literal("13:55:11"))
   |> duration.as_minutes
   |> should.equal(-25)
 }
@@ -696,12 +692,38 @@ pub fn to_nano_precision_test() {
   |> should.equal(time.literal("13:42:11.195423700"))
 }
 
-pub fn apply_offset_test() {
-  time.literal("13:42:11")
-  |> time.apply_offset(offset.literal("+01:01"))
-  |> should.equal(time.literal("12:41:11"))
+pub fn from_unix_utc_epoch_test() {
+  time.from_unix_utc(0)
+  |> time.to_string
+  |> should.equal("00:00:00")
+}
 
-  time.literal("13:42:11")
-  |> time.apply_offset(offset.literal("-04:10"))
-  |> should.equal(time.literal("17:52:11"))
+pub fn from_unix_milli_utc_zero_test() {
+  time.from_unix_milli_utc(0)
+  |> time.to_string
+  |> should.equal("00:00:00.000")
+}
+
+pub fn from_unix_no_date_test() {
+  time.from_unix_utc(373)
+  |> time.to_string
+  |> should.equal("00:06:13")
+}
+
+pub fn from_unix_milli_no_date_test() {
+  time.from_unix_milli_utc(373_351)
+  |> time.to_string
+  |> should.equal("00:06:13.351")
+}
+
+pub fn from_unix_utc_test() {
+  time.from_unix_utc(327_132)
+  |> time.to_string
+  |> should.equal("18:52:12")
+}
+
+pub fn from_unix_milli_utc_test() {
+  time.from_unix_milli_utc(327_132_050)
+  |> time.to_string
+  |> should.equal("18:52:12.050")
 }

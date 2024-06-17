@@ -15,39 +15,58 @@ pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.Time, Nil) {
 /// Useful for declaring time literals that you know are valid within your 
 /// program. Will crash if an invalid time is provided.
 pub fn literal(time: String) -> tempo.Time {
-  let assert Ok(time) = from_string(time)
-  let assert Ok(time) = validate(time)
-  time
+  case from_string(time) {
+    Ok(time) -> time
+    Error(Nil) -> panic as "Invalid time literal"
+  }
 }
 
 pub fn now_local() {
   let now_ts_nano = tempo.now_utc()
+  let date_ts_nano =
+    { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
+    * 1_000_000_000
 
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
-  from_nanoseconds(
-    now_ts_nano
-    - {
-      date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000))
-      * 1_000_000_000
-    }
-    + offset.local_nano(),
-  )
+  from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
 }
 
 pub fn now_utc() {
   let now_ts_nano = tempo.now_utc()
+  let date_ts_nano =
+    { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
+    * 1_000_000_000
 
-  // Subtract the nanoseconds that are responsible for the date.
-  from_nanoseconds(
-    now_ts_nano
-    - {
-      date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000))
-      * 1_000_000_000
-    },
-  )
+  // Subtract the nanoseconds that are responsible for the date and the local
+  // offset nanoseconds.
+  from_nanoseconds(now_ts_nano - date_ts_nano)
 }
 
+/// If unix timestamp to local time is needed, use `from_unix_utc` from the
+/// `datetime` module, then use `to_current_local` and `get_time` on the
+/// result. The API is designed this way to prevent misuse and resulting bugs.
+pub fn from_unix_utc(unix_ts: Int) {
+  // Subtract the nanoseconds that are responsible for the date.
+  { unix_ts - { date.to_unix_utc(date.from_unix_utc(unix_ts)) } }
+  * 1_000_000_000
+  |> from_nanoseconds
+  |> to_second_precision
+}
+
+/// If unix timestamp to local time is needed, use `from_unix_utc` from the
+/// `datetime` module, then use `to_current_local` and `get_time` on the
+/// result. The API is designed this way to prevent misuse and resulting bugs.
+pub fn from_unix_milli_utc(unix_ts: Int) {
+  // Subtract the nanoseconds that are responsible for the date.
+  { unix_ts - { date.to_unix_milli_utc(date.from_unix_milli_utc(unix_ts)) } }
+  * 1_000_000
+  |> from_nanoseconds
+  |> to_milli_precision
+}
+
+/// This was originally used in a lot of tests, but since has been removed
+/// from the public API.
 @internal
 pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
   let assert Ok(time) = tempo.Time(hour, minute, second, 0) |> validate
@@ -198,13 +217,6 @@ pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
 
 pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
   tempo.TimeNano(time.hour, time.minute, time.second, time.nanosecond)
-}
-
-/// Applies an offset to the naive time value, changing the hours and minutes
-/// by the offset value.
-pub fn apply_offset(time: tempo.Time, offset: tempo.Offset) -> tempo.Time {
-  time
-  |> add(duration: offset.to_duration(offset))
 }
 
 pub fn to_string(time: tempo.Time) -> String {
@@ -382,12 +394,12 @@ pub fn to_duration(time: tempo.Time) -> tempo.Duration {
 }
 
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(b) - to_nanoseconds(a)
+  to_nanoseconds(a) - to_nanoseconds(b)
   |> tempo.Duration
 }
 
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  case to_nanoseconds(b) - to_nanoseconds(a) {
+  case to_nanoseconds(a) - to_nanoseconds(b) {
     diff if diff < 0 -> -diff |> tempo.Duration
     diff -> diff |> tempo.Duration
   }
