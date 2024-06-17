@@ -229,7 +229,7 @@ pub fn from_unix_milli_utc(unix_ts: Int) {
   from_unix_utc(unix_ts / 1000)
 }
 
-pub fn add_days(date: tempo.Date, days: Int) -> tempo.Date {
+pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
   let days_left_this_month = month.get_days(date.month, date.year) - date.day
   case days < days_left_this_month {
     True -> tempo.Date(date.year, date.month, date.day + days)
@@ -240,12 +240,12 @@ pub fn add_days(date: tempo.Date, days: Int) -> tempo.Date {
         False -> date.year
       }
 
-      add_days(tempo.Date(year, next_month, 1), days - days_left_this_month - 1)
+      add(tempo.Date(year, next_month, 1), days - days_left_this_month - 1)
     }
   }
 }
 
-pub fn subtract_days(date: tempo.Date, days: Int) -> tempo.Date {
+pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
   case days < date.day {
     True -> tempo.Date(date.year, date.month, date.day - days)
     False -> {
@@ -255,7 +255,7 @@ pub fn subtract_days(date: tempo.Date, days: Int) -> tempo.Date {
         False -> date.year
       }
 
-      subtract_days(
+      subtract(
         tempo.Date(year, prior_month, month.get_days(prior_month, year)),
         days - date.day,
       )

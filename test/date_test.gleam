@@ -338,91 +338,91 @@ pub fn from_unix_utc_test() {
 
 pub fn add_day_test() {
   date.literal("2024-06-13")
-  |> date.add_days(1)
+  |> date.add(days: 1)
   |> should.equal(date.literal("2024-06-14"))
 }
 
 pub fn add_days_test() {
   date.literal("2024-06-13")
-  |> date.add_days(2)
+  |> date.add(days: 2)
   |> should.equal(date.literal("2024-06-15"))
 }
 
 pub fn add_days_month_boundary_test() {
   date.literal("2024-06-13")
-  |> date.add_days(45)
+  |> date.add(days: 45)
   |> should.equal(date.literal("2024-07-28"))
 }
 
 pub fn add_days_two_month_boundary_test() {
   date.literal("2024-06-13")
-  |> date.add_days(75)
+  |> date.add(days: 75)
   |> should.equal(date.literal("2024-08-27"))
 }
 
 pub fn add_days_year_boundary_test() {
   date.literal("2021-06-13")
-  |> date.add_days(365)
+  |> date.add(days: 365)
   |> should.equal(date.literal("2022-06-13"))
 }
 
 pub fn add_days_two_year_boundary_test() {
   date.literal("2021-06-13")
-  |> date.add_days(733)
+  |> date.add(days: 733)
   |> should.equal(date.literal("2023-06-16"))
 }
 
 pub fn add_days_leap_year_boundary_test() {
   date.literal("2023-06-13")
-  |> date.add_days(365)
+  |> date.add(days: 365)
   |> should.equal(date.literal("2024-06-12"))
 }
 
 pub fn subtract_day_test() {
   date.literal("2024-06-13")
-  |> date.subtract_days(1)
+  |> date.subtract(days: 1)
   |> should.equal(date.literal("2024-06-12"))
 }
 
 pub fn subtract_days_test() {
   date.literal("2024-06-13")
-  |> date.subtract_days(2)
+  |> date.subtract(days: 2)
   |> should.equal(date.literal("2024-06-11"))
 }
 
 pub fn subtract_day_month_boundary_test() {
   date.literal("2024-06-01")
-  |> date.subtract_days(2)
+  |> date.subtract(days: 2)
   |> should.equal(date.literal("2024-05-30"))
 }
 
 pub fn subtract_days_month_boundary_test() {
   date.literal("2024-06-13")
-  |> date.subtract_days(45)
+  |> date.subtract(days: 45)
   |> should.equal(date.literal("2024-04-29"))
 }
 
 pub fn subtract_days_two_month_boundary_test() {
   date.literal("2024-06-13")
-  |> date.subtract_days(75)
+  |> date.subtract(days: 75)
   |> should.equal(date.literal("2024-03-30"))
 }
 
 pub fn subtract_days_year_boundary_test() {
   date.literal("2022-06-13")
-  |> date.subtract_days(365)
+  |> date.subtract(days: 365)
   |> should.equal(date.literal("2021-06-13"))
 }
 
 pub fn subtract_days_two_year_boundary_test() {
   date.literal("2024-01-13")
-  |> date.subtract_days(733)
+  |> date.subtract(days: 733)
   |> should.equal(date.literal("2022-01-10"))
 }
 
 pub fn subtract_days_leap_year_boundary_test() {
   date.literal("2024-06-13")
-  |> date.subtract_days(365)
+  |> date.subtract(days: 365)
   |> should.equal(date.literal("2023-06-14"))
 }
 
