@@ -3,6 +3,7 @@ import gleam/result
 import gleam/string
 import tempo
 
+@internal
 pub fn local() -> tempo.Offset {
   local_minutes() |> tempo.Offset
 }
@@ -114,6 +115,7 @@ pub fn from_string(offset: String) -> Result(tempo.Offset, Nil) {
   |> result.try(validate)
 }
 
+@internal
 pub fn to_duration(offset: tempo.Offset) -> tempo.Duration {
   -offset.minutes * 60_000_000_000 |> tempo.Duration
 }
