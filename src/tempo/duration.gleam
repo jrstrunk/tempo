@@ -362,3 +362,10 @@ pub fn is_greater(a: tempo.Duration, than b: tempo.Duration) -> Bool {
 pub fn is_greater_or_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
+
+pub fn absolute(duration: tempo.Duration) -> tempo.Duration {
+  case duration.nanoseconds < 0 {
+    True -> -duration.nanoseconds |> tempo.Duration
+    False -> duration
+  }
+}

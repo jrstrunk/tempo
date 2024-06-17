@@ -127,3 +127,33 @@ pub fn format_nanoseconds_test() {
   |> duration.format
   |> should.equal("912 nanoseconds")
 }
+
+pub fn duration_roundtrip_test() {
+  duration.days(3)
+  |> duration.as_days
+  |> should.equal(3)
+
+  duration.hours(5)
+  |> duration.as_hours
+  |> should.equal(5)
+
+  duration.minutes(7)
+  |> duration.as_minutes
+  |> should.equal(7)
+
+  duration.seconds(9)
+  |> duration.as_seconds
+  |> should.equal(9)
+
+  duration.milliseconds(11)
+  |> duration.as_milliseconds
+  |> should.equal(11)
+
+  duration.microseconds(13)
+  |> duration.as_microseconds
+  |> should.equal(13)
+
+  duration.nanoseconds(15)
+  |> duration.as_nanoseconds
+  |> should.equal(15)
+}
