@@ -17,8 +17,10 @@ pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, Nil) {
 /// Useful for declaring offset literals that you know are valid within your 
 /// program. Will crash if an invalid offset is provided.
 pub fn literal(offset: String) -> tempo.Offset {
-  let assert Ok(offset) = from_string(offset)
-  offset
+  case from_string(offset) {
+    Ok(offset) -> offset
+    Error(Nil) -> panic as "Invalid offset literal"
+  }
 }
 
 fn validate(offset: tempo.Offset) -> Result(tempo.Offset, Nil) {
