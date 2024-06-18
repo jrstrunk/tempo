@@ -2,9 +2,7 @@ import gleam/order
 import gleam/string
 import gleeunit
 import gleeunit/should
-import tempo
 import tempo/date
-import tempo/duration
 
 pub fn main() {
   gleeunit.main()

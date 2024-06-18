@@ -2,9 +2,10 @@ import gleam/bool
 import gleam/int
 import gleam/list
 import tempo
+import tempo/date
 import tempo/duration
-import tempo/internal/date
 import tempo/month
+import tempo/naive_datetime
 import tempo/time
 import tempo/year
 
@@ -23,10 +24,10 @@ pub fn difference(
 // focus on calendar dates and different adding / subtracting rules.
 
 pub type Unit {
-  CalculatedYear(nanoseconds: Int, years: Int)
-  CalculatedMonth(nanoseconds: Int, months: Int)
-  CalculatedWeek(nanoseconds: Int, weeks: Int)
-  CalculatedDay(nanoseconds: Int, days: Int)
+  Year
+  Month
+  Week
+  Day
   Hour
   Minute
   Second
@@ -47,6 +48,30 @@ pub fn as_seconds(period: tempo.Period) -> Int {
     |> duration.seconds,
   )
   |> duration.as_seconds
+}
+
+pub fn as_days(period: tempo.Period) -> Int {
+  days_apart(period.start.date, period.end.date)
+  // If a full day has not elapsed since the start time (based on the time), 
+  // then 1 needs to be taken off the days count.
+  + case period.start.time |> time.is_later(than: period.end.time) {
+    True -> -1
+    False -> 0
+  }
+}
+
+pub fn as_days_fractional(period: tempo.Period) -> Float {
+  { days_apart(period.start.date, period.end.date) |> int.to_float }
+  +. case period.start.time |> time.is_later(than: period.end.time) {
+    True ->
+      todo as "the time until the end of the start date divided by the total number of seconds in the start day plus the time since the beginning of the end date divided by the total number of seconds in the end day"
+    False ->
+      todo as "the time between the start and end times divided by the total number of seconds in the end day"
+  }
+}
+
+pub fn to_duration(period: tempo.Period) -> tempo.Duration {
+  period |> as_seconds |> duration.seconds
 }
 
 @internal
@@ -165,8 +190,6 @@ fn exclusive_months_between_days(from: tempo.Date, to: tempo.Date) {
 fn calendar_years_apart(later: tempo.Date, from earlier: tempo.Date) -> Int {
   later.year - earlier.year
 }
-
-// idk if the functions below here will ever see the light of day
 
 @internal
 pub fn calendar_months_apart(a: tempo.Date, from b: tempo.Date) -> Int {

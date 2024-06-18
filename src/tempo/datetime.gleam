@@ -2,6 +2,8 @@ import gleam/result
 import gleam/string
 import tempo
 import tempo/date
+import tempo/internal/unit
+import tempo/month
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -184,6 +186,21 @@ pub fn to_current_local_date(datetime: tempo.DateTime) -> tempo.Date {
   |> get_date
 }
 
+pub fn compare(a: tempo.DateTime, to b: tempo.DateTime) {
+  apply_offset(a) |> naive_datetime.compare(to: apply_offset(b))
+}
+
+pub fn difference(from a: tempo.DateTime, to b: tempo.DateTime) -> tempo.Period {
+  apply_offset(a) |> naive_datetime.difference(to: apply_offset(b))
+}
+
+pub fn to_period(
+  start start: tempo.DateTime,
+  end end: tempo.DateTime,
+) -> tempo.Period {
+  apply_offset(start) |> naive_datetime.to_period(end: apply_offset(end))
+}
+
 pub fn add(
   datetime: tempo.DateTime,
   duration duration_to_add: tempo.Duration,
@@ -204,6 +221,59 @@ pub fn subtract(
   |> naive_datetime.set_offset(datetime.offset)
 }
 
-pub fn compare(a: tempo.DateTime, to b: tempo.DateTime) {
-  apply_offset(a) |> naive_datetime.compare(to: apply_offset(b))
+/// Gets the time left in the day.
+/// Cannot account for leap seconds in a day because the leap second is 
+/// applied to a specific UTC time and a naive datetime does not know what
+/// it is in equivalent UTC time. If you want the time left in a specific 
+/// date (including leap seconds), use the `datetime` module instead.
+/// 
+/// ## Example
+///
+/// ```gleam
+/// naive_datetime.literal("2024-06-30T23:59:03") 
+/// |> naive_datetime.left_in_day_imprecise
+/// // -> time.literal("00:00:57")
+/// ```
+///
+/// ```gleam
+/// naive_datetime.literal("2015-06-30T23:59:03") 
+/// |> naive_datetime.left_in_day_imprecise
+/// // -> time.literal("00:00:58")
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-18T08:05:20")
+/// |> naive_datetime.left_in_day_imprecise
+/// // -> time.literal("15:54:40")
+/// ```
+pub fn time_left_in_day(datetime: tempo.DateTime) -> tempo.Time {
+  let new_time =
+    unit.imprecise_day_nanoseconds
+    + leap_seconds_in_utc_day(datetime.naive.date)
+    - { datetime.naive.time |> time.to_nanoseconds }
+    |> time.from_nanoseconds
+
+  // Restore original time precision
+  case datetime.naive.time {
+    tempo.Time(_, _, _, _) -> time.to_second_precision(new_time)
+    tempo.TimeMilli(_, _, _, _) -> time.to_milli_precision(new_time)
+    tempo.TimeMicro(_, _, _, _) -> time.to_micro_precision(new_time)
+    tempo.TimeNano(_, _, _, _) -> time.to_nano_precision(new_time)
+  }
+}
+
+@internal
+pub fn total_ns_in_day(datetime: tempo.DateTime) -> Int {
+  todo
+  unit.imprecise_day_nanoseconds
+  + { datetime |> to_utc |> get_date |> leap_seconds_in_utc_day }
+}
+
+@internal
+pub fn leap_seconds_in_utc_day(utc_date utc_date: tempo.Date) -> Int {
+  // Leap seconds have only been added to the last day of the month.
+  case utc_date.day == month.days(of: utc_date.month, in: utc_date.year) {
+    True -> month.leap_seconds(of: utc_date.month, in: utc_date.year)
+    False -> 0
+  }
 }

@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/order
 import gleeunit
 import gleeunit/should
@@ -726,4 +725,16 @@ pub fn from_unix_milli_utc_test() {
   time.from_unix_milli_utc(327_132_050)
   |> time.to_string
   |> should.equal("18:52:12.050")
+}
+
+pub fn small_time_left_in_day_test() {
+  time.literal("23:59:03")
+  |> time.left_in_day_imprecise
+  |> should.equal(time.literal("00:00:57"))
+}
+
+pub fn large_time_left_in_day_test() {
+  time.literal("08:05:20")
+  |> time.left_in_day_imprecise
+  |> should.equal(time.literal("15:54:40"))
 }

@@ -6,6 +6,7 @@ import tempo
 import tempo/date
 import tempo/duration
 import tempo/internal/unit
+import tempo/offset
 import tempo/time
 
 pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
@@ -59,6 +60,10 @@ pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
   |> time.to_string
 }
 
+pub fn to_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
+  set_offset(datetime, offset.utc)
+}
+
 pub fn get_date(datetime: tempo.NaiveDateTime) -> tempo.Date {
   datetime.date
 }
@@ -76,6 +81,58 @@ pub fn set_offset(
   offset: tempo.Offset,
 ) -> tempo.DateTime {
   tempo.DateTime(naive: datetime, offset: offset)
+}
+
+pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
+  case date.compare(a.date, b.date) {
+    order.Eq -> time.compare(a.time, b.time)
+    od -> od
+  }
+}
+
+pub fn is_earlier(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
+  compare(a, b) == order.Lt
+}
+
+pub fn is_earlier_or_equal(
+  a: tempo.NaiveDateTime,
+  to b: tempo.NaiveDateTime,
+) -> Bool {
+  compare(a, b) == order.Lt || compare(a, b) == order.Eq
+}
+
+pub fn is_equal(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) -> Bool {
+  compare(a, b) == order.Eq
+}
+
+pub fn is_later(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
+  compare(a, b) == order.Gt
+}
+
+pub fn is_later_or_equal(
+  a: tempo.NaiveDateTime,
+  to b: tempo.NaiveDateTime,
+) -> Bool {
+  compare(a, b) == order.Gt || compare(a, b) == order.Eq
+}
+
+pub fn difference(
+  from a: tempo.NaiveDateTime,
+  to b: tempo.NaiveDateTime,
+) -> tempo.Period {
+  to_period(a, b)
+}
+
+pub fn to_period(
+  start start: tempo.NaiveDateTime,
+  end end: tempo.NaiveDateTime,
+) -> tempo.Period {
+  let #(start, end) = case start |> is_earlier_or_equal(to: end) {
+    True -> #(start, end)
+    False -> #(end, start)
+  }
+
+  tempo.Period(start, end)
 }
 
 /// Will not account for leap seconds, TODO needs to be addded
@@ -161,9 +218,31 @@ pub fn subtract(
   tempo.NaiveDateTime(new_date, new_time)
 }
 
-pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
-  case date.compare(a.date, b.date) {
-    order.Eq -> time.compare(a.time, b.time)
-    od -> od
-  }
+/// Gets the time left in the day.
+/// Cannot account for leap seconds in a day because the leap second is 
+/// applied to a specific UTC time and a naive datetime does not know what
+/// it is in equivalent UTC time. If you want the time left in a specific 
+/// date (including leap seconds), use the `datetime` module instead.
+/// 
+/// ## Example
+///
+/// ```gleam
+/// naive_datetime.literal("2024-06-30T23:59:03") 
+/// |> naive_datetime.left_in_day_imprecise
+/// // -> time.literal("00:00:57")
+/// ```
+///
+/// ```gleam
+/// naive_datetime.literal("2015-06-30T23:59:03") 
+/// |> naive_datetime.left_in_day_imprecise
+/// // -> time.literal("00:00:57")
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-18T08:05:20")
+/// |> naive_datetime.left_in_day_imprecise
+/// // -> time.literal("15:54:40")
+/// ```
+pub fn left_in_day_imprecise(naive_datetime: tempo.NaiveDateTime) -> tempo.Time {
+  naive_datetime.time |> time.left_in_day_imprecise
 }

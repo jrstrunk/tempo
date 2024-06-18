@@ -4,7 +4,7 @@ import gleam/result
 import gleam/string
 import gleam/string_builder
 import tempo
-import tempo/internal/date
+import tempo/date
 import tempo/internal/unit
 import tempo/offset
 
@@ -459,7 +459,36 @@ pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 /// Can not account for leap seconds.
 pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
   let new_time = to_nanoseconds(a) - b.nanoseconds |> from_nanoseconds
+  // Restore original time precision
   case a {
+    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
+    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
+    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
+    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
+  }
+}
+
+/// Converts a time to the equivalent time left in the day.
+/// Cannot account for leap seconds in a day. If you want the time left in a 
+/// specific date (including leap seconds), use the `datetime` module instead.
+///
+/// ## Example
+///
+/// ```gleam
+/// time.literal("23:59:03") |> time.left_in_day_imprecise
+/// // -> time.literal("00:00:57")
+/// ```
+///
+/// ```gleam
+/// time.literal("08:05:20") |> time.left_in_day_imprecise
+/// // -> time.literal("15:54:40")
+/// ```
+pub fn left_in_day_imprecise(time: tempo.Time) -> tempo.Time {
+  let new_time =
+    unit.imprecise_day_nanoseconds - { time |> to_nanoseconds }
+    |> from_nanoseconds
+  // Restore original time precision
+  case time {
     tempo.Time(_, _, _, _) -> to_second_precision(new_time)
     tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
     tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)

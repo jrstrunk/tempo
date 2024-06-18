@@ -21,6 +21,10 @@ pub type Date {
   Date(year: Int, month: Month, day: Int)
 }
 
+pub type Period {
+  Period(start: NaiveDateTime, end: NaiveDateTime)
+}
+
 /// Do not use the `==` operator to check for time equality! Use the compare
 /// functions instead.
 ///
@@ -50,10 +54,6 @@ pub type Month {
   Oct
   Nov
   Dec
-}
-
-pub type Period {
-  Period(start: NaiveDateTime, end: NaiveDateTime)
 }
 
 @external(erlang, "tempo_ffi", "now")
