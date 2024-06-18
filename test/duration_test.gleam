@@ -77,19 +77,19 @@ pub fn format_three_units_large_test() {
 pub fn format_years_test() {
   duration.nanoseconds(93_691_332_000_000_000)
   |> duration.format
-  |> should.equal("2 years, 50 weeks, 6 days, 9 hours, and 22 minutes")
+  |> should.equal("2 ~years, 50 ~weeks, 6 ~days, 9 hours, and 22 minutes")
 }
 
 pub fn format_weeks_test() {
   duration.nanoseconds(691_332_000_000_000)
   |> duration.format
-  |> should.equal("1 week, 1 day, 0 hours, and 2 minutes")
+  |> should.equal("1 ~week, 1 ~day, 0 hours, and 2 minutes")
 }
 
 pub fn format_days_test() {
   duration.nanoseconds(172_980_000_000_000)
   |> duration.format
-  |> should.equal("2 days, 0 hours, and 3 minutes")
+  |> should.equal("2 ~days, 0 hours, and 3 minutes")
 }
 
 pub fn format_hours_test() {
@@ -156,4 +156,18 @@ pub fn duration_roundtrip_test() {
   duration.nanoseconds(15)
   |> duration.as_nanoseconds
   |> should.equal(15)
+}
+
+pub fn absolute_test() {
+  duration.days(3)
+  |> duration.absolute
+  |> should.equal(duration.days(3))
+
+  duration.hours(-5)
+  |> duration.absolute
+  |> should.equal(duration.hours(5))
+
+  duration.minutes(-7000)
+  |> duration.absolute
+  |> should.equal(duration.minutes(7000))
 }

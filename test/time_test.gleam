@@ -12,11 +12,11 @@ pub fn main() {
 
 pub fn time_now_test() {
   time.now_local()
-  |> time.is_later_or_equal(than: time.literal("00:00:00"))
+  |> time.is_later_or_equal(to: time.literal("00:00:00"))
   |> should.be_true
 
   time.now_utc()
-  |> time.is_later_or_equal(than: time.literal("00:00:00"))
+  |> time.is_later_or_equal(to: time.literal("00:00:00"))
   |> should.be_true
 }
 

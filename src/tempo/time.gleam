@@ -5,7 +5,7 @@ import gleam/string
 import gleam/string_builder
 import tempo
 import tempo/date
-import tempo/duration
+import tempo/internal/unit
 import tempo/offset
 
 pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.Time, Nil) {
@@ -373,7 +373,7 @@ pub fn is_earlier(a: tempo.Time, than b: tempo.Time) -> Bool {
   compare(a, b) == order.Lt
 }
 
-pub fn is_earlier_or_equal(a: tempo.Time, than b: tempo.Time) -> Bool {
+pub fn is_earlier_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
   compare(a, b) == order.Lt || compare(a, b) == order.Eq
 }
 
@@ -385,12 +385,16 @@ pub fn is_later(a: tempo.Time, than b: tempo.Time) -> Bool {
   compare(a, b) == order.Gt
 }
 
-pub fn is_later_or_equal(a: tempo.Time, than b: tempo.Time) -> Bool {
+pub fn is_later_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
 pub fn to_duration(time: tempo.Time) -> tempo.Duration {
   to_nanoseconds(time) |> tempo.Duration
+}
+
+pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
+  from_nanoseconds(duration.nanoseconds)
 }
 
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
@@ -407,18 +411,18 @@ pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
 
 @internal
 pub fn to_nanoseconds(time: tempo.Time) -> Int {
-  { time.hour * duration.hour_nanoseconds }
-  + { time.minute * duration.minute_nanoseconds }
-  + { time.second * duration.second_nanoseconds }
+  { time.hour * unit.hour_nanoseconds }
+  + { time.minute * unit.minute_nanoseconds }
+  + { time.second * unit.second_nanoseconds }
   + time.nanosecond
 }
 
 @internal
 pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
-  let in_range_ns = nanoseconds % duration.day_nanoseconds
+  let in_range_ns = nanoseconds % unit.imprecise_day_nanoseconds
 
   let adj_ns = case in_range_ns < 0 {
-    True -> in_range_ns + duration.day_nanoseconds
+    True -> in_range_ns + unit.imprecise_day_nanoseconds
     False -> in_range_ns
   }
 
@@ -462,8 +466,4 @@ pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
     tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
     tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
   }
-}
-
-pub fn as_duration(time: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(time) |> tempo.Duration
 }
