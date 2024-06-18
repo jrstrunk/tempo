@@ -4,6 +4,7 @@ import gleeunit
 import gleeunit/should
 import tempo
 import tempo/date
+import tempo/duration
 
 pub fn main() {
   gleeunit.main()
@@ -198,19 +199,19 @@ pub fn is_earlier_test() {
 
 pub fn is_earlier_or_equal_test() {
   date.literal("2024-06-13")
-  |> date.is_earlier_or_equal(than: date.literal("2024-06-14"))
+  |> date.is_earlier_or_equal(to: date.literal("2024-06-14"))
   |> should.be_true()
 
   date.literal("2024-06-14")
-  |> date.is_earlier_or_equal(than: date.literal("2024-06-14"))
+  |> date.is_earlier_or_equal(to: date.literal("2024-06-14"))
   |> should.be_true()
 
   date.literal("2024-06-15")
-  |> date.is_earlier_or_equal(than: date.literal("2024-06-14"))
+  |> date.is_earlier_or_equal(to: date.literal("2024-06-14"))
   |> should.be_false()
 
   date.literal("2024-06-15")
-  |> date.is_earlier_or_equal(than: date.literal("2024-06-14"))
+  |> date.is_earlier_or_equal(to: date.literal("2024-06-14"))
   |> should.be_false()
 }
 
@@ -236,19 +237,19 @@ pub fn is_later_test() {
 
 pub fn is_later_or_equal_test() {
   date.literal("2024-06-14")
-  |> date.is_later_or_equal(than: date.literal("2024-06-13"))
+  |> date.is_later_or_equal(to: date.literal("2024-06-13"))
   |> should.be_true()
 
   date.literal("2024-06-13")
-  |> date.is_later_or_equal(than: date.literal("2024-06-13"))
+  |> date.is_later_or_equal(to: date.literal("2024-06-13"))
   |> should.be_true()
 
   date.literal("2024-06-12")
-  |> date.is_later_or_equal(than: date.literal("2024-06-13"))
+  |> date.is_later_or_equal(to: date.literal("2024-06-13"))
   |> should.be_false()
 
   date.literal("2024-06-12")
-  |> date.is_later_or_equal(than: date.literal("2024-06-13"))
+  |> date.is_later_or_equal(to: date.literal("2024-06-13"))
   |> should.be_false()
 }
 
@@ -429,33 +430,33 @@ pub fn subtract_days_leap_year_boundary_test() {
 pub fn to_weekday_jan_not_leap_year_test() {
   date.literal("2023-01-04")
   |> date.to_weekday
-  |> should.equal(tempo.Wed)
+  |> should.equal(date.Wed)
 }
 
 pub fn to_weekday_jan_leap_year_test() {
   date.literal("2024-01-09")
   |> date.to_weekday
-  |> should.equal(tempo.Tue)
+  |> should.equal(date.Tue)
 }
 
 pub fn to_weekday_test() {
   date.literal("2024-06-13")
   |> date.to_weekday
-  |> should.equal(tempo.Thu)
+  |> should.equal(date.Thu)
 
   date.literal("2024-06-14")
   |> date.to_weekday
-  |> should.equal(tempo.Fri)
+  |> should.equal(date.Fri)
 
   date.literal("2024-06-15")
   |> date.to_weekday
-  |> should.equal(tempo.Sat)
+  |> should.equal(date.Sat)
 
   date.literal("2024-06-16")
   |> date.to_weekday
-  |> should.equal(tempo.Sun)
+  |> should.equal(date.Sun)
 
   date.literal("2024-06-17")
   |> date.to_weekday
-  |> should.equal(tempo.Mon)
+  |> should.equal(date.Mon)
 }

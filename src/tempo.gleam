@@ -44,6 +44,10 @@ pub type Month {
   Dec
 }
 
+pub type Period {
+  Period(start: NaiveDateTime, end: NaiveDateTime)
+}
+
 @external(erlang, "tempo_ffi", "now")
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal

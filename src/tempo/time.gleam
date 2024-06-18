@@ -4,7 +4,7 @@ import gleam/result
 import gleam/string
 import gleam/string_builder
 import tempo
-import tempo/date
+import tempo/internal/date
 import tempo/internal/unit
 import tempo/offset
 
@@ -334,6 +334,14 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
   |> result.try(validate)
 }
 
+pub fn to_duration(time: tempo.Time) -> tempo.Duration {
+  to_nanoseconds(time) |> tempo.Duration
+}
+
+pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
+  from_nanoseconds(duration.nanoseconds)
+}
+
 pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
   case a.hour == b.hour {
     True ->
@@ -389,17 +397,8 @@ pub fn is_later_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
-pub fn to_duration(time: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(time) |> tempo.Duration
-}
-
-pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
-  from_nanoseconds(duration.nanoseconds)
-}
-
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(a) - to_nanoseconds(b)
-  |> tempo.Duration
+  to_nanoseconds(a) - to_nanoseconds(b) |> tempo.Duration
 }
 
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
