@@ -9,6 +9,10 @@ pub type NaiveDateTime {
   NaiveDateTime(date: Date, time: Time)
 }
 
+pub type DateTime {
+  DateTime(naive: NaiveDateTime, offset: Offset)
+}
+
 pub type Offset {
   Offset(minutes: Int)
 }
