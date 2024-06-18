@@ -5,6 +5,10 @@ pub fn main() {
   io.debug(now_utc())
 }
 
+pub type NaiveDateTime {
+  NaiveDateTime(date: Date, time: Time)
+}
+
 pub type Offset {
   Offset(minutes: Int)
 }
