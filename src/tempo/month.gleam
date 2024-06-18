@@ -4,18 +4,8 @@ import tempo
 import tempo/year
 
 pub const months = [
-  tempo.Jan,
-  tempo.Feb,
-  tempo.Mar,
-  tempo.Apr,
-  tempo.May,
-  tempo.Jun,
-  tempo.Jul,
-  tempo.Aug,
-  tempo.Sep,
-  tempo.Oct,
-  tempo.Nov,
-  tempo.Dec,
+  tempo.Jan, tempo.Feb, tempo.Mar, tempo.Apr, tempo.May, tempo.Jun, tempo.Jul,
+  tempo.Aug, tempo.Sep, tempo.Oct, tempo.Nov, tempo.Dec,
 ]
 
 pub fn to_short_string(month: tempo.Month) -> String {

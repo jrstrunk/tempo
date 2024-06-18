@@ -1,6 +1,6 @@
+import gleam/io
 import gleam/order
 import gleam/string
-import gleam/io
 import gleeunit
 import gleeunit/should
 import tempo
@@ -192,14 +192,14 @@ pub fn date_period_to_seconds_test() {
   date.literal("2024-08-03")
   |> date.difference(from: date.literal("2024-08-16"))
   |> period.as_seconds
-  |> should.equal(86400 * 13)
+  |> should.equal(86_400 * 13)
 }
 
 pub fn date_leap_second_period_to_seconds_test() {
   date.literal("2016-12-31")
   |> date.difference(from: date.literal("2017-01-01"))
   |> period.as_seconds
-  |> should.equal(86401)
+  |> should.equal(86_401)
 }
 
 // pub fn date_difference_one_day_test() {
