@@ -1,3 +1,6 @@
+import gleam/io
+import gleam/list
+import gleam/order
 import gleam/result
 import gleam/string
 import tempo
@@ -18,6 +21,14 @@ pub fn new(
   offset offset: tempo.Offset,
 ) -> tempo.DateTime {
   tempo.DateTime(naive_datetime.new(date, time), offset: offset)
+}
+
+pub fn now_utc() -> tempo.DateTime {
+  new(date.current_utc(), time.now_utc(), offset.utc)
+}
+
+pub fn now_local() -> tempo.DateTime {
+  new(date.current_local(), time.now_local(), offset.local())
 }
 
 pub fn literal(datetime: String) -> tempo.DateTime {
@@ -114,15 +125,19 @@ pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
 }
 
 pub fn apply_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
-  datetime
-  |> add(offset.to_duration(datetime.offset))
-  |> drop_offset
+  case datetime.offset == offset.utc {
+    // Leave the naive datetime as is to preserve the potential leapsecond
+    True -> datetime.naive
+    False ->
+      datetime
+      |> add(offset.to_duration(datetime.offset))
+      |> drop_offset
+  }
 }
 
 pub fn to_utc(datetime: tempo.DateTime) -> tempo.DateTime {
   datetime
-  |> add(offset.to_duration(datetime.offset))
-  |> drop_offset
+  |> apply_offset
   |> naive_datetime.set_offset(offset.utc)
 }
 
@@ -162,32 +177,28 @@ pub fn to_current_local(
   }
 }
 
-/// Do not use this function in conjuction with `to_current_local_date` to 
-/// convert an arbitrary datetime to a local date! This will not account for
-/// timezones with variable offsets (daylight savings time) and could
-/// be incorrect for any date other than the current! Use `to_current_local`
-/// to convert a datetime to a local datetime safely (when it is on the same
-/// day as the current local time).
-pub fn to_current_local_time(datetime: tempo.DateTime) -> tempo.Time {
-  datetime
-  |> to_offset(offset.local())
-  |> get_time
-}
-
-/// Do not use this function in conjuction with `to_current_local_date` to 
-/// convert an arbitrary datetime to a local date! This will not account for
-/// timezones with variable offsets (daylight savings time) and could
-/// be incorrect for any date other than the current! Use `to_current_local`
-/// to convert a datetime to a local datetime safely (when it is on the same
-/// day as the current local time).
-pub fn to_current_local_date(datetime: tempo.DateTime) -> tempo.Date {
-  datetime
-  |> to_offset(offset.local())
-  |> get_date
-}
-
 pub fn compare(a: tempo.DateTime, to b: tempo.DateTime) {
   apply_offset(a) |> naive_datetime.compare(to: apply_offset(b))
+}
+
+pub fn is_earlier(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
+  compare(a, b) == order.Lt
+}
+
+pub fn is_earlier_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
+  compare(a, b) == order.Lt || compare(a, b) == order.Eq
+}
+
+pub fn is_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
+  compare(a, b) == order.Eq
+}
+
+pub fn is_later(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
+  compare(a, b) == order.Gt
+}
+
+pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
+  compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
 pub fn difference(from a: tempo.DateTime, to b: tempo.DateTime) -> tempo.Period {
@@ -205,6 +216,7 @@ pub fn add(
   datetime: tempo.DateTime,
   duration duration_to_add: tempo.Duration,
 ) -> tempo.DateTime {
+  // todo as "if this hour has a leap second, then it will have to be added"
   datetime
   |> drop_offset
   |> naive_datetime.add(duration: duration_to_add)
@@ -276,4 +288,67 @@ pub fn leap_seconds_in_utc_day(utc_date utc_date: tempo.Date) -> Int {
     True -> month.leap_seconds(of: utc_date.month, in: utc_date.year)
     False -> 0
   }
+}
+
+fn get_announced_leap_seconds() -> List(tempo.DateTime) {
+  [
+    literal("1972-06-30T23:59:60Z"),
+    literal("1972-12-31T23:59:60Z"),
+    literal("1973-12-31T23:59:60Z"),
+    literal("1974-12-31T23:59:60Z"),
+    literal("1975-12-31T23:59:60Z"),
+    literal("1976-12-31T23:59:60Z"),
+    literal("1977-12-31T23:59:60Z"),
+    literal("1978-12-31T23:59:60Z"),
+    literal("1979-12-31T23:59:60Z"),
+    literal("1981-06-30T23:59:60Z"),
+    literal("1982-06-30T23:59:60Z"),
+    literal("1983-06-30T23:59:60Z"),
+    literal("1985-06-30T23:59:60Z"),
+    literal("1987-12-31T23:59:60Z"),
+    literal("1989-12-31T23:59:60Z"),
+    literal("1990-12-31T23:59:60Z"),
+    literal("1992-06-30T23:59:60Z"),
+    literal("1993-06-30T23:59:60Z"),
+    literal("1994-06-30T23:59:60Z"),
+    literal("1995-12-31T23:59:60Z"),
+    literal("1997-06-30T23:59:60Z"),
+    literal("1998-12-31T23:59:60Z"),
+    literal("2005-12-31T23:59:60Z"),
+    literal("2008-12-31T23:59:60Z"),
+    literal("2012-06-30T23:59:60Z"),
+    literal("2015-06-30T23:59:60Z"),
+    literal("2016-12-31T23:59:60Z"),
+  ]
+}
+
+@internal
+pub fn hour_contains_leap_second(datetime: tempo.DateTime) -> Bool {
+  let utc_dt = datetime |> to_utc
+
+  let applicable_leap_second =
+    list.find(get_announced_leap_seconds(), fn(leap_second) {
+      let lower_hour_bound =
+        tempo.Time(leap_second.naive.time.hour, 0, 0, 0)
+        |> tempo.NaiveDateTime(leap_second.naive.date, _)
+        |> tempo.DateTime(leap_second.offset)
+
+      io.debug(lower_hour_bound |> to_string)
+      io.debug(utc_dt |> to_string)
+      io.debug(leap_second |> to_string)
+      io.debug(utc_dt |> is_later_or_equal(to: lower_hour_bound))
+      io.debug(utc_dt |> is_earlier_or_equal(to: leap_second))
+
+      utc_dt |> is_later_or_equal(to: lower_hour_bound)
+      && utc_dt |> is_earlier_or_equal(to: leap_second)
+    })
+
+  case applicable_leap_second {
+    Ok(_) -> True
+    Error(_) -> False
+  }
+}
+
+pub fn get_leap_second(datetime: tempo.DateTime) -> tempo.DateTime {
+  todo
 }

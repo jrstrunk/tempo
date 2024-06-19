@@ -14,6 +14,8 @@ pub fn main() {
 }
 ```
 
+Leap seconds are inserted at the end of the hour they occured in as the 60th second of the hour.
+
 Further documentation can be found at <https://hexdocs.pm/tempo>.
 
 ## Development

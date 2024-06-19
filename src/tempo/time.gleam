@@ -134,10 +134,10 @@ pub fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
       && time.second >= 0
       && time.second <= 59
     }
-    // For end of day time https://en.wikipedia.org/wiki/ISO_8601
+    // For end of day time: https://en.wikipedia.org/wiki/ISO_8601
     || { time.hour == 24 && time.minute == 0 && time.second == 0 }
-    // For leap seconds https://en.wikipedia.org/wiki/Leap_second
-    || { time.hour == 23 && time.minute == 59 && time.second == 60 }
+    // For leap seconds: https://en.wikipedia.org/wiki/Leap_second
+    || { time.minute == 59 && time.second == 60 }
   {
     True ->
       case time {

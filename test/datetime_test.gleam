@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/order
 import gleeunit
 import gleeunit/should
@@ -159,6 +160,13 @@ pub fn to_utc_from_utc_test() {
   |> should.equal("2024-06-12T03:47:00.000Z")
 }
 
+pub fn to_utc_from_utc_leap_second_test() {
+  datetime.literal("1972-06-30T23:59:60Z")
+  |> datetime.to_utc
+  |> datetime.to_string
+  |> should.equal("1972-06-30T23:59:60Z")
+}
+
 pub fn to_utc_negative_offset_test() {
   datetime.literal("2024-06-12T03:47:00.000-04:00")
   |> datetime.to_utc
@@ -188,9 +196,15 @@ pub fn to_utc_positive_day_boundary_test() {
 }
 
 pub fn to_local_test() {
+  datetime.now_utc()
+  |> datetime.to_current_local
+  |> should.be_ok
+}
+
+pub fn to_local_error_test() {
   datetime.literal("2024-06-12T03:47:00.000Z")
-  |> datetime.to_current_local_time
-  // Just should not crash or anything, not really muct to validate
+  |> datetime.to_current_local
+  |> should.be_error
 }
 
 pub fn to_offset_test() {
@@ -333,3 +347,54 @@ pub fn apply_positive_offset_test() {
   |> naive_datetime.to_string
   |> should.equal("2024-06-17T08:00:54.334")
 }
+
+pub fn hour_contains_leap_second_test() {
+  // datetime.literal("1972-06-30T23:59:60Z")
+  // |> datetime.to_string
+  // |> io.debug
+
+  datetime.literal("1972-06-30T23:59:60Z")
+  |> datetime.hour_contains_leap_second
+  |> should.be_true
+}
+// pub fn hour_contains_leap_second_early_test() {
+//   datetime.literal("1972-06-30T23:00:00Z")
+//   |> datetime.hour_contains_leap_second
+//   |> should.be_true
+// }
+
+// pub fn hour_contains_no_leap_second_test() {
+//   datetime.literal("2024-06-17T23:59:60Z")
+//   |> datetime.hour_contains_leap_second
+//   |> should.be_false
+// }
+
+// pub fn hour_contains_leap_second_with_negative_offset_test() {
+//   datetime.literal("1972-06-30T19:59:59-04:00")
+//   |> datetime.hour_contains_leap_second
+//   |> should.be_true
+// }
+
+// pub fn hour_zeros_contains_leap_second_with_negative_offset_test() {
+//   datetime.literal("1972-06-30T19:00:00-04:00")
+//   |> datetime.hour_contains_leap_second
+//   |> should.be_true
+// }
+
+// pub fn hour_contains_leap_second_with_positive__offset_test() {
+//   datetime.literal("1972-07-01T01:59:59+02:00")
+//   |> datetime.hour_contains_leap_second
+//   |> should.be_true
+// }
+
+// pub fn hour_zeros_contains_leap_second_with_positive__offset_test() {
+//   datetime.literal("1972-07-01T01:00:00+02:00")
+//   |> datetime.hour_contains_leap_second
+//   |> should.be_true
+// }
+
+// pub fn hour_contains_no_leap_second_with_when_utc_time_does_test() {
+//   datetime.literal("1972-06-30T23:59:60-04:00")
+//   |> datetime.hour_contains_leap_second
+//   |> should.be_false
+// }

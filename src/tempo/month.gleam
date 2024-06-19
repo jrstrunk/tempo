@@ -206,6 +206,7 @@ const announced_leap_seconds = [
 ]
 
 // See https://en.wikipedia.org/wiki/Leap_second
+@deprecated("Use datetime's `leap_seconds` instead")
 pub fn leap_seconds(of month: tempo.Month, in year: Int) {
   list.find(announced_leap_seconds, fn(leap_second) {
     leap_second.month == month && leap_second.year == year

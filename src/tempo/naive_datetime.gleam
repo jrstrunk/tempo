@@ -83,6 +83,10 @@ pub fn set_offset(
   tempo.DateTime(naive: datetime, offset: offset)
 }
 
+pub fn set_time(datetime: tempo.NaiveDateTime, time: tempo.Time) -> tempo.NaiveDateTime {
+  tempo.NaiveDateTime(datetime.date, time)
+}
+
 pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
   case date.compare(a.date, b.date) {
     order.Eq -> time.compare(a.time, b.time)
