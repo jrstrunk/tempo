@@ -618,41 +618,7 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Time {
   { unix_ts - { date.to_unix_micro_utc(date.from_unix_micro_utc(unix_ts)) } }
   * 1000
   |> from_nanoseconds
-  |> to_milli_precision
-}
-
-/// Gets the local time value of a unix timestamp in microseconds.
-/// 
-/// Conversion is based on the current host offset. If the date of the unix
-/// timestamp matches the date of the host, then we can apply the current host
-/// offset to get the local time safely and result in a precise 
-/// conversion. If the date does not match the host's, then we can not be 
-/// sure the current offset is still applicable, and will perform an 
-/// imprecise conversion. The imprecise conversion can be inaccurate to the
-/// degree the local offset changes throughout the year. For example, in 
-/// North America where Daylight Savings Time is observed with a one-hour
-/// time shift, the imprecise conversion can be off by up to an hour.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// case time.from_unix_micro_local(1_718_829_586_791_832) {
-///   Precise(time) -> time.to_string
-///   Imprecise(time) -> {
-///     io.println(
-///       "Proceeding with imprecise conversion"
-///       <> " because we do not need hour precision"
-///       <> " and can accept faulty times"
-///     )
-///     time.to_string
-///   }
-/// }
-/// // -> time.literal("16:39:46.791832")
-/// ```
-pub fn from_unix_micro_local(
-  unix_ts: Int,
-) -> tempo.UncertainConversion(tempo.Time) {
-  todo
+  |> to_micro_precision
 }
 
 /// Returns a time value as a tuple of hours, minutes, and seconds. Useful 
