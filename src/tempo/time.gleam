@@ -507,7 +507,8 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
   |> result.try(validate)
 }
 
-/// Gets the UTC time value of a unix timestamp.
+/// Gets the UTC time value of a unix timestamp. If the local time is needed,
+/// use the 'datetime' module's 'to_local_time' function.
 /// 
 /// ## Example
 /// 
@@ -523,39 +524,8 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Time {
   |> to_second_precision
 }
 
-/// Gets the local time value of a unix timestamp.
-/// 
-/// Conversion is based on the current host offset. If the date of the unix
-/// timestamp matches the date of the host, then we can apply the current host
-/// offset to get the local time safely and result in a precise 
-/// conversion. If the date does not match the host's, then we can not be 
-/// sure the current offset is still applicable, and will perform an 
-/// imprecise conversion. The imprecise conversion can be inaccurate to the
-/// degree the local offset changes throughout the year. For example, in 
-/// North America where Daylight Savings Time is observed with a one-hour
-/// time shift, the imprecise conversion can be off by up to an hour.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// case time.from_unix_local(1_718_829_395) {
-///   Precise(time) -> time.to_string
-///   Imprecise(time) -> {
-///     io.println(
-///       "Proceeding with imprecise conversion"
-///       <> " because we do not need hour precision"
-///       <> " and can accept faulty times"
-///     )
-///     time.to_string
-///   }
-/// }
-/// // -> time.literal("16:36:35")
-/// ```
-pub fn from_unix_local(unix_ts: Int) -> tempo.UncertainConversion(tempo.Time) {
-  todo
-}
-
-/// Gets the UTC time value of a unix timestamp in milliseconds.
+/// Gets the UTC time value of a unix timestamp in milliseconds. If the local
+/// time is needed, use the 'datetime' module's 'to_local_time' function.
 /// 
 /// ## Example
 /// 
@@ -571,41 +541,8 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Time {
   |> to_milli_precision
 }
 
-/// Gets the local time value of a unix timestamp in milliseconds.
-/// 
-/// Conversion is based on the current host offset. If the date of the unix
-/// timestamp matches the date of the host, then we can apply the current host
-/// offset to get the local time safely and result in a precise 
-/// conversion. If the date does not match the host's, then we can not be 
-/// sure the current offset is still applicable, and will perform an 
-/// imprecise conversion. The imprecise conversion can be inaccurate to the
-/// degree the local offset changes throughout the year. For example, in 
-/// North America where Daylight Savings Time is observed with a one-hour
-/// time shift, the imprecise conversion can be off by up to an hour.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// case time.from_unix_milli_local(1_718_829_586_791) {
-///   Precise(time) -> time.to_string
-///   Imprecise(time) -> {
-///     io.println(
-///       "Proceeding with imprecise conversion"
-///       <> " because we do not need hour precision"
-///       <> " and can accept faulty times"
-///     )
-///     time.to_string
-///   }
-/// }
-/// // -> time.literal("16:39:46.791")
-/// ```
-pub fn from_unix_milli_local(
-  unix_ts: Int,
-) -> tempo.UncertainConversion(tempo.Time) {
-  todo
-}
-
-/// Gets the UTC time value of a unix timestamp in microseconds.
+/// Gets the UTC time value of a unix timestamp in microseconds. If the local
+/// time is needed, use the 'datetime' module's 'to_local_time' function.
 /// 
 /// ## Example
 /// 
@@ -935,7 +872,7 @@ pub fn is_between(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
   }
   && case end.inclusive {
     True -> is_earlier_or_equal(time, to: end.time)
-    False -> is_earlier(time, than: end.time) 
+    False -> is_earlier(time, than: end.time)
   }
 }
 

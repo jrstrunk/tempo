@@ -189,7 +189,7 @@ pub fn to_utc_positive_day_boundary_test() {
 
 pub fn to_local_test() {
   datetime.literal("2024-06-12T03:47:00.000Z")
-  |> datetime.to_current_local_time
+  |> datetime.to_local_time
   // Just should not crash or anything, not really muct to validate
 }
 
