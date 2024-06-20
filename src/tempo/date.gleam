@@ -247,7 +247,8 @@ pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
   #(date.year, month.to_int(date.month), date.day)
 }
 
-/// Returns the date of a unix timestamp. 
+/// Returns the date of a unix timestamp. If the local date is 
+/// needed, use the 'datetime' module's 'to_local_date' function.
 /// 
 /// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
 /// 
@@ -335,7 +336,8 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
   year_sec + month_sec + day_sec
 }
 
-/// Returns the UTC date of a unix timestamp in milliseconds.
+/// Returns the UTC date of a unix timestamp in milliseconds. If the local 
+/// date is needed, use the 'datetime' module's 'to_local_date' function.
 /// 
 /// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
 /// 
@@ -363,7 +365,8 @@ pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
   to_unix_utc(date) * 1000
 }
 
-/// Returns the UTC date of a unix timestamp in microsecomnds.
+/// Returns the UTC date of a unix timestamp in microseconds. If the local 
+/// date is needed, use the 'datetime' module's 'to_local_date' function.
 /// 
 /// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
 /// 

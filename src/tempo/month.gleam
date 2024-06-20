@@ -1,4 +1,3 @@
-import gleam/list
 import gleam/result
 import tempo
 import tempo/year
