@@ -21,6 +21,18 @@ pub type DayOfWeek {
 }
 
 /// Creates a new date and validates it.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.new(2024, 6, 13)
+/// // -> Ok(date.literal("2024-06-13"))
+/// ```
+/// 
+/// ```gleam
+/// date.new(2024, 6, 31)
+/// // -> Error(Nil)
+/// ```
 pub fn new(
   year year: Int,
   month month: Int,
@@ -29,8 +41,32 @@ pub fn new(
   from_tuple(#(year, month, day))
 }
 
+/// Creates a new date value from a string literal, but will panic if
+/// the string is invalid. Accepted formats are `YYYY-MM-DD`, `YYYY-M-D`,
+/// `YYYY/MM/DD`, `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`,
+/// `YYYY_M_D`, `YYYY MM DD`, `YYYY M D`, or `YYYYMMDD`.
+/// 
 /// Useful for declaring date literals that you know are valid within your  
-/// program. Will crash if an invalid date is provided. 
+/// program.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.to_string
+/// // -> "2024-06-13"
+/// ```
+/// 
+/// ```gleam
+/// date.literal("20240613")
+/// |> date.to_string
+/// // -> "2024-06-13"
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2409")
+/// // -> panic
+/// ```
 pub fn literal(date: String) -> tempo.Date {
   case from_string(date) {
     Ok(date) -> date
@@ -38,25 +74,81 @@ pub fn literal(date: String) -> tempo.Date {
   }
 }
 
+/// Gets the current local date of the host.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.current_local()
+/// |> date.to_string
+/// // -> "2024-06-13"
+/// ```
 pub fn current_local() {
   { tempo.now_utc() + offset.local_nano() } / 1_000_000_000
   |> from_unix_utc
 }
 
+/// Gets the current UTC date of the host.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.current_utc()
+/// |> date.to_string
+/// // -> "2024-06-14"
+/// ```
 pub fn current_utc() {
   tempo.now_utc() / 1_000_000_000
   |> from_unix_utc
 }
 
+/// Gets the year value of a date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_year
+/// // -> 2024
+/// ```
+pub fn get_year(date: tempo.Date) -> Int {
+  date.year
+}
+
+pub fn get_month(date: tempo.Date) -> tempo.Month {
+  date.month
+}
+
+pub fn get_day(date: tempo.Date) -> Int {
+  date.day
+}
+
 /// Parses a date string in the format `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, `YYYY MM DD`,
 /// `YYYY M D`, or `YYYYMMDD`.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.from_string("2024-06-13")
+/// // -> Ok(date.literal("2024-06-13"))
+/// ```
+/// 
+/// ```gleam
+/// date.from_string("20240613")
+/// // -> Ok(date.literal("2024-06-13"))
+/// ```
+/// 
+/// ```gleam
+/// date.from_string("2409")
+/// // -> Error(Nil)
+/// ```
 pub fn from_string(date: String) -> Result(tempo.Date, Nil) {
-  split_date_str(date, "-")
-  |> result.try_recover(fn(_) { split_date_str(date, on: "/") })
-  |> result.try_recover(fn(_) { split_date_str(date, on: ".") })
-  |> result.try_recover(fn(_) { split_date_str(date, on: "_") })
-  |> result.try_recover(fn(_) { split_date_str(date, on: " ") })
+  split_int_tuple(date, "-")
+  |> result.try_recover(fn(_) { split_int_tuple(date, on: "/") })
+  |> result.try_recover(fn(_) { split_int_tuple(date, on: ".") })
+  |> result.try_recover(fn(_) { split_int_tuple(date, on: "_") })
+  |> result.try_recover(fn(_) { split_int_tuple(date, on: " ") })
   |> result.try_recover(fn(_) {
     let year = string.slice(date, at_index: 0, length: 4) |> int.parse
     let month = string.slice(date, at_index: 4, length: 2) |> int.parse
@@ -70,7 +162,10 @@ pub fn from_string(date: String) -> Result(tempo.Date, Nil) {
   |> result.try(from_tuple)
 }
 
-fn split_date_str(date: String, on delim: String) {
+fn split_int_tuple(
+  date: String,
+  on delim: String,
+) -> Result(#(Int, Int, Int), Nil) {
   string.split(date, delim)
   |> list.map(int.parse)
   |> result.all()
@@ -82,6 +177,15 @@ fn split_date_str(date: String, on delim: String) {
   })
 }
 
+/// Returns a string representation of a date value in the format `YYYY-MM-DD`.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.to_string
+/// // -> "2024-06-13"
+/// ```
 pub fn to_string(date: tempo.Date) -> String {
   string_builder.from_strings([
     int.to_string(date.year),
@@ -93,9 +197,25 @@ pub fn to_string(date: tempo.Date) -> String {
   |> string_builder.to_string
 }
 
-/// Years less than 1000 are valid, but not common and usually indicate that
-/// a non-year value was passed as in the year index or a two digit year was
-/// passed. Two digit year values are too abiguous to be confidently accepted.
+/// Returns a date value from a tuple of ints if the values represent the 
+/// years, month, and day of a valid date. The year must be greater than 1000.
+/// 
+/// Years less than 1000 are technically valid years, but are not common 
+/// and usually indicate that either a non-year value was passed as the year
+/// or a two digit year was passed (which are too abiguous to be confidently
+/// accepted).
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.from_tuple(#(2024, 6, 13))
+/// // -> Ok(date.literal("2024-06-13"))
+/// ```
+/// 
+/// ```gleam
+/// date.from_tuple(#(98, 6, 13))
+/// // -> Error(Nil)
+/// ```
 pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, Nil) {
   let year = date.0
   let month = date.1
@@ -113,15 +233,31 @@ pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, Nil) {
   }
 }
 
+/// Returns a tuple of ints from a date value that represent the year, month,
+/// and day of the date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-14")
+/// |> date.to_tuple
+/// // -> #(2024, 6, 14)
+/// ```
 pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
   #(date.year, month.to_int(date.month), date.day)
 }
 
-// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
-/// If unix timestamp to local date is needed, use `from_unix_utc` from the
-/// `datetime` module, then use `to_current_local` and `get_date` on the
-/// result. The API is designed this way to prevent misuse and resulting bugs.
-pub fn from_unix_utc(unix_ts: Int) {
+/// Returns the date of a unix timestamp. 
+/// 
+/// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.from_unix_utc(267_840_000)
+/// // -> date.literal("1978-06-28")
+/// ```
+pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
   let z = unix_ts / 86_400 + 719_468
   let era =
     case z >= 0 {
@@ -148,10 +284,16 @@ pub fn from_unix_utc(unix_ts: Int) {
   tempo.Date(y, month, d)
 }
 
-pub fn from_unix_milli_utc(unix_ts: Int) {
-  from_unix_utc(unix_ts / 1000)
-}
-
+/// Returns the UTC unix timestamp of a date, assuming the time on that date 
+/// is 00:00:00.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.to_unix_utc
+/// // -> 1_718_150_400
+/// ```
 pub fn to_unix_utc(date: tempo.Date) -> Int {
   let full_years_since_epoch = date.year - 1970
   // Offset the year by one to cacluate the number of leap years since the
@@ -164,7 +306,7 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
   let full_elapsed_non_leap_years_since_epoch =
     full_years_since_epoch - full_elapsed_leap_years_since_epoch
 
-  let year_milli =
+  let year_sec =
     { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
     + { full_elapsed_leap_years_since_epoch * 31_622_400 }
 
@@ -173,7 +315,7 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
     False -> 2_419_200
   }
 
-  let month_milli = case date.month {
+  let month_sec = case date.month {
     tempo.Jan -> 0
     tempo.Feb -> 2_678_400
     tempo.Mar -> 2_678_400 + feb_milli
@@ -188,15 +330,88 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
     tempo.Dec -> 26_438_400 + feb_milli
   }
 
-  let day_milli = { date.day - 1 } * 86_400
+  let day_sec = { date.day - 1 } * 86_400
 
-  year_milli + month_milli + day_milli
+  year_sec + month_sec + day_sec
 }
 
+/// Returns the UTC date of a unix timestamp in milliseconds.
+/// 
+/// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.from_unix_milli_utc(267_840_000)
+/// // -> date.literal("1978-06-28")
+/// ```
+pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Date {
+  from_unix_utc(unix_ts / 1000)
+}
+
+/// Returns the UTC unix timestamp in milliseconds of a date, assuming the
+/// time on that date is 00:00:00.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.to_unix_milli_utc
+/// // -> 1_718_150_400_000
+/// ```
 pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
   to_unix_utc(date) * 1000
 }
 
+/// Returns the UTC date of a unix timestamp in microsecomnds.
+/// 
+/// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.from_unix_milli_utc(267_840_000_000)
+/// // -> date.literal("1978-06-28")
+/// ```
+pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Date {
+  from_unix_utc(unix_ts / 1_000_000)
+}
+
+/// Returns the UTC unix timestamp in microseconds of a date, assuming the
+/// time on that date is 00:00:00.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.to_unix_micro_utc
+/// // -> 1_718_150_400_000_000
+/// ```
+pub fn to_unix_micro_utc(date: tempo.Date) -> Int {
+  to_unix_utc(date) * 1_000_000
+}
+
+/// Compares two dates.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.compare(to: date.literal("2024-06-12"))
+/// // -> order.Eq
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-05-12")
+/// |> date.compare(to: date.literal("2024-06-13"))
+/// // -> order.Lt
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2034-06-12")
+/// |> date.compare(to: date.literal("2024-06-11"))
+/// // -> order.Gt
+/// ```
 pub fn compare(a: tempo.Date, to b: tempo.Date) -> order.Order {
   case a.year == b.year {
     True ->
@@ -212,30 +427,133 @@ pub fn compare(a: tempo.Date, to b: tempo.Date) -> order.Order {
   }
 }
 
+/// Checks of the first date is earlier than the second date.
+///
+/// ## Examples
+///
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_earlier(than: date.literal("2024-06-13"))
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_earlier(than: date.literal("2024-06-12"))
+/// // -> False
+/// ```
 pub fn is_earlier(a: tempo.Date, than b: tempo.Date) -> Bool {
   compare(a, b) == order.Lt
 }
 
+/// Checks if the first date is earlier than or equal to the second date.
+/// 
+/// ## Examples
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_earlier_or_equal(to: date.literal("2024-06-12"))
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_earlier_or_equal(to: date.literal("2024-06-11"))
+/// // -> False
+/// ```
 pub fn is_earlier_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
   compare(a, b) == order.Lt || compare(a, b) == order.Eq
 }
 
+/// Checks if two dates are equal.
+///
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_equal(to: date.literal("2024-06-12"))
+/// // -> True
+/// ```
 pub fn is_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
   compare(a, b) == order.Eq
 }
 
+/// Checks if the first date is later than the second date.
+///
+/// ## Examples
+///
+/// ```gleam
+/// date.literal("2024-06-14")
+/// |> date.is_later(than: date.literal("2024-06-13"))
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_later(than: date.literal("2024-06-12"))
+/// // -> False
+/// ```
 pub fn is_later(a: tempo.Date, than b: tempo.Date) -> Bool {
   compare(a, b) == order.Gt
 }
 
+/// Checks if the first date is later than or equal to the second date.
+/// 
+/// ## Examples
+///
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_later_or_equal(to: date.literal("2024-06-12"))
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.is_later_or_equal(to: date.literal("2024-06-13"))
+/// // -> False
+/// ```
 pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
+/// Gets the difference between two dates as a period between the two UTC dates
+/// at 00:00:00 each.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.difference(from: date.literal("2024-06-23"))
+/// |> period.as_days
+/// // -> 11
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.difference(from: date.literal("2024-06-03"))
+/// |> period.as_days
+/// // -> 9
+/// ```
 pub fn difference(of a: tempo.Date, from b: tempo.Date) -> tempo.Period {
   as_period(a, b)
 }
 
+/// Creates a period between two UTC dates at 00:00:00 each.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.difference(from: date.literal("2024-06-23"))
+/// |> period.as_days
+/// // -> 11
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.difference(from: date.literal("2024-06-03"))
+/// |> period.as_days
+/// // -> 9
+/// ```
 pub fn as_period(start: tempo.Date, end: tempo.Date) -> tempo.Period {
   let #(start, end) = case start |> is_earlier_or_equal(to: end) {
     True -> #(start, end)
@@ -248,6 +566,21 @@ pub fn as_period(start: tempo.Date, end: tempo.Date) -> tempo.Period {
   )
 }
 
+/// Adds a number of days to a date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.add(days: 1)
+/// // -> date.literal("2024-06-13")
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.add(days: 12)
+/// // -> date.literal("2024-06-24")
+/// ```
 pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
   let days_left_this_month =
     month.days(of: date.month, in: date.year) - date.day
@@ -265,6 +598,21 @@ pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
   }
 }
 
+/// Subtracts a number of days from a date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.subtract(days: 1)
+/// // -> date.literal("2024-06-11")
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-12")
+/// |> date.subtract(days: 12)
+/// // -> date.literal("2024-05-31")
+/// ```
 pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
   case days < date.day {
     True -> tempo.Date(date.year, date.month, date.day - days)
@@ -283,8 +631,17 @@ pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
   }
 }
 
-// This will be incorrect for dates before 1752 and dates after 2300.
-pub fn to_weekday(date: tempo.Date) {
+/// Returns the day of week a date falls on.
+/// Will be incorrect for dates before 1752 and dates after 2300.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-20")
+/// |> date.to_weekday
+/// // -> Thur
+/// ```
+pub fn to_weekday(date: tempo.Date) -> DayOfWeek {
   let year_code =
     date.year % 100
     |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
@@ -340,6 +697,15 @@ pub fn to_weekday(date: tempo.Date) {
   }
 }
 
+/// Checks if a date falls in a weekend.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-22")
+/// |> date.is_weekend
+/// // -> True
+/// ```
 pub fn is_weekend(date: tempo.Date) -> Bool {
   case to_weekday(date) {
     Sat | Sun -> True
