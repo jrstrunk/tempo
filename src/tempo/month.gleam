@@ -3,11 +3,16 @@ import gleam/result
 import tempo
 import tempo/year
 
-pub const months = [
-  tempo.Jan, tempo.Feb, tempo.Mar, tempo.Apr, tempo.May, tempo.Jun, tempo.Jul,
-  tempo.Aug, tempo.Sep, tempo.Oct, tempo.Nov, tempo.Dec,
-]
-
+/// Returns a month's short name.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month
+/// |> month.to_short_string
+/// // -> "Jun"
+/// ```
 pub fn to_short_string(month: tempo.Month) -> String {
   case month {
     tempo.Jan -> "Jan"
@@ -25,6 +30,16 @@ pub fn to_short_string(month: tempo.Month) -> String {
   }
 }
 
+/// Returns a month's long name.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month
+/// |> month.to_short_string
+/// // -> "June"
+/// ```
 pub fn to_long_string(month: tempo.Month) -> String {
   case month {
     tempo.Jan -> "January"
@@ -42,6 +57,42 @@ pub fn to_long_string(month: tempo.Month) -> String {
   }
 }
 
+/// Gets a month from a month string.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// month.from_string("Jun")
+/// // -> Ok(tempo.Jun)
+/// ```
+/// 
+/// ```gleam
+/// month.from_string("June")
+/// // -> Ok(tempo.Jun)
+/// ```
+/// 
+/// ```gleam
+/// month.from_string("Hello")
+/// // -> Error(Nil)
+/// ```
+pub fn from_string(month: String) -> Result(tempo.Month, Nil) {
+  from_short_string(month)
+  |> result.try_recover(fn(_) { from_long_string(month) })
+}
+
+/// Gets a month from a short month string.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// month.from_short_string("Jun")
+/// // -> Ok(tempo.Jun)
+/// ```
+/// 
+/// ```gleam
+/// month.from_short_string("June")
+/// // -> Error(Nil)
+/// ```
 pub fn from_short_string(month: String) -> Result(tempo.Month, Nil) {
   case month {
     "Jan" -> Ok(tempo.Jan)
@@ -60,6 +111,19 @@ pub fn from_short_string(month: String) -> Result(tempo.Month, Nil) {
   }
 }
 
+/// Gets a month from a long month string.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// month.from_long_string("June")
+/// // -> Ok(tempo.Jun)
+/// ```
+/// 
+/// ```gleam
+/// month.from_long_string("Jun")
+/// // -> Error(Nil)
+/// ```
 pub fn from_long_string(month: String) -> Result(tempo.Month, Nil) {
   case month {
     "January" -> Ok(tempo.Jan)
@@ -78,6 +142,16 @@ pub fn from_long_string(month: String) -> Result(tempo.Month, Nil) {
   }
 }
 
+/// Returns a month's number on the civil calendar.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month
+/// |> month.to_int
+/// // -> 6
+/// ```
 pub fn to_int(month: tempo.Month) -> Int {
   case month {
     tempo.Jan -> 1
@@ -95,6 +169,20 @@ pub fn to_int(month: tempo.Month) -> Int {
   }
 }
 
+/// Gets a month from an integer representing the order of the month on the 
+/// civil calendar.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// month.from_int(6)
+/// // -> Ok(tempo.Jun)
+/// ```
+/// 
+/// ```gleam
+/// month.from_int(13)
+/// // -> Error(Nil)
+/// ```
 pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
   case month {
     1 -> Ok(tempo.Jan)
@@ -113,6 +201,23 @@ pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
   }
 }
 
+/// Returns the number of days in a month.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month
+/// |> month.days
+/// // -> 30
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-12-03")
+/// |> date.get_month
+/// |> month.days
+/// // -> 31
+/// ```
 pub fn days(of month: tempo.Month, in year: Int) -> Int {
   case month {
     tempo.Jan -> 31
@@ -137,6 +242,23 @@ pub fn days(of month: tempo.Month, in year: Int) -> Int {
   }
 }
 
+/// Returns the next month in the civil calendar.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month
+/// |> month.next
+/// // -> tempo.Jul
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-12-03")
+/// |> date.get_month
+/// |> month.next
+/// // -> tempo.Jan
+/// ```
 pub fn next(month: tempo.Month) -> tempo.Month {
   case month {
     tempo.Jan -> tempo.Feb
@@ -154,6 +276,23 @@ pub fn next(month: tempo.Month) -> tempo.Month {
   }
 }
 
+/// Returns the previous month in the civil calendar.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month
+/// |> month.prior
+/// // -> tempo.May
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-01-03")
+/// |> date.get_month
+/// |> month.prior
+/// // -> tempo.Dec
+/// ```
 pub fn prior(month: tempo.Month) -> tempo.Month {
   case month {
     tempo.Jan -> tempo.Dec
@@ -169,47 +308,4 @@ pub fn prior(month: tempo.Month) -> tempo.Month {
     tempo.Nov -> tempo.Oct
     tempo.Dec -> tempo.Nov
   }
-}
-
-type LeapSecond {
-  LeapSecond(month: tempo.Month, year: Int, seconds: Int)
-}
-
-const announced_leap_seconds = [
-  LeapSecond(tempo.Jun, 1972, seconds: 1),
-  LeapSecond(tempo.Dec, 1972, seconds: 1),
-  LeapSecond(tempo.Dec, 1973, seconds: 1),
-  LeapSecond(tempo.Dec, 1974, seconds: 1),
-  LeapSecond(tempo.Dec, 1975, seconds: 1),
-  LeapSecond(tempo.Dec, 1976, seconds: 1),
-  LeapSecond(tempo.Dec, 1977, seconds: 1),
-  LeapSecond(tempo.Dec, 1978, seconds: 1),
-  LeapSecond(tempo.Dec, 1979, seconds: 1),
-  LeapSecond(tempo.Jun, 1981, seconds: 1),
-  LeapSecond(tempo.Jun, 1982, seconds: 1),
-  LeapSecond(tempo.Jun, 1983, seconds: 1),
-  LeapSecond(tempo.Jun, 1985, seconds: 1),
-  LeapSecond(tempo.Dec, 1987, seconds: 1),
-  LeapSecond(tempo.Dec, 1989, seconds: 1),
-  LeapSecond(tempo.Dec, 1990, seconds: 1),
-  LeapSecond(tempo.Jun, 1992, seconds: 1),
-  LeapSecond(tempo.Jun, 1993, seconds: 1),
-  LeapSecond(tempo.Jun, 1994, seconds: 1),
-  LeapSecond(tempo.Dec, 1995, seconds: 1),
-  LeapSecond(tempo.Jun, 1997, seconds: 1),
-  LeapSecond(tempo.Dec, 1998, seconds: 1),
-  LeapSecond(tempo.Dec, 2005, seconds: 1),
-  LeapSecond(tempo.Dec, 2008, seconds: 1),
-  LeapSecond(tempo.Jun, 2012, seconds: 1),
-  LeapSecond(tempo.Jun, 2015, seconds: 1),
-  LeapSecond(tempo.Dec, 2016, seconds: 1),
-]
-
-// See https://en.wikipedia.org/wiki/Leap_second
-pub fn leap_seconds(of month: tempo.Month, in year: Int) {
-  list.find(announced_leap_seconds, fn(leap_second) {
-    leap_second.month == month && leap_second.year == year
-  })
-  |> result.map(fn(leap_second) { leap_second.seconds })
-  |> result.unwrap(0)
 }

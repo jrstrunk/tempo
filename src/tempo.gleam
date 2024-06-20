@@ -61,6 +61,8 @@ pub type Month {
   Dec
 }
 
+pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+
 @external(erlang, "tempo_ffi", "now")
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal

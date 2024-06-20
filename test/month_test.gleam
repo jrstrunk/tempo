@@ -22,3 +22,14 @@ pub fn get_prior_test() {
   month.prior(tempo.Jul)
   |> should.equal(tempo.Jun)
 }
+
+pub fn from_string_test() {
+  month.from_string("Jan")
+  |> should.equal(Ok(tempo.Jan))
+
+  month.from_string("January")
+  |> should.equal(Ok(tempo.Jan))
+
+  month.from_string("Feby")
+  |> should.be_error
+}
