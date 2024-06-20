@@ -41,6 +41,11 @@ pub type Duration {
   Duration(nanoseconds: Int)
 }
 
+pub type UncertainConversion(a) {
+  Precise(a)
+  Imprecise(a)
+}
+
 pub type Month {
   Jan
   Feb

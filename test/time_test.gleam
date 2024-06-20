@@ -409,13 +409,13 @@ pub fn compare_hours_test() {
   |> time.compare(to: time.literal("13:42:11"))
   |> should.equal(order.Lt)
 
-  time.test_literal(15, 42, 11)
+  time.literal("15:32:01")
   |> time.compare(to: time.literal("13:42:11"))
   |> should.equal(order.Gt)
 }
 
 pub fn compare_minutes_test() {
-  time.test_literal(13, 10, 11)
+  time.literal("13:10:11")
   |> time.compare(to: time.literal("13:42:11"))
   |> should.equal(order.Lt)
 
@@ -492,9 +492,17 @@ pub fn compare_different_precision_test() {
   time.literal("13:42:10.020000000")
   |> time.compare(to: time.literal("13:42:10.02"))
   |> should.equal(order.Eq)
+
+  time.literal("13:42:11.000")
+  |> time.compare(to: time.literal("13:42:11"))
+  |> should.equal(order.Eq)
+
+  time.literal("13:42")
+  |> time.compare(to: time.literal("13:42:00"))
+  |> should.equal(order.Eq)
 }
 
-pub fn nanoseconds_roundtrip_test() {
+pub fn nanoseconds_round_trip_test() {
   time.literal("13:42:11")
   |> time.to_nanoseconds
   |> time.from_nanoseconds
@@ -514,18 +522,39 @@ pub fn nanoseconds_roundtrip_test() {
   |> time.to_nanoseconds
   |> time.from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 10, 20))
+}
 
+pub fn to_duration_test() {
   time.literal("0:0:0.000000300")
-  |> time.to_nanoseconds
+  |> time.to_duration
+  |> duration.as_nanoseconds
   |> should.equal(300)
 
   time.literal("0:0:6")
-  |> time.to_nanoseconds
-  |> should.equal(6_000_000_000)
+  |> time.to_duration
+  |> duration.as_milliseconds
+  |> should.equal(6000)
+}
 
-  time.from_nanoseconds(-3_000_000_000)
+pub fn from_duration_test() {
+  duration.minutes(17)
+  |> time.from_duration
+  |> time.to_string
+  |> should.equal("00:17:00.000000000")
+}
+
+pub fn from_duration_negative_test() {
+  duration.nanoseconds(-3_000_000_000)
+  |> time.from_duration
   |> time.to_string
   |> should.equal("23:59:57.000000000")
+}
+
+pub fn from_big_duration_test() {
+  duration.hours(25)
+  |> time.from_duration
+  |> time.to_string
+  |> should.equal("01:00:00.000000000")
 }
 
 pub fn add_time_test() {
@@ -585,9 +614,9 @@ pub fn substract_time_test() {
   |> time.subtract(duration: duration.new(0, 3, 1))
   |> should.equal(time.test_literal(13, 39, 10))
 
-  time.test_literal(13, 42, 2)
+  time.literal("13:42:02")
   |> time.subtract(duration: duration.hours(1))
-  |> should.equal(time.test_literal(12, 42, 2))
+  |> should.equal(time.literal("12:42:02"))
 
   time.test_literal(13, 42, 2)
   |> time.subtract(duration: duration.hours(11))
@@ -654,7 +683,7 @@ pub fn get_difference_test() {
   |> should.equal(2.700277777777778)
 
   time.literal("13:30:11")
-  |> time.difference(from: time.literal("13:55:11"))
+  |> time.difference(from: time.literal("13:55:13"))
   |> duration.as_minutes
   |> should.equal(-25)
 }
@@ -727,14 +756,87 @@ pub fn from_unix_milli_utc_test() {
   |> should.equal("18:52:12.050")
 }
 
+pub fn from_unix_utc_large_test() {
+  time.from_unix_utc(1_718_829_395)
+  |> time.to_string
+  |> should.equal("20:36:35")
+}
+
+pub fn from_unix_milli_utc_large_test() {
+  time.from_unix_milli_utc(1_718_829_586_791)
+  |> time.to_string
+  |> should.equal("20:39:46.791")
+}
+
+pub fn from_unix_micro_utc_large_test() {
+  time.from_unix_micro_utc(1_718_829_586_791_832)
+  |> time.to_string
+  |> should.equal("20:39:46.791832")
+}
+
 pub fn small_time_left_in_day_test() {
   time.literal("23:59:03")
-  |> time.left_in_day_imprecise
+  |> time.left_in_day
   |> should.equal(time.literal("00:00:57"))
 }
 
 pub fn large_time_left_in_day_test() {
   time.literal("08:05:20")
-  |> time.left_in_day_imprecise
+  |> time.left_in_day
   |> should.equal(time.literal("15:54:40"))
+}
+
+pub fn is_between_test() {
+  time.literal("05:00:00")
+  |> time.is_between(
+    time.Boundary(time.literal("05:00:00"), inclusive: True),
+    and: time.Boundary(time.literal("15:00:00"), inclusive: False),
+  )
+  |> should.be_true()
+}
+
+pub fn is_between_exclusive_test() {
+  time.literal("15:00:00")
+  |> time.is_between(
+    time.Boundary(time.literal("05:00:00"), inclusive: True),
+    and: time.Boundary(time.literal("15:00:00"), inclusive: False),
+  )
+  |> should.be_false()
+}
+
+pub fn is_between_negative_test() {
+  time.literal("13:42:11")
+  |> time.is_between(
+    time.Boundary(time.literal("14:00:00"), inclusive: True),
+    and: time.Boundary(time.literal("15:00:00"), inclusive: False),
+  )
+  |> should.be_false()
+}
+
+pub fn is_outside_test() {
+  time.literal("13:42:11")
+  |> time.is_outside(
+    time.Boundary(time.literal("05:00:00"), inclusive: True),
+    and: time.Boundary(time.literal("13:42:11"), inclusive: False),
+  )
+  |> should.be_false()
+}
+
+pub fn is_outside_negative_test() {
+  time.literal("13:42:11")
+  |> time.is_outside(
+    time.Boundary(time.literal("14:00:00"), inclusive: True),
+    and: time.Boundary(time.literal("15:00:00"), inclusive: False),
+  )
+  |> should.be_true()
+}
+
+pub fn difference_round_trip_test() {
+  let a = time.literal("17:34:07")
+  let b = time.literal("13:42:11")
+
+  a
+  |> time.difference(from: b)
+  |> time.add(b, duration: _)
+  |> should.equal(a)
 }

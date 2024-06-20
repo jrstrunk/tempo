@@ -8,12 +8,123 @@ import tempo/date
 import tempo/internal/unit
 import tempo/offset
 
+/// Creates a new time value with second precision.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.new(13, 42, 11)
+/// // -> Ok(time.literal("13:42:11"))
+/// ```
+/// 
+/// ```gleam
+/// time.new(53, 42, 61)
+/// // -> Error(Nil)
+/// ```
 pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.Time, Nil) {
   tempo.Time(hour, minute, second, 0) |> validate
 }
 
+/// Creates a new time value with millisecond precision.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.new_milli(13, 42, 11, 20)
+/// // -> Ok(time.literal("13:42:11.020"))
+/// ```
+/// 
+/// ```gleam
+/// time.new_milli(13, 42, 11, 200)
+/// // -> Ok(time.literal("13:42:11.200"))
+/// ```
+/// 
+/// ```gleam
+/// time.new_milli(13, 42, 11, 7_500)
+/// // -> Error(Nil)
+/// ```
+pub fn new_milli(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  millisecond: Int,
+) -> Result(tempo.Time, Nil) {
+  tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000)
+  |> validate
+}
+
+/// Creates a new time value with microsecond precision.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.new_micro(13, 42, 11, 20)
+/// // -> Ok(time.literal("13:42:11.000020"))
+/// ```
+/// 
+/// ```gleam
+/// time.new_micro(13, 42, 11, 200_000)
+/// // -> Ok(time.literal("13:42:11.200000"))
+/// ```
+/// 
+/// ```gleam
+/// time.new_micro(13, 42, 11, 7_500_000)
+/// // -> Error(Nil)
+/// ```
+pub fn new_micro(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  microsecond: Int,
+) -> Result(tempo.Time, Nil) {
+  tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
+}
+
+/// Creates a new time value with nanosecond precision.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.new_nano(13, 42, 11, 20)
+/// // -> Ok(time.literal("13:42:11.000000020"))
+/// ```
+/// 
+/// ```gleam
+/// time.new_nano(13, 42, 11, 200_000_000)
+/// // -> Ok(time.literal("13:42:11.200000000"))
+/// ```
+/// 
+/// ```gleam
+/// time.new_nano(13, 42, 11, 7_500_000_000)
+/// // -> Error(Nil)
+/// ```
+pub fn new_nano(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  nanosecond: Int,
+) -> Result(tempo.Time, Nil) {
+  tempo.TimeNano(hour, minute, second, nanosecond) |> validate
+}
+
+/// Creates a new time value from a string literal, but will panic if
+/// the string is invalid. Accepted formats are
+/// `hh:mm:ss.s`, `hhmmss.s`, `hh:mm:ss`, `hhmmss`, `hh:mm`, or `hhmm`.
+/// 
 /// Useful for declaring time literals that you know are valid within your 
-/// program. Will crash if an invalid time is provided.
+/// program.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// case 
+///   time.now_local() 
+///   |> time.is_later(than: time.literal("11:50:00")) 
+/// { 
+///   True -> "We are late!"
+///   False -> "No rush :)"
+/// }
+/// ```
 pub fn literal(time: String) -> tempo.Time {
   case from_string(time) {
     Ok(time) -> time
@@ -21,17 +132,19 @@ pub fn literal(time: String) -> tempo.Time {
   }
 }
 
-pub fn now_local() {
-  let now_ts_nano = tempo.now_utc()
-  let date_ts_nano =
-    { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
-    * 1_000_000_000
-
-  // Subtract the nanoseconds that are responsible for the date and the local
-  // offset nanoseconds.
-  from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
-}
-
+/// Gets the UTC time of the host.
+///
+/// ## Example
+/// 
+/// ```gleam
+/// case 
+///   time.now_utc() 
+///   |> time.is_later(than: time.literal("11:50:00")) 
+/// { 
+///   True -> "We are all late!"
+///   False -> "No rush :)"
+/// }
+/// ```
 pub fn now_utc() {
   let now_ts_nano = tempo.now_utc()
   let date_ts_nano =
@@ -43,44 +156,37 @@ pub fn now_utc() {
   from_nanoseconds(now_ts_nano - date_ts_nano)
 }
 
-/// If unix timestamp to local time is needed, use `from_unix_utc` from the
-/// `datetime` module, then use `to_current_local` and `get_time` on the
-/// result. The API is designed this way to prevent misuse and resulting bugs.
-pub fn from_unix_utc(unix_ts: Int) {
-  // Subtract the nanoseconds that are responsible for the date.
-  { unix_ts - { date.to_unix_utc(date.from_unix_utc(unix_ts)) } }
-  * 1_000_000_000
-  |> from_nanoseconds
-  |> to_second_precision
+/// Gets the local time of the host.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// case 
+///   time.now_local() 
+///   |> time.is_later(than: time.literal("11:50:00")) 
+/// { 
+///   True -> "We are late!"
+///   False -> "No rush :)"
+/// }
+/// ```
+pub fn now_local() {
+  let now_ts_nano = tempo.now_utc()
+  let date_ts_nano =
+    { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
+    * 1_000_000_000
+
+  // Subtract the nanoseconds that are responsible for the date and the local
+  // offset nanoseconds.
+  from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
 }
 
-/// If unix timestamp to local time is needed, use `from_unix_utc` from the
-/// `datetime` module, then use `to_current_local` and `get_time` on the
-/// result. The API is designed this way to prevent misuse and resulting bugs.
-pub fn from_unix_milli_utc(unix_ts: Int) {
-  // Subtract the nanoseconds that are responsible for the date.
-  { unix_ts - { date.to_unix_milli_utc(date.from_unix_milli_utc(unix_ts)) } }
-  * 1_000_000
-  |> from_nanoseconds
-  |> to_milli_precision
-}
-
-/// This was originally used in a lot of tests, but since has been removed
-/// from the public API.
+/// Early on these were part of the public API and used in a lot of tests, 
+/// but since have been removed from the public API. The tests should be 
+/// updated and these functions removed.
 @internal
 pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
   let assert Ok(time) = tempo.Time(hour, minute, second, 0) |> validate
   time
-}
-
-pub fn new_milli(
-  hour: Int,
-  minute: Int,
-  second: Int,
-  millisecond: Int,
-) -> Result(tempo.Time, Nil) {
-  tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000)
-  |> validate
 }
 
 @internal
@@ -91,29 +197,11 @@ pub fn test_literal_milli(hour: Int, minute: Int, second: Int, millisecond: Int)
   time
 }
 
-pub fn new_micro(
-  hour: Int,
-  minute: Int,
-  second: Int,
-  microsecond: Int,
-) -> Result(tempo.Time, Nil) {
-  tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
-}
-
 @internal
 pub fn test_literal_micro(hour: Int, minute: Int, second: Int, microsecond: Int) -> tempo.Time {
   let assert Ok(time) =
     tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
   time
-}
-
-pub fn new_nano(
-  hour: Int,
-  minute: Int,
-  second: Int,
-  nanosecond: Int,
-) -> Result(tempo.Time, Nil) {
-  tempo.TimeNano(hour, minute, second, nanosecond) |> validate
 }
 
 @internal
@@ -136,8 +224,10 @@ pub fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
     }
     // For end of day time https://en.wikipedia.org/wiki/ISO_8601
     || { time.hour == 24 && time.minute == 0 && time.second == 0 }
-    // For leap seconds https://en.wikipedia.org/wiki/Leap_second
-    || { time.hour == 23 && time.minute == 59 && time.second == 60 }
+    // For leap seconds https://en.wikipedia.org/wiki/Leap_second. Leap seconds
+    // are not fully supported by this package, but can be parsed from ISO 8601
+    // dates.
+    || { time.minute == 59 && time.second == 60 }
   {
     True ->
       case time {
@@ -151,6 +241,9 @@ pub fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
   }
 }
 
+/// I made this but idk if it should be in the public API, it may lead people
+/// to anti-patterns
+@internal
 pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, Nil) {
   case time {
     tempo.Time(_, m, s, _) -> new(hour, m, s)
@@ -160,6 +253,9 @@ pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, Nil) {
   }
 }
 
+/// I made this but idk if it should be in the public API, it may lead people
+/// to anti-patterns
+@internal
 pub fn set_minute(time: tempo.Time, minute: Int) -> Result(tempo.Time, Nil) {
   case time {
     tempo.Time(h, _, s, _) -> new(h, minute, s)
@@ -169,6 +265,9 @@ pub fn set_minute(time: tempo.Time, minute: Int) -> Result(tempo.Time, Nil) {
   }
 }
 
+/// I made this but idk if it should be in the public API, it may lead people
+/// to anti-patterns
+@internal
 pub fn set_second(time: tempo.Time, second: Int) -> Result(tempo.Time, Nil) {
   case time {
     tempo.Time(h, m, _, _) -> new(h, m, second)
@@ -178,23 +277,54 @@ pub fn set_second(time: tempo.Time, second: Int) -> Result(tempo.Time, Nil) {
   }
 }
 
+/// I made this but idk if it should be in the public API, it may lead people
+/// to anti-patterns
+@internal
 pub fn set_milli(time: tempo.Time, millisecond: Int) -> Result(tempo.Time, Nil) {
   new_milli(time.hour, time.minute, time.second, millisecond)
 }
 
+/// I made this but idk if it should be in the public API, it may lead people
+/// to anti-patterns
+@internal
 pub fn set_micro(time: tempo.Time, microsecond: Int) -> Result(tempo.Time, Nil) {
   new_micro(time.hour, time.minute, time.second, microsecond)
 }
 
+/// I made this but idk if it should be in the public API, it may lead people
+/// to anti-patterns
+@internal
 pub fn set_nano(time: tempo.Time, nanosecond: Int) -> Result(tempo.Time, Nil) {
   new_nano(time.hour, time.minute, time.second, nanosecond)
 }
 
+/// Sets the time to a second precision. Drops any milliseconds from the
+/// underlying time value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("21:53:30.730673092")
+/// |> time.to_second_precision
+/// |> time.to_string
+/// // -> "21:53:30"
+/// ```
 pub fn to_second_precision(time: tempo.Time) -> tempo.Time {
   // Drop any milliseconds
   tempo.Time(time.hour, time.minute, time.second, 0)
 }
 
+/// Sets the time to a millisecond precision. Drops any microseconds from the
+/// underlying time value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("21:53:03.530673092")
+/// |> time.to_milli_precision
+/// |> time.to_string
+/// // -> "21:53:03.530"
+/// ```
 pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
   tempo.TimeMilli(
     time.hour,
@@ -205,6 +335,17 @@ pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
   )
 }
 
+/// Sets the time to a microsecond precision. Drops any nanoseconds from the
+/// underlying time value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("21:53:03.534670892")
+/// |> time.to_micro_precision
+/// |> time.to_string
+/// // -> "21:53:03.534670"
+/// ```
 pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
   tempo.TimeMicro(
     time.hour,
@@ -215,10 +356,30 @@ pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
   )
 }
 
+/// Sets the time to a nanosecond precision. Does not alter the underlying 
+/// time value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("21:53:03.534")
+/// |> time.to_nano_precision
+/// |> time.to_string
+/// // -> "21:53:03.534000000"
+/// ```
 pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
   tempo.TimeNano(time.hour, time.minute, time.second, time.nanosecond)
 }
 
+/// Converts a time value to a string in the format `hh:mm:ss.s`
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.to_string(my_time)
+/// |> time.to_string
+/// // -> "21:53:03.534"
+/// ```
 pub fn to_string(time: tempo.Time) -> String {
   string_builder.from_strings([
     time.hour |> int.to_string |> string.pad_left(2, with: "0"),
@@ -252,8 +413,20 @@ pub fn to_string(time: tempo.Time) -> String {
   |> string_builder.to_string
 }
 
-/// Accepts times in the formats `hh:mm:ss.s`, `hhmmss.s`, `hh:mm:ss`, 
-/// `hhmmss`, `hh:mm`, or `hhmm`.
+/// Converts a string to a time value. Accepted formats are `hh:mm:ss.s`, 
+/// `hhmmss.s`, `hh:mm:ss`, `hhmmss`, `hh:mm`, or `hhmm`.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.from_string("00:00:00.000000300")
+/// // -> Ok(time.literal("00:00:00.000000300"))
+/// ```
+/// 
+/// ```gleam
+/// time.from_string("34:54:16")
+/// // -> Error(Nil)
+/// ```
 pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
   use #(hour, minute, second): #(String, String, String) <- result.try(
     // Parse hh:mm:ss.s or hh:mm format
@@ -334,14 +507,293 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
   |> result.try(validate)
 }
 
+/// Gets the UTC time value of a unix timestamp.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.from_unix_utc(1_718_829_395)
+/// // -> time.literal("20:36:35")
+/// ```
+pub fn from_unix_utc(unix_ts: Int) -> tempo.Time {
+  // Subtract the nanoseconds that are responsible for the date.
+  { unix_ts - { date.to_unix_utc(date.from_unix_utc(unix_ts)) } }
+  * 1_000_000_000
+  |> from_nanoseconds
+  |> to_second_precision
+}
+
+/// Gets the local time value of a unix timestamp.
+/// 
+/// Conversion is based on the current host offset. If the date of the unix
+/// timestamp matches the date of the host, then we can apply the current host
+/// offset to get the local time safely and result in a precise 
+/// conversion. If the date does not match the host's, then we can not be 
+/// sure the current offset is still applicable, and will perform an 
+/// imprecise conversion. The imprecise conversion can be inaccurate to the
+/// degree the local offset changes throughout the year. For example, in 
+/// North America where Daylight Savings Time is observed with a one-hour
+/// time shift, the imprecise conversion can be off by up to an hour.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// case time.from_unix_local(1_718_829_395) {
+///   Precise(time) -> time.to_string
+///   Imprecise(time) -> {
+///     io.println(
+///       "Proceeding with imprecise conversion"
+///       <> " because we do not need hour precision"
+///       <> " and can accept faulty times"
+///     )
+///     time.to_string
+///   }
+/// }
+/// // -> time.literal("16:36:35")
+/// ```
+pub fn from_unix_local(unix_ts: Int) -> tempo.UncertainConversion(tempo.Time) {
+  todo
+}
+
+/// Gets the UTC time value of a unix timestamp in milliseconds.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.from_unix_milli_utc(1_718_829_586_791)
+/// // -> time.literal("20:39:46.791")
+/// ```
+pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Time {
+  // Subtract the nanoseconds that are responsible for the date.
+  { unix_ts - { date.to_unix_milli_utc(date.from_unix_milli_utc(unix_ts)) } }
+  * 1_000_000
+  |> from_nanoseconds
+  |> to_milli_precision
+}
+
+/// Gets the local time value of a unix timestamp in milliseconds.
+/// 
+/// Conversion is based on the current host offset. If the date of the unix
+/// timestamp matches the date of the host, then we can apply the current host
+/// offset to get the local time safely and result in a precise 
+/// conversion. If the date does not match the host's, then we can not be 
+/// sure the current offset is still applicable, and will perform an 
+/// imprecise conversion. The imprecise conversion can be inaccurate to the
+/// degree the local offset changes throughout the year. For example, in 
+/// North America where Daylight Savings Time is observed with a one-hour
+/// time shift, the imprecise conversion can be off by up to an hour.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// case time.from_unix_milli_local(1_718_829_586_791) {
+///   Precise(time) -> time.to_string
+///   Imprecise(time) -> {
+///     io.println(
+///       "Proceeding with imprecise conversion"
+///       <> " because we do not need hour precision"
+///       <> " and can accept faulty times"
+///     )
+///     time.to_string
+///   }
+/// }
+/// // -> time.literal("16:39:46.791")
+/// ```
+pub fn from_unix_milli_local(
+  unix_ts: Int,
+) -> tempo.UncertainConversion(tempo.Time) {
+  todo
+}
+
+/// Gets the UTC time value of a unix timestamp in microseconds.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.from_unix_micro_utc(1_718_829_586_791_832)
+/// // -> time.literal("20:39:46.791832")
+/// ```
+pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Time {
+  // Subtract the nanoseconds that are responsible for the date.
+  { unix_ts - { date.to_unix_micro_utc(date.from_unix_micro_utc(unix_ts)) } }
+  * 1000
+  |> from_nanoseconds
+  |> to_milli_precision
+}
+
+/// Gets the local time value of a unix timestamp in microseconds.
+/// 
+/// Conversion is based on the current host offset. If the date of the unix
+/// timestamp matches the date of the host, then we can apply the current host
+/// offset to get the local time safely and result in a precise 
+/// conversion. If the date does not match the host's, then we can not be 
+/// sure the current offset is still applicable, and will perform an 
+/// imprecise conversion. The imprecise conversion can be inaccurate to the
+/// degree the local offset changes throughout the year. For example, in 
+/// North America where Daylight Savings Time is observed with a one-hour
+/// time shift, the imprecise conversion can be off by up to an hour.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// case time.from_unix_micro_local(1_718_829_586_791_832) {
+///   Precise(time) -> time.to_string
+///   Imprecise(time) -> {
+///     io.println(
+///       "Proceeding with imprecise conversion"
+///       <> " because we do not need hour precision"
+///       <> " and can accept faulty times"
+///     )
+///     time.to_string
+///   }
+/// }
+/// // -> time.literal("16:39:46.791832")
+/// ```
+pub fn from_unix_micro_local(
+  unix_ts: Int,
+) -> tempo.UncertainConversion(tempo.Time) {
+  todo
+}
+
+/// Returns a time value as a tuple of hours, minutes, and seconds. Useful 
+/// for using with another time library.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.to_tuple
+/// // -> #(13, 42, 11)
+/// ```
+pub fn to_tuple(time: tempo.Time) -> #(Int, Int, Int) {
+  #(time.hour, time.minute, time.second)
+}
+
+/// Converts a tuple of hours, minutes, and seconds to a time value. Useful 
+/// for using with another time library.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// #(13, 42, 11)
+/// |> time.from_tuple
+/// // -> time.literal("13:42:11")
+/// ```
+pub fn from_tuple(time: #(Int, Int, Int)) -> Result(tempo.Time, Nil) {
+  new(time.0, time.1, time.2)
+}
+
+/// Returns a time value as a tuple of hours, minutes, seconds, and nanoseconds. 
+/// Useful for using with another time library.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11.872")
+/// |> time.to_tuple_nanosecond
+/// // -> #(13, 42, 11, 872000000)
+/// ```
+pub fn to_tuple_nanosecond(time: tempo.Time) -> #(Int, Int, Int, Int) {
+  #(time.hour, time.minute, time.second, time.nanosecond)
+}
+
+/// Converts a tuple of hours, minutes, seconds, and nanoseconds to a time 
+/// value. Useful for using with another time library.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// #(13, 42, 11, 872000000)
+/// |> time.from_tuple_nanosecond
+/// |> time.to_milli_precision
+/// // -> time.literal("13:42:11.872")
+/// ```
+pub fn from_tuple_nanosecond(
+  time: #(Int, Int, Int, Int),
+) -> Result(tempo.Time, Nil) {
+  new_nano(time.0, time.1, time.2, time.3)
+}
+
+/// Converts a time to duration, assuming the duration epoch is "00:00:00".
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("00:00:00.000000300")
+/// |> time.to_duration
+/// |> duration.as_nanoseconds
+/// // -> 300
+/// ```
+///
+/// ```gleam
+/// time.literal("00:03:06")
+/// |> time.to_duration 
+/// |> duration.as_milliseconds
+/// // -> 186_000
+/// ```
 pub fn to_duration(time: tempo.Time) -> tempo.Duration {
   to_nanoseconds(time) |> tempo.Duration
 }
 
+/// Converts a duration to the equivalent time of day, assuming the 
+/// duration epoch is "00:00:00". Durations longer than 24 hours will be 
+/// wrapped to fit within a 24 hour representation.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// duration.seconds(58)
+/// |> time.from_duration
+/// |> time.to_second_precision
+/// |> time.to_string
+/// // -> "00:00:58"
+/// ```
+/// 
+/// ```gleam
+/// duration.minutes(17)
+/// |> time.from_duration
+/// |> time.to_string
+/// // -> "00:17:00.000000000"
+/// ```
+/// 
+/// ```gleam
+/// duration.hours(25)
+/// |> time.from_duration
+/// |> time.to_string
+/// // -> "01:00:00.000000000"
+/// ```
+/// 
+/// ```gleam
+/// duration.nanoseconds(-3_000_000_000)
+/// |> time.from_duration
+/// |> time.to_string
+/// // -> "23:59:57.000000000"
+/// ```
 pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
   from_nanoseconds(duration.nanoseconds)
 }
 
+/// Compares two time values.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.compare(to: time.literal("13:42:11"))
+/// // -> order.Eq
+/// ```
+/// 
+/// ```gleam
+/// time.literal("15:32:01")
+/// |> time.compare(to: time.literal("13:42:11"))
+/// // -> order.Gt
+/// ```
+/// 
+/// ```gleam
+/// time.literal("13:10:11")
+/// |> time.compare(to: time.literal("13:42:11"))
+/// // -> order.Lt
+/// ```
 pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
   case a.hour == b.hour {
     True ->
@@ -377,30 +829,211 @@ pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
   }
 }
 
+/// Checks if the first time is earlier than the second time.
+///
+/// ## Example
+///
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_earlier(than: time.literal("13:42:12"))
+/// // -> True
+/// ```
+///
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_earlier(than: time.literal("13:42:11"))
+/// // -> False
+/// ```
+///
+/// ```gleam
+/// time.literal("13:22:15")
+/// |> time.is_earlier(than: time.literal("07:42:11"))
+/// // -> False
+/// ```
 pub fn is_earlier(a: tempo.Time, than b: tempo.Time) -> Bool {
   compare(a, b) == order.Lt
 }
 
+/// Checks if the first time is earlier or equal to the second time.
+///
+/// ## Example
+///
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_earlier_or_equal(to: time.literal("13:42:12"))
+/// // -> True
+/// ```
+///
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_earlier_or_equal(to: time.literal("13:42:11.000"))
+/// // -> True
+/// ```
+///
+/// ```gleam
+/// time.literal("13:22:15")
+/// |> time.is_earlier_or_equal(to: time.literal("07:42:12"))
+/// // -> False
 pub fn is_earlier_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
   compare(a, b) == order.Lt || compare(a, b) == order.Eq
 }
 
+/// Checks if the first time is equal to the second time.
+///
+/// ## Example
+///
+/// ```gleam
+/// time.literal("13:42:11.000")
+/// |> time.is_equal(to: time.literal("13:42:11"))
+/// // -> True
+/// ```
+///
+/// ```gleam
+/// time.literal("13:42:11.002")
+/// |> time.is_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
   compare(a, b) == order.Eq
 }
 
+/// Checks if the first time is later than the second time.
+///
+/// ## Example
+///
+/// ```gleam
+/// time.literal("13:22:15")
+/// |> time.is_later(than: time.literal("07:42:11"))
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_later(than: time.literal("13:42:12"))
+/// // -> False
+/// ```
+///
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_later(than: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_later(a: tempo.Time, than b: tempo.Time) -> Bool {
   compare(a, b) == order.Gt
 }
 
+/// Checks if the first time is earlier or equal to the second time.
+///
+/// ## Example
+///
+/// ```gleam
+/// time.literal("13:22:15")
+/// |> time.is_later_or_equal(to: time.literal("07:42:12"))
+/// // -> True
+///
+/// ```gleam
+/// time.literal("13:42")
+/// |> time.is_later_or_equal(to: time.literal("13:42:00.000"))
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_later_or_equal(to: time.literal("13:42:12"))
+/// // -> False
+/// ```
 pub fn is_later_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
+pub type Boundary {
+  Boundary(time: tempo.Time, inclusive: Bool)
+}
+
+/// Checks if a time is between two boundaries.
+/// 
+/// ## Example
+///
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_between(
+///     Boundary(time.literal("05:00:00"), inclusive: True), 
+///     and: Boundary(time.literal("15:00:00"), inclusive: False),
+///   )
+/// // -> True
+/// ```
+pub fn is_between(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool {
+  case start.inclusive {
+    True -> is_later_or_equal(time, to: start.time)
+    False -> is_later(time, than: start.time)
+  }
+  && case end.inclusive {
+    True -> is_earlier_or_equal(time, to: end.time)
+    False -> is_earlier(time, than: end.time) 
+  }
+}
+
+/// Checks if a time is outside of two boundaries.
+/// 
+/// ## Example
+///
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.is_outside(
+///     time.Boundary(time.literal("05:00:00"), inclusive: True), 
+///     and: time.Boundary(time.literal("15:00:00"), inclusive: False),
+///   )
+/// // -> False
+/// ```
+pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool {
+  case start.inclusive {
+    True -> is_earlier_or_equal(time, to: start.time)
+    False -> is_earlier(time, than: start.time)
+  }
+  || case end.inclusive {
+    True -> is_later_or_equal(time, to: end.time)
+    False -> is_later(time, than: end.time)
+  }
+}
+
+/// Gets the difference between two times as a duration.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("23:42:11.435")
+/// |> time.difference(from: time.literal("23:42:09.743"))
+/// |> duration.as_milliseconds
+/// // -> 1692
+/// ```
+/// 
+/// ```gleam
+/// time.literal("13:30:11")
+/// |> time.difference(from: time.literal("13:55:13"))
+/// |> duration.as_minutes
+/// // -> -25
+/// ```
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
   to_nanoseconds(a) - to_nanoseconds(b) |> tempo.Duration
 }
 
+/// Gets the absolute difference between two times as a duration.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("23:42:11.435")
+/// |> time.difference(from: time.literal("23:42:09.743"))
+/// |> duration.as_milliseconds
+/// // -> 1692
+/// ```
+/// 
+/// ```gleam
+/// time.literal("13:30:11")
+/// |> time.difference(from: time.literal("13:55:13"))
+/// |> duration.as_minutes
+/// // -> 25
+/// ```
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
   case to_nanoseconds(a) - to_nanoseconds(b) {
     diff if diff < 0 -> -diff |> tempo.Duration
@@ -445,7 +1078,15 @@ pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
   tempo.TimeNano(hours, minutes, seconds, nanoseconds)
 }
 
-/// Can not account for leap seconds.
+/// Adds a duration to a time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("08:42:53")
+/// |> time.add(duration.mintues(36))
+/// // -> time.literal("09:18:53")
+/// ```
 pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
   let new_time = to_nanoseconds(a) + b.nanoseconds |> from_nanoseconds
   case a {
@@ -456,7 +1097,15 @@ pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
   }
 }
 
-/// Can not account for leap seconds.
+/// Subtracts a duration from a time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:02")
+/// |> time.subtract(duration.hours(2))
+/// // -> time.literal("11:42:02")
+/// ```
 pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
   let new_time = to_nanoseconds(a) - b.nanoseconds |> from_nanoseconds
   // Restore original time precision
@@ -469,24 +1118,23 @@ pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 }
 
 /// Converts a time to the equivalent time left in the day.
-/// Cannot account for leap seconds in a day. If you want the time left in a 
-/// specific date (including leap seconds), use the `datetime` module instead.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// time.literal("23:59:03") |> time.left_in_day_imprecise
+/// time.literal("23:59:03") |> time.left_in_day
 /// // -> time.literal("00:00:57")
 /// ```
 ///
 /// ```gleam
-/// time.literal("08:05:20") |> time.left_in_day_imprecise
+/// time.literal("08:05:20") |> time.left_in_day
 /// // -> time.literal("15:54:40")
 /// ```
-pub fn left_in_day_imprecise(time: tempo.Time) -> tempo.Time {
+pub fn left_in_day(time: tempo.Time) -> tempo.Time {
   let new_time =
     unit.imprecise_day_nanoseconds - { time |> to_nanoseconds }
     |> from_nanoseconds
+
   // Restore original time precision
   case time {
     tempo.Time(_, _, _, _) -> to_second_precision(new_time)
