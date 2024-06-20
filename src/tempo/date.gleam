@@ -258,6 +258,12 @@ pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
 /// date.from_unix_utc(267_840_000)
 /// // -> date.literal("1978-06-28")
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the date from there if they need it.
+@internal
 pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
   let z = unix_ts / 86_400 + 719_468
   let era =
@@ -295,6 +301,12 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
 /// |> date.to_unix_utc
 /// // -> 1_718_150_400
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the date from there if they need it.
+@internal
 pub fn to_unix_utc(date: tempo.Date) -> Int {
   let full_years_since_epoch = date.year - 1970
   // Offset the year by one to cacluate the number of leap years since the
@@ -347,6 +359,12 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
 /// date.from_unix_milli_utc(267_840_000)
 /// // -> date.literal("1978-06-28")
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the date from there if they need it.
+@internal
 pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Date {
   from_unix_utc(unix_ts / 1000)
 }
@@ -361,6 +379,12 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Date {
 /// |> date.to_unix_milli_utc
 /// // -> 1_718_150_400_000
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the date from there if they need it.
+@internal
 pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
   to_unix_utc(date) * 1000
 }
@@ -376,6 +400,12 @@ pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
 /// date.from_unix_milli_utc(267_840_000_000)
 /// // -> date.literal("1978-06-28")
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the date from there if they need it.
+@internal
 pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Date {
   from_unix_utc(unix_ts / 1_000_000)
 }
@@ -390,6 +420,12 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Date {
 /// |> date.to_unix_micro_utc
 /// // -> 1_718_150_400_000_000
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the date from there if they need it.
+@internal
 pub fn to_unix_micro_utc(date: tempo.Date) -> Int {
   to_unix_utc(date) * 1_000_000
 }

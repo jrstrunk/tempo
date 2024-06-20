@@ -211,8 +211,7 @@ pub fn test_literal_nano(hour: Int, minute: Int, second: Int, nanosecond: Int) -
   time
 }
 
-@internal
-pub fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
+fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
   case
     {
       time.hour >= 0
@@ -242,7 +241,7 @@ pub fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
-/// to anti-patterns
+/// to anti-patterns.
 @internal
 pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, Nil) {
   case time {
@@ -254,7 +253,7 @@ pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, Nil) {
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
-/// to anti-patterns
+/// to anti-patterns.
 @internal
 pub fn set_minute(time: tempo.Time, minute: Int) -> Result(tempo.Time, Nil) {
   case time {
@@ -266,7 +265,7 @@ pub fn set_minute(time: tempo.Time, minute: Int) -> Result(tempo.Time, Nil) {
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
-/// to anti-patterns
+/// to anti-patterns.
 @internal
 pub fn set_second(time: tempo.Time, second: Int) -> Result(tempo.Time, Nil) {
   case time {
@@ -278,21 +277,21 @@ pub fn set_second(time: tempo.Time, second: Int) -> Result(tempo.Time, Nil) {
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
-/// to anti-patterns
+/// to anti-patterns.
 @internal
 pub fn set_milli(time: tempo.Time, millisecond: Int) -> Result(tempo.Time, Nil) {
   new_milli(time.hour, time.minute, time.second, millisecond)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
-/// to anti-patterns
+/// to anti-patterns.
 @internal
 pub fn set_micro(time: tempo.Time, microsecond: Int) -> Result(tempo.Time, Nil) {
   new_micro(time.hour, time.minute, time.second, microsecond)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
-/// to anti-patterns
+/// to anti-patterns.
 @internal
 pub fn set_nano(time: tempo.Time, nanosecond: Int) -> Result(tempo.Time, Nil) {
   new_nano(time.hour, time.minute, time.second, nanosecond)
@@ -516,6 +515,12 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
 /// time.from_unix_utc(1_718_829_395)
 /// // -> time.literal("20:36:35")
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the time from there if they need it.
+@internal
 pub fn from_unix_utc(unix_ts: Int) -> tempo.Time {
   // Subtract the nanoseconds that are responsible for the date.
   { unix_ts - { date.to_unix_utc(date.from_unix_utc(unix_ts)) } }
@@ -533,6 +538,12 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Time {
 /// time.from_unix_milli_utc(1_718_829_586_791)
 /// // -> time.literal("20:39:46.791")
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the time from there if they need it.
+@internal
 pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Time {
   // Subtract the nanoseconds that are responsible for the date.
   { unix_ts - { date.to_unix_milli_utc(date.from_unix_milli_utc(unix_ts)) } }
@@ -550,6 +561,12 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Time {
 /// time.from_unix_micro_utc(1_718_829_586_791_832)
 /// // -> time.literal("20:39:46.791832")
 /// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the time from there if they need it.
+@internal
 pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Time {
   // Subtract the nanoseconds that are responsible for the date.
   { unix_ts - { date.to_unix_micro_utc(date.from_unix_micro_utc(unix_ts)) } }
