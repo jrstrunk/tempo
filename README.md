@@ -4,7 +4,7 @@ A gleam library for controlling the tempo of your application through helpful da
 
 Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more. Over 262 unit tests, contributions welcome!
 
-Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convienience. It is written in almost pure Gleam, with only a call to get the system time and offset implemented in the target languages. My hope is to make Tempo feel like the Gleam language and to make it difficult to write time related bugs in your applications when using it.
+Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible. 
 
 This package purposefully **ignores leap seconds** and **will not convert between time zones**. Try to design your application so time zones do not have to be converted between and leap seconds are trivial. More below.
 
