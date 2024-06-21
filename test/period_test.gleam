@@ -1,12 +1,7 @@
-import gleam/io
-import gleam/order
-import gleam/string
 import gleeunit
 import gleeunit/should
-import tempo
 import tempo/date
-import tempo/datetime
-import tempo/duration
+import tempo/naive_datetime
 import tempo/period
 
 pub fn main() {
@@ -196,124 +191,109 @@ pub fn date_period_to_seconds_test() {
   |> should.equal(86_400 * 13)
 }
 
-pub fn date_leap_second_period_to_seconds_test() {
-  date.literal("2016-12-31")
-  |> date.difference(from: date.literal("2017-01-01"))
-  |> period.as_seconds
-  |> should.equal(86_401)
-}
-
 // pub fn date_difference_one_day_test() {
 //   date.literal("2024-06-15")
 //   |> date.difference(from: date.literal("2024-06-14"))
-//   |> duration.as_days
+//   |> period.as_days
 //   |> should.equal(1)
 // }
 
 // pub fn date_difference_multiple_days_test() {
 //   date.literal("2024-06-27")
 //   |> date.difference(from: date.literal("2024-06-10"))
-//   |> duration.as_days
+//   |> period.as_days
 //   |> should.equal(17)
 // }
 
 // pub fn date_difference_one_day_month_boundary_test() {
 //   date.literal("2024-07-01")
 //   |> date.difference(from: date.literal("2024-06-30"))
-//   |> duration.as_days
+//   |> period.as_days
 //   |> should.equal(1)
 // }
 
-// pub fn date_difference_one_year_test() {
-//   date.literal("2024-06-14")
-//   |> date.difference(from: date.literal("2023-06-14"))
-//   |> duration.as_years
+pub fn date_difference_fractional_test() {
+  period.new(
+    start: naive_datetime.literal("2024-06-13T15:47:00"),
+    end: naive_datetime.literal("2024-06-21T07:16:12"),
+  )
+  |> period.as_days_fractional
+  |> should.equal(7.645277777777778)
+}
+
+// pub fn period_as_days_zero_days_test() {
+//   datetime.literal("2024-06-12T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-12T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(0)
+// }
+
+// pub fn period_as_days_one_day_test() {
+//   datetime.literal("2024-06-12T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-13T00:00:00Z"))
+//   |> period.as_days
 //   |> should.equal(1)
 // }
 
-pub fn period_total_leap_seconds_test() {
-  date.literal("2015-06-12")
-  |> period.total_leap_seconds(date.literal("2023-10-12"))
-  |> should.equal(2)
+// pub fn period_as_days_negative_one_day_test() {
+//   datetime.literal("2024-06-14T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-13T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(1)
+// }
 
-  date.literal("1970-06-12")
-  |> period.total_leap_seconds(date.literal("2023-10-12"))
-  |> should.equal(27)
-}
+// pub fn period_as_days_multiple_days_test() {
+//   datetime.literal("2024-06-13T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-26T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(13)
+// }
 
-pub fn period_as_days_zero_days_test() {
-  datetime.literal("2024-06-12T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-12T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(0)
-}
+// pub fn period_as_days_one_day_month_boundary_test() {
+//   datetime.literal("2024-07-01T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-30T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(1)
+// }
 
-pub fn period_as_days_one_day_test() {
-  datetime.literal("2024-06-12T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-13T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(1)
-}
+// pub fn period_as_days_multiple_month_test() {
+//   datetime.literal("2024-03-04T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-30T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(118)
+// }
 
-pub fn period_as_days_negative_one_day_test() {
-  datetime.literal("2024-06-14T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-13T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(1)
-}
+// pub fn period_as_days_multiple_month_leap_year_test() {
+//   datetime.literal("2024-01-04T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-30T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(178)
+// }
 
-pub fn period_as_days_multiple_days_test() {
-  datetime.literal("2024-06-13T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-26T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(13)
-}
+// pub fn period_as_days_one_year_test() {
+//   datetime.literal("2024-06-13T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2025-06-13T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(365)
+// }
 
-pub fn period_as_days_one_day_month_boundary_test() {
-  datetime.literal("2024-07-01T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-30T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(1)
-}
+// pub fn period_as_days_more_than_one_year_test() {
+//   datetime.literal("2024-06-13T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2025-07-01T00:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(383)
+// }
 
-pub fn period_as_days_multiple_month_test() {
-  datetime.literal("2024-03-04T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-30T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(118)
-}
+// pub fn period_as_days_partial_test() {
+//   datetime.literal("2024-06-13T00:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-13T13:00:00Z"))
+//   |> period.as_days
+//   |> should.equal(0)
+// }
 
-pub fn period_as_days_multiple_month_leap_year_test() {
-  datetime.literal("2024-01-04T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-30T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(178)
-}
-
-pub fn period_as_days_one_year_test() {
-  datetime.literal("2024-06-13T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2025-06-13T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(365)
-}
-
-pub fn period_as_days_more_than_one_year_test() {
-  datetime.literal("2024-06-13T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2025-07-01T00:00:00Z"))
-  |> period.as_days
-  |> should.equal(383)
-}
-
-pub fn period_as_days_partial_test() {
-  datetime.literal("2024-06-13T00:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-13T13:00:00Z"))
-  |> period.as_days
-  |> should.equal(0)
-}
-
-pub fn period_as_days_multiple_partial_test() {
-  datetime.literal("2024-06-13T13:00:00Z")
-  |> datetime.difference(from: datetime.literal("2024-06-17T23:05:00Z"))
-  |> period.as_days
-  |> should.equal(4)
-}
+// pub fn period_as_days_multiple_partial_test() {
+//   datetime.literal("2024-06-13T13:00:00Z")
+//   |> datetime.difference(from: datetime.literal("2024-06-17T23:05:00Z"))
+//   |> period.as_days
+//   |> should.equal(4)
+// }

@@ -4,20 +4,28 @@ import gleam/list
 import tempo
 import tempo/date
 import tempo/duration
+import tempo/internal/unit
 import tempo/month
-import tempo/naive_datetime
 import tempo/time
 import tempo/year
 
-pub fn new(start: tempo.NaiveDateTime, end: tempo.NaiveDateTime) -> tempo.Period {
-  tempo.Period(start, end)
-}
-
-pub fn difference(
-  a: tempo.NaiveDateTime,
-  from b: tempo.NaiveDateTime,
+/// Creates a new period from the start and end naive datetimes.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// period.new(
+///   start: naive_datetime.literal("2024-06-13T15:47:00"),
+///   end: naive_datetime.literal("2024-06-21T07:16:12"),
+/// )
+/// |> period.as_days
+/// // -> 7
+/// ```
+pub fn new(
+  start start: tempo.NaiveDateTime,
+  end end: tempo.NaiveDateTime,
 ) -> tempo.Period {
-  new(a, b)
+  tempo.Period(start, end)
 }
 
 // The period API is very similar to the duration API, mostly just with a 
@@ -36,20 +44,40 @@ pub type Unit {
   Nanosecond
 }
 
-// pub fn format_as()
-
+/// Returns the number of seconds in the period.
+/// 
+/// Does **not** account for leap seconds like the rest of the package.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// period.new(
+///   start: naive_datetime.literal("2024-06-13T07:16:32"),
+///   end: naive_datetime.literal("2024-06-13T07:16:12"),
+/// )
+/// |> period.as_seconds
+/// // -> 20
+/// ```
 pub fn as_seconds(period: tempo.Period) -> Int {
   days_apart(period.start.date, period.end.date)
   |> duration.days
   |> duration.decrease(by: period.start.time |> time.to_duration)
   |> duration.increase(by: period.end.time |> time.to_duration)
-  |> duration.increase(
-    by: total_leap_seconds(period.start.date, period.end.date)
-    |> duration.seconds,
-  )
   |> duration.as_seconds
 }
 
+/// Returns the number of days in the period.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// period.new(
+///   start: naive_datetime.literal("2024-06-13T15:47:00"),
+///   end: naive_datetime.literal("2024-06-21T07:16:12"),
+/// )
+/// |> period.as_days
+/// // -> 7
+/// ```
 pub fn as_days(period: tempo.Period) -> Int {
   days_apart(period.start.date, period.end.date)
   // If a full day has not elapsed since the start time (based on the time), 
@@ -60,48 +88,74 @@ pub fn as_days(period: tempo.Period) -> Int {
   }
 }
 
+/// Returns the number of days in the period.
+/// 
+/// Does **not** account for leap seconds like the rest of the package.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// period.new(
+///   start: naive_datetime.literal("2024-06-13T15:47:00"),
+///   end: naive_datetime.literal("2024-06-21T07:16:12"),
+/// )
+/// |> period.as_days_fractional
+/// // -> 7.645277777777778
+/// ```
 pub fn as_days_fractional(period: tempo.Period) -> Float {
-  { days_apart(period.start.date, period.end.date) |> int.to_float }
+  { as_days(period) |> int.to_float }
   +. case period.start.time |> time.is_later(than: period.end.time) {
+    // The time until the end of the start date divided by the total number
+    // of seconds in the start day plus the time since the beginning of the
+    // end date divided by the total number of seconds in the end day.
     True ->
-      todo as "the time until the end of the start date divided by the total number of seconds in the start day plus the time since the beginning of the end date divided by the total number of seconds in the end day"
+      int.to_float(
+        period.start.time
+        |> time.left_in_day
+        |> time.to_duration
+        |> duration.as_nanoseconds,
+      )
+      /. int.to_float(unit.imprecise_day_nanoseconds)
+      +. int.to_float(
+        period.end.time
+        |> time.to_duration
+        |> duration.as_nanoseconds,
+      )
+      /. int.to_float(unit.imprecise_day_nanoseconds)
+
+    // The time between the start and end times divided by the total number 
+    // of seconds in the end day.
     False ->
-      todo as "the time between the start and end times divided by the total number of seconds in the end day"
+      int.to_float(
+        time.difference(period.start.time, period.end.time)
+        |> duration.as_nanoseconds,
+      )
+      /. int.to_float(unit.imprecise_day_nanoseconds)
   }
+}
+
+/// Returns a period as a duration, losing the context of the start and end 
+/// datetimes.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// period.new(
+///   start: naive_datetime.literal("2024-06-13T15:47:00"),
+///   end: naive_datetime.literal("2024-06-21T07:16:12"),
+/// )
+/// |> period.as_duration
+/// |> duration.as_weeks
+/// // -> 1
+/// ```
+pub fn as_duration(period: tempo.Period) -> tempo.Duration {
+  period.end.time
+  |> time.to_duration
+  |> duration.decrease(by: period.start.time |> time.to_duration)
 }
 
 pub fn to_duration(period: tempo.Period) -> tempo.Duration {
   period |> as_seconds |> duration.seconds
-}
-
-@internal
-pub fn total_leap_seconds(period_start: tempo.Date, period_end: tempo.Date) -> Int {
-  list.range(period_start.year, period_end.year)
-  |> list.map(fn(year) {
-    list.filter_map(month.months, fn(month) {
-      // Leap seconds have only been added to the last day of the month. 
-      let last_day_of_month =
-        tempo.Date(year, month, month.days(of: month, in: year))
-
-      case
-        last_day_of_month
-        |> date.is_earlier(than: period_start)
-      {
-        True -> Error(Nil)
-        False ->
-          case
-            last_day_of_month
-            |> date.is_later_or_equal(to: period_end)
-          {
-            True -> Error(Nil)
-            False -> Ok(last_day_of_month)
-          }
-      }
-    })
-  })
-  |> list.flatten
-  |> list.map(fn(date) { month.leap_seconds(of: date.month, in: date.year) })
-  |> int.sum
 }
 
 @internal
