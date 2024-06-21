@@ -220,7 +220,6 @@ pub fn date_difference_fractional_test() {
   |> period.as_days_fractional
   |> should.equal(7.645277777777778)
 }
-
 // pub fn period_as_days_zero_days_test() {
 //   datetime.literal("2024-06-12T00:00:00Z")
 //   |> datetime.difference(from: datetime.literal("2024-06-12T00:00:00Z"))

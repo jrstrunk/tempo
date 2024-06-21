@@ -1,6 +1,6 @@
 import gleam/bool
-import gleam/result
 import gleam/order
+import gleam/result
 import gleam/string
 import tempo
 import tempo/date
@@ -294,7 +294,6 @@ pub fn get_date(datetime: tempo.DateTime) -> tempo.Date {
 pub fn get_time(datetime: tempo.DateTime) -> tempo.Time {
   datetime.naive.time
 }
-
 
 /// Gets the offset of a datetime.
 /// 
@@ -650,10 +649,7 @@ pub fn is_earlier(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
 /// )
 /// // -> False
 /// ```
-pub fn is_earlier_or_equal(
-  a: tempo.DateTime,
-  to b: tempo.DateTime,
-) -> Bool {
+pub fn is_earlier_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
   compare(a, b) == order.Lt || compare(a, b) == order.Eq
 }
 
@@ -720,10 +716,7 @@ pub fn is_later(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
 /// )
 /// // -> True
 /// ```
-pub fn is_later_or_equal(
-  a: tempo.DateTime,
-  to b: tempo.DateTime,
-) -> Bool {
+pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
@@ -840,4 +833,3 @@ pub fn subtract(
 pub fn time_left_in_day(datetime: tempo.DateTime) -> tempo.Time {
   datetime.naive.time |> time.left_in_day
 }
-
