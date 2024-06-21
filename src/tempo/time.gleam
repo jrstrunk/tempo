@@ -19,9 +19,13 @@ import tempo/offset
 /// 
 /// ```gleam
 /// time.new(53, 42, 61)
-/// // -> Error(Nil)
+/// // -> Error(tempo.TimeOutOfBounds)
 /// ```
-pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.Time, Nil) {
+pub fn new(
+  hour: Int,
+  minute: Int,
+  second: Int,
+) -> Result(tempo.Time, tempo.Error) {
   tempo.Time(hour, minute, second, 0) |> validate
 }
 
@@ -41,14 +45,14 @@ pub fn new(hour: Int, minute: Int, second: Int) -> Result(tempo.Time, Nil) {
 /// 
 /// ```gleam
 /// time.new_milli(13, 42, 11, 7_500)
-/// // -> Error(Nil)
+/// // -> Error(tempo.TimeOutOfBounds)
 /// ```
 pub fn new_milli(
   hour: Int,
   minute: Int,
   second: Int,
   millisecond: Int,
-) -> Result(tempo.Time, Nil) {
+) -> Result(tempo.Time, tempo.Error) {
   tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000)
   |> validate
 }
@@ -69,14 +73,14 @@ pub fn new_milli(
 /// 
 /// ```gleam
 /// time.new_micro(13, 42, 11, 7_500_000)
-/// // -> Error(Nil)
+/// // -> Error(tempo.TimeOutOfBounds)
 /// ```
 pub fn new_micro(
   hour: Int,
   minute: Int,
   second: Int,
   microsecond: Int,
-) -> Result(tempo.Time, Nil) {
+) -> Result(tempo.Time, tempo.Error) {
   tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
 }
 
@@ -96,14 +100,14 @@ pub fn new_micro(
 /// 
 /// ```gleam
 /// time.new_nano(13, 42, 11, 7_500_000_000)
-/// // -> Error(Nil)
+/// // -> Error(tempo.TimeOutOfBounds)
 /// ```
 pub fn new_nano(
   hour: Int,
   minute: Int,
   second: Int,
   nanosecond: Int,
-) -> Result(tempo.Time, Nil) {
+) -> Result(tempo.Time, tempo.Error) {
   tempo.TimeNano(hour, minute, second, nanosecond) |> validate
 }
 
@@ -128,7 +132,9 @@ pub fn new_nano(
 pub fn literal(time: String) -> tempo.Time {
   case from_string(time) {
     Ok(time) -> time
-    Error(Nil) -> panic as "Invalid time literal"
+    Error(tempo.TimeInvalidFormat) -> panic as "Invalid time literal format"
+    Error(tempo.TimeOutOfBounds) -> panic as "Invalid time literal value"
+    Error(_) -> panic as "Invalid time literal"
   }
 }
 
@@ -211,7 +217,7 @@ pub fn test_literal_nano(hour: Int, minute: Int, second: Int, nanosecond: Int) -
   time
 }
 
-fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
+fn validate(time: tempo.Time) -> Result(tempo.Time, tempo.Error) {
   case
     {
       time.hour >= 0
@@ -234,16 +240,16 @@ fn validate(time: tempo.Time) -> Result(tempo.Time, Nil) {
         tempo.TimeMilli(_, _, _, millis) if millis <= 999_000_000 -> Ok(time)
         tempo.TimeMicro(_, _, _, micros) if micros <= 999_999_000 -> Ok(time)
         tempo.TimeNano(_, _, _, nanos) if nanos <= 999_999_999 -> Ok(time)
-        _ -> Error(Nil)
+        _ -> Error(tempo.TimeOutOfBounds)
       }
-    False -> Error(Nil)
+    False -> Error(tempo.TimeOutOfBounds)
   }
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, Nil) {
+pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, tempo.Error) {
   case time {
     tempo.Time(_, m, s, _) -> new(hour, m, s)
     tempo.TimeMilli(_, m, s, n) -> new_milli(hour, m, s, n)
@@ -255,7 +261,10 @@ pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, Nil) {
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_minute(time: tempo.Time, minute: Int) -> Result(tempo.Time, Nil) {
+pub fn set_minute(time: tempo.Time, minute: Int) -> Result(
+  tempo.Time,
+  tempo.Error,
+) {
   case time {
     tempo.Time(h, _, s, _) -> new(h, minute, s)
     tempo.TimeMilli(h, _, s, n) -> new_milli(h, minute, s, n)
@@ -267,7 +276,10 @@ pub fn set_minute(time: tempo.Time, minute: Int) -> Result(tempo.Time, Nil) {
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_second(time: tempo.Time, second: Int) -> Result(tempo.Time, Nil) {
+pub fn set_second(time: tempo.Time, second: Int) -> Result(
+  tempo.Time,
+  tempo.Error,
+) {
   case time {
     tempo.Time(h, m, _, _) -> new(h, m, second)
     tempo.TimeMilli(h, m, _, n) -> new_milli(h, m, second, n)
@@ -279,21 +291,30 @@ pub fn set_second(time: tempo.Time, second: Int) -> Result(tempo.Time, Nil) {
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_milli(time: tempo.Time, millisecond: Int) -> Result(tempo.Time, Nil) {
+pub fn set_milli(time: tempo.Time, millisecond: Int) -> Result(
+  tempo.Time,
+  tempo.Error,
+) {
   new_milli(time.hour, time.minute, time.second, millisecond)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_micro(time: tempo.Time, microsecond: Int) -> Result(tempo.Time, Nil) {
+pub fn set_micro(time: tempo.Time, microsecond: Int) -> Result(
+  tempo.Time,
+  tempo.Error,
+) {
   new_micro(time.hour, time.minute, time.second, microsecond)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_nano(time: tempo.Time, nanosecond: Int) -> Result(tempo.Time, Nil) {
+pub fn set_nano(time: tempo.Time, nanosecond: Int) -> Result(
+  tempo.Time,
+  tempo.Error,
+) {
   new_nano(time.hour, time.minute, time.second, nanosecond)
 }
 
@@ -424,15 +445,15 @@ pub fn to_string(time: tempo.Time) -> String {
 /// 
 /// ```gleam
 /// time.from_string("34:54:16")
-/// // -> Error(Nil)
+/// // -> Error(tempo.TimeOutOfBounds)
 /// ```
-pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
+pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
   use #(hour, minute, second): #(String, String, String) <- result.try(
     // Parse hh:mm:ss.s or hh:mm format
     case string.split(time, ":") {
       [hour, minute, second] -> Ok(#(hour, minute, second))
       [hour, minute] -> Ok(#(hour, minute, "0"))
-      _ -> Error(Nil)
+      _ -> Error(tempo.TimeInvalidFormat)
     }
     // Parse hhmmss.s or hhmm format
     |> result.try_recover(fn(_) {
@@ -455,7 +476,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
             string.slice(time, at_index: 2, length: 2),
             string.slice(time, at_index: 4, length: 12),
           ))
-        _, _ -> Error(Nil)
+        _, _ -> Error(tempo.TimeInvalidFormat)
       }
     }),
   )
@@ -471,7 +492,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
           {
             Ok(second), Ok(milli) ->
               Ok(tempo.TimeMilli(hour, minute, second, milli * 1_000_000))
-            _, _ -> Error(Nil)
+            _, _ -> Error(tempo.TimeInvalidFormat)
           }
         len if len <= 6 ->
           case
@@ -480,7 +501,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
           {
             Ok(second), Ok(micro) ->
               Ok(tempo.TimeMicro(hour, minute, second, micro * 1000))
-            _, _ -> Error(Nil)
+            _, _ -> Error(tempo.TimeInvalidFormat)
           }
         len if len <= 9 ->
           case
@@ -489,19 +510,19 @@ pub fn from_string(time: String) -> Result(tempo.Time, Nil) {
           {
             Ok(second), Ok(nano) ->
               Ok(tempo.TimeNano(hour, minute, second, nano))
-            _, _ -> Error(Nil)
+            _, _ -> Error(tempo.TimeInvalidFormat)
           }
-        _ -> Error(Nil)
+        _ -> Error(tempo.TimeInvalidFormat)
       }
     }
 
     Ok(hour), Ok(minute), _ ->
       case int.parse(second) {
         Ok(second) -> Ok(tempo.Time(hour, minute, second, 0))
-        _ -> Error(Nil)
+        _ -> Error(tempo.TimeInvalidFormat)
       }
 
-    _, _, _ -> Error(Nil)
+    _, _, _ -> Error(tempo.TimeInvalidFormat)
   }
   |> result.try(validate)
 }
@@ -575,6 +596,31 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Time {
   |> to_micro_precision
 }
 
+/// Gets the UTC time value of a unix timestamp in nanoseconds. If the local
+/// time is needed, use the 'datetime' module's 'to_local_time' function.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.from_unix_micro_utc(1_718_829_586_791_832)
+/// // -> time.literal("20:39:46.791832")
+/// ```
+/// 
+/// I am making this internal because it is created but I am not sure if it
+/// should be part of the public API. I think it is too easy to use incorrectly.
+/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// instead and get the time from there if they need it.
+@internal
+pub fn from_unix_nano_utc(unix_ts: Int) -> tempo.Time {
+  // Subtract the nanoseconds that are responsible for the date.
+  {
+    unix_ts
+    - { date.to_unix_micro_utc(date.from_unix_micro_utc(unix_ts / 1000)) }
+    * 1000
+  }
+  |> from_nanoseconds
+}
+
 /// Returns a time value as a tuple of hours, minutes, and seconds. Useful 
 /// for using with another time library.
 /// 
@@ -599,7 +645,7 @@ pub fn to_tuple(time: tempo.Time) -> #(Int, Int, Int) {
 /// |> time.from_tuple
 /// // -> time.literal("13:42:11")
 /// ```
-pub fn from_tuple(time: #(Int, Int, Int)) -> Result(tempo.Time, Nil) {
+pub fn from_tuple(time: #(Int, Int, Int)) -> Result(tempo.Time, tempo.Error) {
   new(time.0, time.1, time.2)
 }
 
@@ -630,7 +676,7 @@ pub fn to_tuple_nanosecond(time: tempo.Time) -> #(Int, Int, Int, Int) {
 /// ```
 pub fn from_tuple_nanosecond(
   time: #(Int, Int, Int, Int),
-) -> Result(tempo.Time, Nil) {
+) -> Result(tempo.Time, tempo.Error) {
   new_nano(time.0, time.1, time.2, time.3)
 }
 

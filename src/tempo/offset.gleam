@@ -10,7 +10,7 @@ pub fn local() -> tempo.Offset {
 
 pub const utc = tempo.Offset(0)
 
-pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, Nil) {
+pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, tempo.Error) {
   tempo.Offset(minutes) |> validate
 }
 
@@ -19,15 +19,17 @@ pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, Nil) {
 pub fn literal(offset: String) -> tempo.Offset {
   case from_string(offset) {
     Ok(offset) -> offset
-    Error(Nil) -> panic as "Invalid offset literal"
+    Error(tempo.OffsetInvalidFormat) -> panic as "Invalid offset literal format"
+    Error(tempo.OffsetOutOfBounds) -> panic as "Invalid offset literal value"
+    Error(_) -> panic as "Invalid offset literal"
   }
 }
 
-fn validate(offset: tempo.Offset) -> Result(tempo.Offset, Nil) {
+fn validate(offset: tempo.Offset) -> Result(tempo.Offset, tempo.Error) {
   // Valid time offsets are between -12:00 and +14:00
   case offset.minutes >= -720 && offset.minutes <= 840 {
     True -> Ok(offset)
-    False -> Error(Nil)
+    False -> Error(tempo.OffsetOutOfBounds)
   }
 }
 
@@ -64,17 +66,17 @@ pub fn to_string(offset: tempo.Offset) -> String {
   }
 }
 
-pub fn from_string(offset: String) -> Result(tempo.Offset, Nil) {
-  // Parse Z format
+pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
   case offset {
+    // Parse Z format
     "Z" -> Ok(tempo.Offset(0))
     "z" -> Ok(tempo.Offset(0))
-    _ -> Error(Nil)
-  }
-  |> result.try_recover(fn(_) {
-    use #(sign, hour, minute): #(String, String, String) <- result.try(
-      // Parse +-hh:mm format
-      case string.split(offset, ":") {
+
+    // Parse +-hh:mm format
+    _ -> {
+      use #(sign, hour, minute): #(String, String, String) <- result.try(case
+        string.split(offset, ":")
+      {
         [hour, minute] ->
           case string.length(hour), string.length(minute) {
             3, 2 ->
@@ -83,7 +85,7 @@ pub fn from_string(offset: String) -> Result(tempo.Offset, Nil) {
                 string.slice(hour, at_index: 1, length: 2),
                 minute,
               ))
-            _, _ -> Error(Nil)
+            _, _ -> Error(tempo.OffsetInvalidFormat)
           }
         _ ->
           // Parse +-hhmm format or +-hh format
@@ -100,20 +102,20 @@ pub fn from_string(offset: String) -> Result(tempo.Offset, Nil) {
                 string.slice(offset, at_index: 1, length: 2),
                 "0",
               ))
-            _ -> Error(Nil)
+            _ -> Error(tempo.OffsetInvalidFormat)
           }
-      },
-    )
+      })
 
-    case sign, int.parse(hour), int.parse(minute) {
-      _, Ok(0), Ok(0) -> Ok(tempo.Offset(0))
-      "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-        Ok(tempo.Offset(-{ hour * 60 + minute }))
-      "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-        Ok(tempo.Offset(hour * 60 + minute))
-      _, _, _ -> Error(Nil)
+      case sign, int.parse(hour), int.parse(minute) {
+        _, Ok(0), Ok(0) -> Ok(tempo.Offset(0))
+        "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
+          Ok(tempo.Offset(-{ hour * 60 + minute }))
+        "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
+          Ok(tempo.Offset(hour * 60 + minute))
+        _, _, _ -> Error(tempo.OffsetInvalidFormat)
+      }
     }
-  })
+  }
   |> result.try(validate)
 }
 

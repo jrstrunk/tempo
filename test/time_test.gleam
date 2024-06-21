@@ -774,6 +774,12 @@ pub fn from_unix_micro_utc_large_test() {
   |> should.equal("20:39:46.791832")
 }
 
+pub fn from_unix_nano_utc_large_test() {
+  time.from_unix_nano_utc(1_718_829_586_791_832_352)
+  |> time.to_string
+  |> should.equal("20:39:46.791832352")
+}
+
 pub fn small_time_left_in_day_test() {
   time.literal("23:59:03")
   |> time.left_in_day

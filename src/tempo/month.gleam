@@ -74,7 +74,7 @@ pub fn to_long_string(month: tempo.Month) -> String {
 /// month.from_string("Hello")
 /// // -> Error(Nil)
 /// ```
-pub fn from_string(month: String) -> Result(tempo.Month, Nil) {
+pub fn from_string(month: String) -> Result(tempo.Month, tempo.Error) {
   from_short_string(month)
   |> result.try_recover(fn(_) { from_long_string(month) })
 }
@@ -92,7 +92,7 @@ pub fn from_string(month: String) -> Result(tempo.Month, Nil) {
 /// month.from_short_string("June")
 /// // -> Error(Nil)
 /// ```
-pub fn from_short_string(month: String) -> Result(tempo.Month, Nil) {
+pub fn from_short_string(month: String) -> Result(tempo.Month, tempo.Error) {
   case month {
     "Jan" -> Ok(tempo.Jan)
     "Feb" -> Ok(tempo.Feb)
@@ -106,7 +106,7 @@ pub fn from_short_string(month: String) -> Result(tempo.Month, Nil) {
     "Oct" -> Ok(tempo.Oct)
     "Nov" -> Ok(tempo.Nov)
     "Dec" -> Ok(tempo.Dec)
-    _ -> Error(Nil)
+    _ -> Error(tempo.MonthInvalidFormat)
   }
 }
 
@@ -123,7 +123,7 @@ pub fn from_short_string(month: String) -> Result(tempo.Month, Nil) {
 /// month.from_long_string("Jun")
 /// // -> Error(Nil)
 /// ```
-pub fn from_long_string(month: String) -> Result(tempo.Month, Nil) {
+pub fn from_long_string(month: String) -> Result(tempo.Month, tempo.Error) {
   case month {
     "January" -> Ok(tempo.Jan)
     "February" -> Ok(tempo.Feb)
@@ -137,7 +137,7 @@ pub fn from_long_string(month: String) -> Result(tempo.Month, Nil) {
     "October" -> Ok(tempo.Oct)
     "November" -> Ok(tempo.Nov)
     "December" -> Ok(tempo.Dec)
-    _ -> Error(Nil)
+    _ -> Error(tempo.MonthInvalidFormat)
   }
 }
 
@@ -182,7 +182,7 @@ pub fn to_int(month: tempo.Month) -> Int {
 /// month.from_int(13)
 /// // -> Error(Nil)
 /// ```
-pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
+pub fn from_int(month: Int) -> Result(tempo.Month, tempo.Error) {
   case month {
     1 -> Ok(tempo.Jan)
     2 -> Ok(tempo.Feb)
@@ -196,7 +196,7 @@ pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
     10 -> Ok(tempo.Oct)
     11 -> Ok(tempo.Nov)
     12 -> Ok(tempo.Dec)
-    _ -> Error(Nil)
+    _ -> Error(tempo.MonthOutOfBounds)
   }
 }
 

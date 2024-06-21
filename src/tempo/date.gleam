@@ -31,13 +31,13 @@ pub type DayOfWeek {
 /// 
 /// ```gleam
 /// date.new(2024, 6, 31)
-/// // -> Error(Nil)
+/// // -> Error(tempo.DateOutOfBounds)
 /// ```
 pub fn new(
   year year: Int,
   month month: Int,
   day day: Int,
-) -> Result(tempo.Date, Nil) {
+) -> Result(tempo.Date, tempo.Error) {
   from_tuple(#(year, month, day))
 }
 
@@ -70,7 +70,9 @@ pub fn new(
 pub fn literal(date: String) -> tempo.Date {
   case from_string(date) {
     Ok(date) -> date
-    Error(Nil) -> panic as "Invalid date literal"
+    Error(tempo.DateInvalidFormat) -> panic as "Invalid date literal format"
+    Error(tempo.DateOutOfBounds) -> panic as "Invalid date literal value"
+    Error(_) -> panic as "Invalid date literal"
   }
 }
 
@@ -115,10 +117,28 @@ pub fn get_year(date: tempo.Date) -> Int {
   date.year
 }
 
+/// Gets the month value of a date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month
+/// // -> tempo.Jun
+/// ```
 pub fn get_month(date: tempo.Date) -> tempo.Month {
   date.month
 }
 
+/// Gets the day value of a date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_day
+/// // -> 13
+/// ```
 pub fn get_day(date: tempo.Date) -> Int {
   date.day
 }
@@ -141,9 +161,9 @@ pub fn get_day(date: tempo.Date) -> Int {
 /// 
 /// ```gleam
 /// date.from_string("2409")
-/// // -> Error(Nil)
+/// // -> Error(tempo.DateInvalidFormat)
 /// ```
-pub fn from_string(date: String) -> Result(tempo.Date, Nil) {
+pub fn from_string(date: String) -> Result(tempo.Date, tempo.Error) {
   split_int_tuple(date, "-")
   |> result.try_recover(fn(_) { split_int_tuple(date, on: "/") })
   |> result.try_recover(fn(_) { split_int_tuple(date, on: ".") })
@@ -156,7 +176,7 @@ pub fn from_string(date: String) -> Result(tempo.Date, Nil) {
 
     case year, month, day {
       Ok(year), Ok(month), Ok(day) -> Ok(#(year, month, day))
-      _, _, _ -> Error(Nil)
+      _, _, _ -> Error(tempo.DateInvalidFormat)
     }
   })
   |> result.try(from_tuple)
@@ -165,7 +185,7 @@ pub fn from_string(date: String) -> Result(tempo.Date, Nil) {
 fn split_int_tuple(
   date: String,
   on delim: String,
-) -> Result(#(Int, Int, Int), Nil) {
+) -> Result(#(Int, Int, Int), tempo.Error) {
   string.split(date, delim)
   |> list.map(int.parse)
   |> result.all()
@@ -175,6 +195,7 @@ fn split_int_tuple(
       _ -> Error(Nil)
     }
   })
+  |> result.replace_error(tempo.DateInvalidFormat)
 }
 
 /// Returns a string representation of a date value in the format `YYYY-MM-DD`.
@@ -214,9 +235,9 @@ pub fn to_string(date: tempo.Date) -> String {
 /// 
 /// ```gleam
 /// date.from_tuple(#(98, 6, 13))
-/// // -> Error(Nil)
+/// // -> Error(tempo.DateOutOfBounds)
 /// ```
-pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, Nil) {
+pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, tempo.Error) {
   let year = date.0
   let month = date.1
   let day = date.2
@@ -227,9 +248,9 @@ pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, Nil) {
     True ->
       case day >= 1 && day <= month.days(of: month, in: year) {
         True -> Ok(tempo.Date(year, month, day))
-        False -> Error(Nil)
+        False -> Error(tempo.DateOutOfBounds)
       }
-    False -> Error(Nil)
+    False -> Error(tempo.DateOutOfBounds)
   }
 }
 

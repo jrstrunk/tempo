@@ -5,6 +5,21 @@ pub fn main() {
   io.debug(now_utc())
 }
 
+pub type Error {
+  TimeInvalidFormat
+  TimeOutOfBounds
+  DateInvalidFormat
+  DateOutOfBounds
+  MonthInvalidFormat
+  MonthOutOfBounds
+  OffsetInvalidFormat
+  OffsetOutOfBounds
+  NaiveDateTimeInvalidFormat
+  NaiveDateTimeOutOfBounds
+  DateTimeInvalidFormat
+  DateTimeOutOfBounds
+}
+
 pub type NaiveDateTime {
   NaiveDateTime(date: Date, time: Time)
 }

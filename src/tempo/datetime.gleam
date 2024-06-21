@@ -23,13 +23,66 @@ pub fn new(
 pub fn literal(datetime: String) -> tempo.DateTime {
   case from_string(datetime) {
     Ok(datetime) -> datetime
-    Error(Nil) -> panic as "Invalid datetime literal"
+    Error(tempo.DateTimeInvalidFormat) ->
+      panic as "Invalid datetime literal format"
+    Error(tempo.DateTimeOutOfBounds) ->
+      panic as "Invalid datetime literal value"
+    Error(_) -> panic as "Invalid datetime literal"
   }
 }
 
-/// Accepts datetimes in the formats `YYYY-MM-DDThh:mm:ss.sTZD`,
-/// `YYYYMMDDThhmmss.sTZD`, `YYYY-MM-DD`, or `YYYYMMDD`.
-pub fn from_string(datetime: String) -> Result(tempo.DateTime, Nil) {
+/// Gets the current local datetime of the host.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.now()
+/// |> datetime.to_string
+/// // -> "2024-06-14T:04:19:20.006809349-04:00"
+/// ```
+pub fn now_local() -> tempo.DateTime {
+  // This should always be precise because it is the current time.
+  case now_utc() |> to_local {
+    tempo.Precise(datetime) -> datetime
+    tempo.Imprecise(datetime) -> datetime
+  }
+}
+
+/// Gets the current UTC datetime of the host.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.now_utc()
+/// |> datetime.to_string
+/// // -> "2024-06-14T:08:19:20.006809349Z"
+/// ```
+pub fn now_utc() -> tempo.DateTime {
+  let now_ts_nano = tempo.now_utc()
+
+  new(
+    date.from_unix_utc(now_ts_nano / 1_000_000_000),
+    time.from_unix_nano_utc(now_ts_nano),
+    offset.utc,
+  )
+}
+
+pub fn now_str() -> String {
+  now_local() |> to_string
+}
+
+/// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
+/// `YYYYMMDDThhmmss.sTZD`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
+/// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, 
+/// `YYYY MM DD`, `YYYY M D`, or `YYYYMMDD`.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.from_string("20240613T230400.009+00:00")
+/// // -> datetime.literal("2024-06-13T23:04:00.009Z")
+/// ```
+pub fn from_string(datetime: String) -> Result(tempo.DateTime, tempo.Error) {
   case string.split(datetime, "T") {
     [date, time] -> {
       use date: tempo.Date <- result.try(date.from_string(date))
@@ -48,7 +101,7 @@ pub fn from_string(datetime: String) -> Result(tempo.DateTime, Nil) {
       date.from_string(date)
       |> result.map(new(_, tempo.Time(0, 0, 0, 0), offset.utc))
 
-    _ -> Error(Nil)
+    _ -> Error(tempo.DateTimeInvalidFormat) 
   }
 }
 
@@ -66,7 +119,7 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.DateTime {
 
 fn split_time_and_offset(
   time_with_offset: String,
-) -> Result(#(String, String), Nil) {
+) -> Result(#(String, String), tempo.Error) {
   case string.slice(time_with_offset, at_index: -1, length: 1) {
     "Z" -> #(string.drop_right(time_with_offset, 1), "Z") |> Ok
     "z" -> #(string.drop_right(time_with_offset, 1), "Z") |> Ok
@@ -76,7 +129,7 @@ fn split_time_and_offset(
         _ ->
           case string.split(time_with_offset, "+") {
             [time, offset] -> #(time, "+" <> offset) |> Ok
-            _ -> Error(Nil)
+            _ -> Error(tempo.DateTimeInvalidFormat)
           }
       }
   }
