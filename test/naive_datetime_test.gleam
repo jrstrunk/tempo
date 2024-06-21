@@ -165,19 +165,19 @@ pub fn compare_gt_time_test() {
 
 pub fn small_time_left_in_day_test() {
   naive_datetime.literal("2024-06-30T23:59:03")
-  |> naive_datetime.left_in_day_imprecise
+  |> naive_datetime.left_in_day
   |> should.equal(time.literal("00:00:57"))
 }
 
 /// Naive datetimes cannot account for leap seconds.
 pub fn small_time_left_in_day_leap_second_test() {
   naive_datetime.literal("2015-06-30T23:59:03")
-  |> naive_datetime.left_in_day_imprecise
+  |> naive_datetime.left_in_day
   |> should.equal(time.literal("00:00:57"))
 }
 
 pub fn large_time_left_in_day_test() {
   naive_datetime.literal("2024-06-18T08:05:20")
-  |> naive_datetime.left_in_day_imprecise
+  |> naive_datetime.left_in_day
   |> should.equal(time.literal("15:54:40"))
 }

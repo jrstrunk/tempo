@@ -9,10 +9,34 @@ import tempo/internal/unit
 import tempo/offset
 import tempo/time
 
+/// Creates a new naive datetime from a date and time value.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.new(
+///   date.literal("2024-06-12"), 
+///   time.literal("23:04:00.009"),
+/// )
+/// // -> naive_datetime.literal("2024-06-12T23:04:00.009")
+/// ```
 pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
   tempo.NaiveDateTime(date, time)
 }
 
+/// Creates a new naive datetime value from a string literal, but will panic 
+/// if the string is invalid.
+/// 
+/// Useful for declaring date literals that you know are valid within your  
+/// program.
+///
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:04:00.009")
+/// |> naive_datetime.to_string
+/// // -> "2024-06-12T23:04:00.009"
+/// ```
 pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
   case from_string(naive_datetime) {
     Ok(naive_datetime) -> naive_datetime
@@ -20,10 +44,21 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
   }
 }
 
-/// Accepts naive datetimes in the formats `YYYY-MM-DDThh:mm:ss.s`,
+/// Parses a naive datetime string in the format `YYYY-MM-DDThh:mm:ss.s`,
 /// `YYYY-MM-DD hh:mm:ss.s`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, 
 /// `YYYY MM DD`, `YYYY M D`, or `YYYYMMDD`.
+/// 
+/// ## Examples
+/// ```gleam
+/// naive_datetime.from_string("20240612")
+/// // -> Ok(naive_datetime.literal("2024-06-12T00:00:00.000000000"))
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.from_string("2024-06-12 23:17:00")
+/// // -> Ok(naive_datetime.literal("2024-06-12T23:17:00"))
+/// ```
 pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, Nil) {
   use _ <- result.try_recover(case string.split(datetime, "T") {
     [date, time] -> {
@@ -52,6 +87,16 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, Nil) {
   }
 }
 
+/// Returns a string representation of a naive datetime value in the ISO 8601
+/// format
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.to_string
+/// // -> "2024-06-12T23:17:00"
+/// ```
 pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
   datetime.date
   |> date.to_string
@@ -60,22 +105,70 @@ pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
   |> time.to_string
 }
 
-pub fn to_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
+/// Sets a naive datetime's offset to UTC, leaving the date and time unchanged
+/// while returning a datetime value. 
+/// Alias for `set_offset(naive_datetime, offset.utc)`.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.set_utc
+/// // -> datetime.literal("2024-06-12T23:17:00Z")
+/// ```
+pub fn set_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
   set_offset(datetime, offset.utc)
 }
 
+/// Gets the date of a naive datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.get_date
+/// // -> date.literal("2024-06-12")
+/// ```
 pub fn get_date(datetime: tempo.NaiveDateTime) -> tempo.Date {
   datetime.date
 }
 
+/// Gets the time of a naive datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.get_time
+/// // -> time.literal("23:17:00")
+/// ```
 pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
   datetime.time
 }
 
+/// Drops the time of a naive datetime, setting it to zero.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-13T23:17:00")
+/// |> naive_datetime.drop_time
+/// // -> datetime.literal("2024-06-13T00:00:00")
+/// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
   tempo.NaiveDateTime(datetime.date, tempo.Time(0, 0, 0, 0))
 }
 
+/// Sets a naive datetime's offset to the provided offset, leaving the date and
+/// time unchanged while returning a datetime value. 
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.set_offset(offset.literal("+10:00"))
+/// // -> datetime.literal("2024-06-12T23:17:00+10:00")
+/// ```
 pub fn set_offset(
   datetime: tempo.NaiveDateTime,
   offset: tempo.Offset,
@@ -83,6 +176,21 @@ pub fn set_offset(
   tempo.DateTime(naive: datetime, offset: offset)
 }
 
+/// Compares two naive datetimes.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-12T23:17:00"))
+/// // -> order.Eq
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2023-05-11T13:15:00")
+/// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-12T23:17:00"))
+/// // -> order.Lt
+/// ```
 pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
   case date.compare(a.date, b.date) {
     order.Eq -> time.compare(a.time, b.time)
@@ -90,10 +198,50 @@ pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
   }
 }
 
+/// Checks if the first naive datetime is earlier than the second naive 
+/// datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.is_earlier(
+///   than: naive_datetime.literal("2024-06-12T23:17:00"),
+/// )
+/// // -> False
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2013-06-12T23:17:00")
+/// |> naive_datetime.is_earlier(
+///   than: naive_datetime.literal("2024-06-12T23:17:00"),
+/// )
+/// // -> True
+/// ```
 pub fn is_earlier(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
   compare(a, b) == order.Lt
 }
 
+/// Checks if the first naive datetime is earlier or equal to the second naive 
+/// datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-08-12T23:17:00")
+/// |> naive_datetime.is_earlier_or_equal(
+///   to: naive_datetime.literal("2024-06-12T00:00:00"),
+/// )
+/// // -> False
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.is_earlier_or_equal(
+///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+/// )
+/// // -> True
+/// ```
 pub fn is_earlier_or_equal(
   a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
@@ -101,14 +249,72 @@ pub fn is_earlier_or_equal(
   compare(a, b) == order.Lt || compare(a, b) == order.Eq
 }
 
+/// Checks if the first naive datetime is equal to the second naive datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.is_equal(
+///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+/// )
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.is_equal(
+///   to: naive_datetime.literal("2024-06-12T23:17:01"),
+/// )
+/// // -> False
+/// ```
 pub fn is_equal(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) -> Bool {
   compare(a, b) == order.Eq
 }
 
+/// Checks if the first naive datetime is later than the second naive datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.is_later(
+///   than: naive_datetime.literal("2024-06-12T23:17:00"),
+/// )
+/// // -> False
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.is_later(
+///   than: naive_datetime.literal("2022-04-12T00:00:00"),
+/// )
+/// // -> True
+/// ```
 pub fn is_later(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
   compare(a, b) == order.Gt
 }
 
+/// Checks if the first naive datetime is later or equal to the second naive 
+/// datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.is_later_or_equal(
+///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+/// )
+/// // -> True
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2022-04-12T00:00:00")
+/// |> naive_datetime.is_later_or_equal(
+///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+/// )
+/// // -> False
+/// ```
 pub fn is_later_or_equal(
   a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
@@ -116,6 +322,27 @@ pub fn is_later_or_equal(
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
+/// Returns the difference between two naive datetimes as a period between them. dates at 00:00:00 each.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.difference(
+///   from: naive_datetime.literal("2024-06-16T01:16:12"),
+/// )
+/// |> period.as_days
+/// // -> 3
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.difference(
+///   from: naive_datetime.literal("2024-06-16T01:18:12"),
+/// )
+/// |> period.format
+/// // -> "3 days, 2 hours, and 1 minute"
+/// ```
 pub fn difference(
   from a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
@@ -123,6 +350,27 @@ pub fn difference(
   to_period(a, b)
 }
 
+/// Creates a period between two naive datetimes.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.to_period(
+///   start: naive_datetime.literal("2024-06-12T23:17:00")
+///   end: naive_datetime.literal("2024-06-16T01:16:12"),
+/// )
+/// |> period.as_days
+/// // -> 3
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.to_period(
+///   start: naive_datetime.literal("2024-06-12T23:17:00"),
+///   end: naive_datetime.literal("2024-06-16T01:18:12"),
+/// )
+/// |> period.format
+/// // -> "3 days, 2 hours, and 1 minute"
+/// ```
 pub fn to_period(
   start start: tempo.NaiveDateTime,
   end end: tempo.NaiveDateTime,
@@ -135,7 +383,15 @@ pub fn to_period(
   tempo.Period(start, end)
 }
 
-/// Will not account for leap seconds, TODO needs to be addded
+/// Adds a duration to a naive datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.add(duration.minutes(3))
+/// // -> naive_datetime.literal("2024-06-12T23:20:00")
+/// ```
 pub fn add(
   datetime: tempo.NaiveDateTime,
   duration duration_to_add: tempo.Duration,
@@ -176,7 +432,15 @@ pub fn add(
   tempo.NaiveDateTime(new_date, new_time)
 }
 
-/// Will not account for leap seconds, TODO needs to be addded
+/// Subtracts a duration from a naive datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-12T23:17:00")
+/// |> naive_datetime.subtract(duration.days(3))
+/// // -> naive_datetime.literal("2024-06-09T23:17:00")
+/// ```
 pub fn subtract(
   datetime: tempo.NaiveDateTime,
   duration duration_to_subtract: tempo.Duration,
@@ -219,30 +483,22 @@ pub fn subtract(
 }
 
 /// Gets the time left in the day.
-/// Cannot account for leap seconds in a day because the leap second is 
-/// applied to a specific UTC time and a naive datetime does not know what
-/// it is in equivalent UTC time. If you want the time left in a specific 
-/// date (including leap seconds), use the `datetime` module instead.
 /// 
-/// ## Example
+/// Does **not** account for leap seconds like the rest of the package.
+/// 
+/// ## Examples
 ///
 /// ```gleam
-/// naive_datetime.literal("2024-06-30T23:59:03") 
-/// |> naive_datetime.left_in_day_imprecise
-/// // -> time.literal("00:00:57")
-/// ```
-///
-/// ```gleam
-/// naive_datetime.literal("2015-06-30T23:59:03") 
-/// |> naive_datetime.left_in_day_imprecise
+/// naive_datetime.literal("2015-06-30T23:59:03")
+/// |> naive_datetime.left_in_day
 /// // -> time.literal("00:00:57")
 /// ```
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-18T08:05:20")
-/// |> naive_datetime.left_in_day_imprecise
+/// |> naive_datetime.left_in_day
 /// // -> time.literal("15:54:40")
 /// ```
-pub fn left_in_day_imprecise(naive_datetime: tempo.NaiveDateTime) -> tempo.Time {
-  naive_datetime.time |> time.left_in_day_imprecise
+pub fn left_in_day(naive_datetime: tempo.NaiveDateTime) -> tempo.Time {
+  naive_datetime.time |> time.left_in_day
 }
