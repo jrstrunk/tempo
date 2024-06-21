@@ -15,8 +15,8 @@ This package is focused on ISO 8601 and Unix Timestamp time representations. Cur
 gleam add gtempo
 ```
 
-[![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gleam_tempo)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gleam_tempo/)
+[![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gtempo)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gtempo/)
 
 
 ```gleam
@@ -75,7 +75,7 @@ pub fn main() {
 // -> Phew, that only took 978 microseconds
 ```
 
-Further documentation can be found at <https://hexdocs.pm/gleam_tempo>.
+Further documentation can be found at <https://hexdocs.pm/gtempo>.
 
 ## Time Zone and Leap Second Considerations
 Both time zones and leap seconds require maintaining a manually updated database of location offsets and leap seconds. This burdens any application that uses them to keep their dependencies up to date and burdens the package by invalidating all previous versions when an update needs to be made.
