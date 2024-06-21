@@ -12,7 +12,7 @@ This package is focused on ISO 8601 and Unix Timestamp time representations. Cur
 
 ## Installation
 ```sh
-gleam add gleam_tempo
+gleam add gtempo
 ```
 
 [![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gleam_tempo)
