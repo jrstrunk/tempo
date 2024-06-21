@@ -559,7 +559,8 @@ pub fn from_big_duration_test() {
 
 pub fn add_time_test() {
   time.literal("13:42:11")
-  |> time.add(duration: duration.new(0, 3, 1))
+  |> time.add(duration: duration.minutes(3))
+  |> time.add(duration: duration.seconds(1))
   |> should.equal(time.test_literal(13, 45, 12))
 
   time.test_literal(13, 42, 2)
@@ -611,7 +612,8 @@ pub fn add_time_nano_test() {
 
 pub fn substract_time_test() {
   time.literal("13:42:11")
-  |> time.subtract(duration: duration.new(0, 3, 1))
+  |> time.subtract(duration: duration.minutes(3))
+  |> time.subtract(duration: duration.seconds(1))
   |> should.equal(time.test_literal(13, 39, 10))
 
   time.literal("13:42:02")

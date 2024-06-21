@@ -13,8 +13,6 @@ pub type Unit {
   Hour
   CalculatedYear(years: Int, nanoseconds: Int)
   CalculatedMonth(months: Int, nanoseconds: Int)
-  CalculatedWeek(weeks: Int, nanoseconds: Int)
-  CalculatedDay(days: Int, nanoseconds: Int)
   Minute
   Second
   Millisecond
@@ -71,7 +69,7 @@ pub fn format_as(
   <> decimal_formatted
   <> " "
   <> unit_to_string(unit)
-  <> case whole == "1" && decimal == 0.0 {
+  <> case { whole == "1" || whole == "-1" } && decimal == 0.0 {
     True -> ""
     False -> "s"
   }
@@ -124,10 +122,8 @@ pub fn unit_to_string(unit: Unit) -> String {
     CalculatedYear(_, _) -> "year"
     Month -> "~month"
     CalculatedMonth(_, _) -> "month"
-    Week -> "~week"
-    CalculatedWeek(_, _) -> "week"
-    Day -> "~day"
-    CalculatedDay(_, _) -> "day"
+    Week -> "week"
+    Day -> "day"
     Hour -> "hour"
     Minute -> "minute"
     Second -> "second"
@@ -146,8 +142,6 @@ pub fn in_nanoseconds(unit) {
     Day -> imprecise_day_nanoseconds
     CalculatedYear(_, nanoseconds: nanoseconds) -> nanoseconds
     CalculatedMonth(_, nanoseconds: nanoseconds) -> nanoseconds
-    CalculatedWeek(_, nanoseconds: nanoseconds) -> nanoseconds
-    CalculatedDay(_, nanoseconds: nanoseconds) -> nanoseconds
     Hour -> hour_nanoseconds
     Minute -> minute_nanoseconds
     Second -> second_nanoseconds
@@ -165,9 +159,7 @@ pub fn as_unit(nanoseconds: Int, unit: Unit) {
     Month -> as_months_imprecise(nanoseconds)
     CalculatedMonth(_, months: months) -> months
     Week -> as_weeks_imprecise(nanoseconds)
-    CalculatedWeek(_, weeks: weeks) -> weeks
     Day -> as_days_imprecise(nanoseconds)
-    CalculatedDay(_, days: days) -> days
     Hour -> as_hours(nanoseconds)
     Minute -> as_minutes(nanoseconds)
     Second -> as_seconds(nanoseconds)
@@ -185,9 +177,7 @@ pub fn as_unit_fractional(nanoseconds: Int, unit: Unit) {
     Month -> as_months_imprecise_fractional(nanoseconds)
     CalculatedMonth(_, months: months) -> months |> int.to_float
     Week -> as_weeks_imprecise_fractional(nanoseconds)
-    CalculatedWeek(_, weeks: weeks) -> weeks |> int.to_float
     Day -> as_days_fractional(nanoseconds)
-    CalculatedDay(_, days: days) -> days |> int.to_float
     Hour -> as_hours_fractional(nanoseconds)
     Minute -> as_minutes_fractional(nanoseconds)
     Second -> as_seconds_fractional(nanoseconds)

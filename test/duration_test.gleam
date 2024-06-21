@@ -20,6 +20,12 @@ pub fn format_single_test() {
   |> should.equal("1.0 minute")
 }
 
+pub fn format_negative_test() {
+  duration.minutes(-1)
+  |> duration.format_as(duration.Minute, decimals: 1)
+  |> should.equal("-1.0 minute")
+}
+
 pub fn format_more_than_1_test() {
   duration.hours(3)
   |> duration.format_as(duration.Hour, decimals: 2)
@@ -77,19 +83,19 @@ pub fn format_three_units_large_test() {
 pub fn format_years_test() {
   duration.nanoseconds(93_691_332_000_000_000)
   |> duration.format
-  |> should.equal("2 ~years, 50 ~weeks, 6 ~days, 9 hours, and 22 minutes")
+  |> should.equal("2 ~years, 50 weeks, 6 days, 9 hours, and 22 minutes")
 }
 
 pub fn format_weeks_test() {
   duration.nanoseconds(691_332_000_000_000)
   |> duration.format
-  |> should.equal("1 ~week, 1 ~day, 0 hours, and 2 minutes")
+  |> should.equal("1 week, 1 day, 0 hours, and 2 minutes")
 }
 
 pub fn format_days_test() {
   duration.nanoseconds(172_980_000_000_000)
   |> duration.format
-  |> should.equal("2 ~days, 0 hours, and 3 minutes")
+  |> should.equal("2 days, 0 hours, and 3 minutes")
 }
 
 pub fn format_hours_test() {
@@ -170,4 +176,20 @@ pub fn absolute_test() {
   duration.minutes(-7000)
   |> duration.absolute
   |> should.equal(duration.minutes(7000))
+}
+
+pub fn inverse_test() {
+  duration.days(3)
+  |> duration.inverse
+  |> duration.format_as(duration.Day, 0)
+  |> should.equal("-3 days")
+
+  duration.hours(-5)
+  |> duration.inverse
+  |> should.equal(duration.hours(5))
+
+  duration.minutes(-7000)
+  |> duration.inverse
+  |> duration.format_as(duration.Minute, 0)
+  |> should.equal("7000 minutes")
 }
