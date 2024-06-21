@@ -53,6 +53,38 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
   }
 }
 
+/// Gets the current local naive datetime of the host.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.now_local()
+/// |> naive_datetime.to_string
+/// // -> "2024-06-21T12:23:23.380956212"
+/// ```
+pub fn now_local() -> tempo.NaiveDateTime {
+  now_utc()
+  |> subtract(offset.to_duration(offset.local()))
+}
+
+/// Gets the current UTC naive datetime of the host.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.now_utc()
+/// |> naive_datetime.to_string
+/// // -> "2024-06-21T16:23:23.380413364"
+/// ```
+pub fn now_utc() -> tempo.NaiveDateTime {
+  let now_ts_nano = tempo.now_utc()
+
+  new(
+    date.from_unix_utc(now_ts_nano / 1_000_000_000),
+    time.from_unix_nano_utc(now_ts_nano),
+  )
+}
+
 /// Parses a naive datetime string in the format `YYYY-MM-DDThh:mm:ss.s`,
 /// `YYYY-MM-DD hh:mm:ss.s`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, 

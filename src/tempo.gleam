@@ -1,10 +1,3 @@
-import gleam/io
-
-pub fn main() {
-  io.println("Hello from tempo!")
-  io.debug(now_utc())
-}
-
 pub type Error {
   TimeInvalidFormat
   TimeOutOfBounds
