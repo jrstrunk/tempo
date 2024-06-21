@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/order
 import gleeunit
 import gleeunit/should
@@ -207,6 +208,13 @@ pub fn to_offset_different_sign_test() {
   |> should.equal("2024-06-12T06:47:00.000-01:00")
 }
 
+pub fn to_offset_large_different_sign_test() {
+  datetime.literal("2024-06-21T05:36:11.195-04:00")
+  |> datetime.to_offset(offset.literal("+10:00"))
+  |> datetime.to_string
+  |> should.equal("2024-06-21T19:36:11.195+10:00")
+}
+
 pub fn to_offset_negative_upper_day_boundary_test() {
   datetime.literal("2024-06-15T23:03:00.000-04:00")
   |> datetime.to_offset(offset.literal("-01:00"))
@@ -301,16 +309,46 @@ pub fn from_unix_epoch_utc_test() {
   |> should.equal("1970-01-01T00:00:00Z")
 }
 
+pub fn to_unix_epoch_utc_test() {
+  datetime.literal("1970-01-01T00:00:00Z")
+  |> datetime.to_unix_utc
+  |> should.equal(0)
+}
+
 pub fn from_unix_utc_time_test() {
   datetime.from_unix_utc(1_718_629_191)
   |> datetime.to_string
   |> should.equal("2024-06-17T12:59:51Z")
 }
 
+pub fn to_unix_utc_time_test() {
+  datetime.literal("2024-06-17T12:59:51Z")
+  |> datetime.to_unix_utc
+  |> should.equal(1_718_629_191)
+}
+
 pub fn from_unix_utc_time_milli_test() {
   datetime.from_unix_milli_utc(1_718_629_314_334)
   |> datetime.to_string
   |> should.equal("2024-06-17T13:01:54.334Z")
+}
+
+pub fn to_unix_utc_time_milli_test() {
+  datetime.literal("2024-06-17T13:01:54.334Z")
+  |> datetime.to_unix_milli_utc
+  |> should.equal(1_718_629_314_334)
+}
+
+pub fn from_unix_utc_time_micro_test() {
+  datetime.from_unix_micro_utc(1_718_629_314_334_734)
+  |> datetime.to_string
+  |> should.equal("2024-06-17T13:01:54.334734Z")
+}
+
+pub fn to_unix_utc_time_micro_test() {
+  datetime.literal("2024-06-17T13:01:54.334734Z")
+  |> datetime.to_unix_micro_utc
+  |> should.equal(1_718_629_314_334_734)
 }
 
 pub fn apply_offset_utc_test() {
@@ -332,4 +370,39 @@ pub fn apply_positive_offset_test() {
   |> datetime.apply_offset
   |> naive_datetime.to_string
   |> should.equal("2024-06-17T08:00:54.334")
+}
+
+pub fn now_test() {
+  datetime.now_local()
+  datetime.now_utc()
+  datetime.now_text()
+  // Just should not crash or anything, not really muct to validate
+}
+
+pub fn to_second_precision_test() {
+  datetime.literal("2024-06-13T13:42:11.195423Z")
+  |> datetime.to_second_precision
+  |> datetime.to_string
+  |> should.equal("2024-06-13T13:42:11Z")
+}
+
+pub fn to_milli_precision_test() {
+  datetime.literal("2024-06-13T13:42:11.195423Z")
+  |> datetime.to_milli_precision
+  |> datetime.to_string
+  |> should.equal("2024-06-13T13:42:11.195Z")
+}
+
+pub fn to_micro_precision_test() {
+  datetime.literal("2024-06-13T13:42:11.195423534Z")
+  |> datetime.to_micro_precision
+  |> datetime.to_string
+  |> should.equal("2024-06-13T13:42:11.195423Z")
+}
+
+pub fn to_nano_precision_test() {
+  datetime.literal("2024-06-13T13:42:11.195Z")
+  |> datetime.to_nano_precision
+  |> datetime.to_string
+  |> should.equal("2024-06-13T13:42:11.195000000Z")
 }

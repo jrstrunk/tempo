@@ -405,7 +405,7 @@ pub fn is_later_or_equal(
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
-/// Returns the difference between two naive datetimes as a period between them. dates at 00:00:00 each.
+/// Returns the difference between two naive datetimes as a period between them.
 /// 
 /// ## Examples
 /// 
@@ -573,15 +573,15 @@ pub fn subtract(
 ///
 /// ```gleam
 /// naive_datetime.literal("2015-06-30T23:59:03")
-/// |> naive_datetime.left_in_day
+/// |> naive_datetime.time_left_in_day
 /// // -> time.literal("00:00:57")
 /// ```
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-18T08:05:20")
-/// |> naive_datetime.left_in_day
+/// |> naive_datetime.time_left_in_day
 /// // -> time.literal("15:54:40")
 /// ```
-pub fn left_in_day(naive_datetime: tempo.NaiveDateTime) -> tempo.Time {
+pub fn time_left_in_day(naive_datetime: tempo.NaiveDateTime) -> tempo.Time {
   naive_datetime.time |> time.left_in_day
 }
