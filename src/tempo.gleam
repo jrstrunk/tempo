@@ -78,6 +78,20 @@ pub type Month {
 
 pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
 
+pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {
+  case conv {
+    Precise(a) -> a
+    Imprecise(a) -> a
+  }
+}
+
+pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
+  case conv {
+    Precise(a) -> Ok(a)
+    Imprecise(_) -> Error(Nil)
+  }
+}
+
 @external(erlang, "tempo_ffi", "now")
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal
