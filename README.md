@@ -31,14 +31,16 @@ import tempo/time
 pub fn main() {
   io.println(datetime.now_text() <> " booting up!")
 
+  let target_time = time.literal("07:50:00")
+
   let timer = duration.start()
 
-  case time.now_local() |> time.is_later(than: time.literal("07:50:00")) {
+  case time.now_local() |> time.is_later(than: target_time) {
     True -> {
       io.println(
         "Oh no! We are late by "
         <> time.now_local() 
-        |> time.difference(from: time.literal("07:50:00"))
+        |> time.difference(from: target_time)
         |> duration.as_minutes
         |> int.to_string
         <> " minutes! This should take until "
