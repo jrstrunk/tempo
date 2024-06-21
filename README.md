@@ -40,8 +40,8 @@ pub fn main() {
         <> time.now_utc() 
         |> time.add(duration.minutes(16)) 
         |> time.to_milli_precision
-        |> time.to_string,
-        <> " UTC"
+        |> time.to_string
+        <> " UTC",
       )
 
       run_rushed_task(for: date.current_local())
