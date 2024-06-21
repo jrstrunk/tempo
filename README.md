@@ -10,6 +10,11 @@ This package purposefully **ignores leap seconds** and **will not convert betwee
 
 This package is focused on ISO 8601 and Unix Timestamp time representations. Currently it does not support parsing or formatting to other time representations.
 
+## Installation
+```sh
+gleam add gleam_tempo
+```
+
 [![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gleam_tempo)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gleam_tempo/)
 
@@ -69,11 +74,6 @@ pub fn main() {
 ```
 
 Further documentation can be found at <https://hexdocs.pm/gleam_tempo>.
-
-## Installation
-```sh
-gleam add gleam_tempo
-```
 
 ## Time Zone and Leap Second Considerations
 Both time zones and leap seconds require maintaining a manually updated database of location offsets and leap seconds. This burdens any application that uses them to keep their dependencies up to date and burdens the package by invalidating all previous versions when an update needs to be made.
