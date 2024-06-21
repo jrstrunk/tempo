@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/order
 import gleeunit
 import gleeunit/should
@@ -155,23 +154,23 @@ pub fn subtract_negative_time_day_boundary_test() {
 }
 
 pub fn to_utc_from_utc_test() {
-  datetime.literal("2024-06-12T03:47:00.000Z")
+  datetime.literal("2024-06-21T03:47:00.000Z")
   |> datetime.to_string
-  |> should.equal("2024-06-12T03:47:00.000Z")
+  |> should.equal("2024-06-21T03:47:00.000Z")
 }
 
 pub fn to_utc_negative_offset_test() {
-  datetime.literal("2024-06-12T03:47:00.000-04:00")
+  datetime.literal("2024-06-21T03:47:00.000-04:00")
   |> datetime.to_utc
   |> datetime.to_string
-  |> should.equal("2024-06-12T07:47:00.000Z")
+  |> should.equal("2024-06-21T07:47:00.000Z")
 }
 
 pub fn to_utc_positive_offset_test() {
-  datetime.literal("2024-06-12T08:52:00.000+05:05")
+  datetime.literal("2024-06-21T08:52:00.000+05:05")
   |> datetime.to_utc
   |> datetime.to_string
-  |> should.equal("2024-06-12T03:47:00.000Z")
+  |> should.equal("2024-06-21T03:47:00.000Z")
 }
 
 pub fn to_utc_negative_day_boundary_test() {
@@ -189,23 +188,23 @@ pub fn to_utc_positive_day_boundary_test() {
 }
 
 pub fn to_local_test() {
-  datetime.literal("2024-06-12T03:47:00.000Z")
+  datetime.literal("2024-06-21T03:47:00.000Z")
   |> datetime.to_local_time
   // Just should not crash or anything, not really muct to validate
 }
 
 pub fn to_offset_test() {
-  datetime.literal("2024-06-12T03:47:00.000-04:00")
+  datetime.literal("2024-06-21T03:47:00.000-04:00")
   |> datetime.to_offset(offset.literal("-01:00"))
   |> datetime.to_string
-  |> should.equal("2024-06-12T06:47:00.000-01:00")
+  |> should.equal("2024-06-21T06:47:00.000-01:00")
 }
 
 pub fn to_offset_different_sign_test() {
-  datetime.literal("2024-06-12T12:47:00.000+05:00")
+  datetime.literal("2024-06-21T12:47:00.000+05:00")
   |> datetime.to_offset(offset.literal("-01:00"))
   |> datetime.to_string
-  |> should.equal("2024-06-12T06:47:00.000-01:00")
+  |> should.equal("2024-06-21T06:47:00.000-01:00")
 }
 
 pub fn to_offset_large_different_sign_test() {
@@ -244,14 +243,14 @@ pub fn to_offset_positive_upper_day_boundary_test() {
 }
 
 pub fn compare_eq_test() {
-  datetime.literal("2024-06-12T23:47:00+09:05")
-  |> datetime.compare(to: datetime.literal("2024-06-12T23:47:00+09:05"))
+  datetime.literal("2024-06-21T23:47:00+09:05")
+  |> datetime.compare(to: datetime.literal("2024-06-21T23:47:00+09:05"))
   |> should.equal(order.Eq)
 }
 
 pub fn compare_eq_different_offset_test() {
-  datetime.literal("2024-06-12T14:47:00+01:00")
-  |> datetime.compare(to: datetime.literal("2024-06-12T12:47:00-01:00"))
+  datetime.literal("2024-06-21T14:47:00+01:00")
+  |> datetime.compare(to: datetime.literal("2024-06-21T12:47:00-01:00"))
   |> should.equal(order.Eq)
 }
 
@@ -262,8 +261,8 @@ pub fn compare_lt_date_test() {
 }
 
 pub fn compare_lt_time_test() {
-  datetime.literal("2024-06-12T23:47:00.003Z")
-  |> datetime.compare(to: datetime.literal("2024-06-12T23:47:00.400Z"))
+  datetime.literal("2024-06-21T23:47:00.003Z")
+  |> datetime.compare(to: datetime.literal("2024-06-21T23:47:00.400Z"))
   |> should.equal(order.Lt)
 }
 
@@ -274,8 +273,8 @@ pub fn compare_lt_date_different_offset_test() {
 }
 
 pub fn compare_lt_time_different_offset_test() {
-  datetime.literal("2024-06-12T03:47:00.003+10:00")
-  |> datetime.compare(to: datetime.literal("2024-06-12T23:47:00.400+08:50"))
+  datetime.literal("2024-06-21T03:47:00.003+10:00")
+  |> datetime.compare(to: datetime.literal("2024-06-21T23:47:00.400+08:50"))
   |> should.equal(order.Lt)
 }
 
@@ -286,8 +285,8 @@ pub fn compare_gt_date_test() {
 }
 
 pub fn compare_gt_time_test() {
-  datetime.literal("2024-06-12T23:47:00.003Z")
-  |> datetime.compare(to: datetime.literal("2024-06-12T13:47:00.400Z"))
+  datetime.literal("2024-06-21T23:47:00.003Z")
+  |> datetime.compare(to: datetime.literal("2024-06-21T13:47:00.400Z"))
   |> should.equal(order.Gt)
 }
 
@@ -298,8 +297,8 @@ pub fn compare_gt_date_different_offset_test() {
 }
 
 pub fn compare_gt_time_different_offset_test() {
-  datetime.literal("2024-06-12T23:47:00.003-02:00")
-  |> datetime.compare(to: datetime.literal("2024-06-12T23:47:00.400Z"))
+  datetime.literal("2024-06-21T23:47:00.003-02:00")
+  |> datetime.compare(to: datetime.literal("2024-06-21T23:47:00.400Z"))
   |> should.equal(order.Gt)
 }
 

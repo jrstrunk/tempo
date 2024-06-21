@@ -130,8 +130,8 @@ pub fn subtract_negative_time_day_boundary_test() {
 }
 
 pub fn compare_eq_test() {
-  naive_datetime.literal("2024-06-12T23:47:00")
-  |> naive_datetime.compare(to: naive_datetime.literal("2024-06-12T23:47:00"))
+  naive_datetime.literal("2024-06-21T23:47:00")
+  |> naive_datetime.compare(to: naive_datetime.literal("2024-06-21T23:47:00"))
   |> should.equal(order.Eq)
 }
 
@@ -142,9 +142,9 @@ pub fn compare_lt_date_test() {
 }
 
 pub fn compare_lt_time_test() {
-  naive_datetime.literal("2024-06-12T23:47:00.003")
+  naive_datetime.literal("2024-06-21T23:47:00.003")
   |> naive_datetime.compare(to: naive_datetime.literal(
-    "2024-06-12T23:47:00.400",
+    "2024-06-21T23:47:00.400",
   ))
   |> should.equal(order.Lt)
 }
@@ -156,9 +156,9 @@ pub fn compare_gt_date_test() {
 }
 
 pub fn compare_gt_time_test() {
-  naive_datetime.literal("2024-06-12T23:47:00.003")
+  naive_datetime.literal("2024-06-21T23:47:00.003")
   |> naive_datetime.compare(to: naive_datetime.literal(
-    "2024-06-12T13:47:00.400",
+    "2024-06-21T13:47:00.400",
   ))
   |> should.equal(order.Gt)
 }

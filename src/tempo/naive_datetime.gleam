@@ -15,10 +15,10 @@ import tempo/time
 /// 
 /// ```gleam
 /// naive_datetime.new(
-///   date.literal("2024-06-12"), 
+///   date.literal("2024-06-21"), 
 ///   time.literal("23:04:00.009"),
 /// )
-/// // -> naive_datetime.literal("2024-06-12T23:04:00.009")
+/// // -> naive_datetime.literal("2024-06-21T23:04:00.009")
 /// ```
 pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
   tempo.NaiveDateTime(date, time)
@@ -33,13 +33,13 @@ pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:04:00.009")
+/// naive_datetime.literal("2024-06-21T23:04:00.009")
 /// |> naive_datetime.to_string
-/// // -> "2024-06-12T23:04:00.009"
+/// // -> "2024-06-21T23:04:00.009"
 /// ```
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:04:00.009-04:00")
+/// naive_datetime.literal("2024-06-21T23:04:00.009-04:00")
 /// // panic
 /// ```
 pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
@@ -65,8 +65,8 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
 /// ```
 /// 
 /// ```gleam
-/// naive_datetime.from_string("2024-06-12 23:17:00")
-/// // -> Ok(naive_datetime.literal("2024-06-12T23:17:00"))
+/// naive_datetime.from_string("2024-06-21 23:17:00")
+/// // -> Ok(naive_datetime.literal("2024-06-21T23:17:00"))
 /// ```
 /// 
 /// ```gleam
@@ -108,9 +108,9 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error)
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.to_string
-/// // -> "2024-06-12T23:17:00"
+/// // -> "2024-06-21T23:17:00"
 /// ```
 pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
   datetime.date
@@ -127,9 +127,9 @@ pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.set_utc
-/// // -> datetime.literal("2024-06-12T23:17:00Z")
+/// // -> datetime.literal("2024-06-21T23:17:00Z")
 /// ```
 pub fn set_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
   set_offset(datetime, offset.utc)
@@ -140,9 +140,9 @@ pub fn set_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.get_date
-/// // -> date.literal("2024-06-12")
+/// // -> date.literal("2024-06-21")
 /// ```
 pub fn get_date(datetime: tempo.NaiveDateTime) -> tempo.Date {
   datetime.date
@@ -153,7 +153,7 @@ pub fn get_date(datetime: tempo.NaiveDateTime) -> tempo.Date {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.get_time
 /// // -> time.literal("23:17:00")
 /// ```
@@ -180,9 +180,9 @@ pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.set_offset(offset.literal("+10:00"))
-/// // -> datetime.literal("2024-06-12T23:17:00+10:00")
+/// // -> datetime.literal("2024-06-21T23:17:00+10:00")
 /// ```
 pub fn set_offset(
   datetime: tempo.NaiveDateTime,
@@ -264,14 +264,14 @@ pub fn to_nano_precision(
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
-/// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-12T23:17:00"))
+/// naive_datetime.literal("2024-06-21T23:17:00")
+/// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-21T23:17:00"))
 /// // -> order.Eq
 /// ```
 /// 
 /// ```gleam
 /// naive_datetime.literal("2023-05-11T13:15:00")
-/// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-12T23:17:00"))
+/// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-21T23:17:00"))
 /// // -> order.Lt
 /// ```
 pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
@@ -287,9 +287,9 @@ pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_earlier(
-///   than: naive_datetime.literal("2024-06-12T23:17:00"),
+///   than: naive_datetime.literal("2024-06-21T23:17:00"),
 /// )
 /// // -> False
 /// ```
@@ -319,9 +319,9 @@ pub fn is_earlier(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
 /// ```
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_earlier_or_equal(
-///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+///   to: naive_datetime.literal("2024-06-21T23:17:00"),
 /// )
 /// // -> True
 /// ```
@@ -337,17 +337,17 @@ pub fn is_earlier_or_equal(
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_equal(
-///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+///   to: naive_datetime.literal("2024-06-21T23:17:00"),
 /// )
 /// // -> True
 /// ```
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_equal(
-///   to: naive_datetime.literal("2024-06-12T23:17:01"),
+///   to: naive_datetime.literal("2024-06-21T23:17:01"),
 /// )
 /// // -> False
 /// ```
@@ -360,15 +360,15 @@ pub fn is_equal(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) -> Bool {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_later(
-///   than: naive_datetime.literal("2024-06-12T23:17:00"),
+///   than: naive_datetime.literal("2024-06-21T23:17:00"),
 /// )
 /// // -> False
 /// ```
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_later(
 ///   than: naive_datetime.literal("2022-04-12T00:00:00"),
 /// )
@@ -384,9 +384,9 @@ pub fn is_later(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_later_or_equal(
-///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+///   to: naive_datetime.literal("2024-06-21T23:17:00"),
 /// )
 /// // -> True
 /// ```
@@ -394,7 +394,7 @@ pub fn is_later(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
 /// ```gleam
 /// naive_datetime.literal("2022-04-12T00:00:00")
 /// |> naive_datetime.is_later_or_equal(
-///   to: naive_datetime.literal("2024-06-12T23:17:00"),
+///   to: naive_datetime.literal("2024-06-21T23:17:00"),
 /// )
 /// // -> False
 /// ```
@@ -471,9 +471,9 @@ pub fn to_period(
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
+/// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.add(duration.minutes(3))
-/// // -> naive_datetime.literal("2024-06-12T23:20:00")
+/// // -> naive_datetime.literal("2024-06-21T23:20:00")
 /// ```
 pub fn add(
   datetime: tempo.NaiveDateTime,
