@@ -19,6 +19,7 @@ gleam add gtempo
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gtempo/)
 
 
+#### Time-Based Logical Branching and Logging Example
 ```gleam
 import gleam/int
 import gleam/io
@@ -73,6 +74,23 @@ pub fn main() {
 // -> 2024-06-21 08:06:54.279 booting up!
 // -> Oh no! We are late by 16 minutes! This should take until 12:22:54.301 UTC
 // -> Phew, that only took 978 microseconds
+```
+#### Waiting Until a Specific Time Example
+```gleam
+import gleam/erlang/process
+import tempo/duration
+import tempo/time
+
+pub fn main() {
+  // Sleep until 8:25 if we start before then.
+  time.now_local()
+  |> time.difference(from: time.literal("08:25:00"))
+  |> duration.as_milliseconds
+  |> process.sleep
+
+  // Now that it is 8:25, do what we need to do.
+  "Hello, world!"
+}
 ```
 
 Further documentation can be found at <https://hexdocs.pm/gtempo>.
