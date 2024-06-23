@@ -5,6 +5,7 @@ import gleam/string
 import gleam/string_builder
 import tempo
 import tempo/date
+import tempo/duration
 import tempo/internal/unit
 import tempo/offset
 
@@ -1107,5 +1108,57 @@ pub fn left_in_day(time: tempo.Time) -> tempo.Time {
     tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
     tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
     tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
+  }
+}
+
+/// Returns a duration representing the time left until a given time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("23:54:00")
+/// |> time.until(time.literal("23:59:04"))
+/// |> duration.as_seconds
+/// // -> 304
+/// ```
+/// 
+/// ```gleam
+/// time.literal("23:59:03")
+/// |> time.until(time.literal("22:00:00"))
+/// |> duration.as_milliseconds
+/// // -> 0
+/// ```
+pub fn until(time: tempo.Time, until: tempo.Time) -> tempo.Duration {
+  let dur = time |> difference(from: until) |> duration.inverse
+
+  case dur |> duration.is_negative {
+    True -> duration.nanoseconds(0)
+    False -> dur
+  }
+}
+
+/// Returns a duration representing the time since a given time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("23:54:00")
+/// |> time.since(time.literal("13:30:04"))
+/// |> duration.as_hours
+/// // -> 10
+/// ```
+/// 
+/// ```gleam
+/// time.literal("12:30:54")
+/// |> time.since(time.literal("22:00:00"))
+/// |> duration.as_milliseconds
+/// // -> 0
+/// ```
+pub fn since(time: tempo.Time, since: tempo.Time) -> tempo.Duration {
+  let dur = time |> difference(from: since)
+
+  case dur |> duration.is_negative {
+    True -> duration.nanoseconds(0)
+    False -> dur
   }
 }

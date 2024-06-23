@@ -848,3 +848,31 @@ pub fn difference_round_trip_test() {
   |> time.add(b, duration: _)
   |> should.equal(a)
 }
+
+pub fn until_positive_test() {
+  time.literal("23:54:00")
+  |> time.until(time.literal("23:59:04"))
+  |> duration.as_seconds
+  |> should.equal(304)
+}
+
+pub fn until_negative_test() {
+  time.literal("23:59:03")
+  |> time.until(time.literal("22:00:00"))
+  |> duration.as_milliseconds
+  |> should.equal(0)
+}
+
+pub fn since_positive_test() {
+  time.literal("23:54:00")
+  |> time.since(time.literal("13:30:04"))
+  |> duration.as_hours
+  |> should.equal(10)
+}
+
+pub fn since_negative_test() {
+  time.literal("12:30:54")
+  |> time.since(time.literal("22:00:00"))
+  |> duration.as_milliseconds
+  |> should.equal(0)
+}

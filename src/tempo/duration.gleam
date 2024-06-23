@@ -623,3 +623,27 @@ pub fn absolute(duration: tempo.Duration) -> tempo.Duration {
 pub fn inverse(duration: tempo.Duration) -> tempo.Duration {
   -duration.nanoseconds |> tempo.Duration
 }
+
+/// Checks if a duration is negative.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// duration.days(1)
+/// |> duration.is_negative
+/// // -> False
+/// ```
+/// 
+/// ```gleam
+/// case 
+///   time.literal("13:42:05")
+///   |> time.difference(from: time.literal("13:42:10"))
+///   |> duration.is_negative
+/// {
+///   True -> "we are ahead of time!"
+///   False -> "We are either on time or late!"
+/// }
+/// ```
+pub fn is_negative(duration: tempo.Duration) -> Bool {
+  duration.nanoseconds < 0
+}

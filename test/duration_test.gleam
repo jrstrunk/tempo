@@ -193,3 +193,13 @@ pub fn inverse_test() {
   |> duration.format_as(duration.Minute, 0)
   |> should.equal("7000 minutes")
 }
+
+pub fn is_negative_test() {
+  duration.days(1)
+  |> duration.is_negative
+  |> should.be_false()
+
+  duration.hours(-13)
+  |> duration.is_negative
+  |> should.be_true()
+}

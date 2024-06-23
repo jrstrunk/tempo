@@ -84,7 +84,7 @@ import tempo/time
 pub fn main() {
   // Sleep until 8:25 if we start before then.
   time.now_local()
-  |> time.difference(from: time.literal("08:25:00"))
+  |> time.until(time.literal("08:25:00"))
   |> duration.as_milliseconds
   |> process.sleep
 
