@@ -5,7 +5,7 @@ import gleam/string
 import tempo
 import tempo/date
 import tempo/duration
-import tempo/internal/unit
+import gtempo/internal as unit
 import tempo/offset
 import tempo/time
 

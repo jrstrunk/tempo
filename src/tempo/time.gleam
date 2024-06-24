@@ -3,10 +3,10 @@ import gleam/order
 import gleam/result
 import gleam/string
 import gleam/string_builder
+import gtempo/internal as unit
 import tempo
 import tempo/date
 import tempo/duration
-import tempo/internal/unit
 import tempo/offset
 
 /// Creates a new time value with second precision.

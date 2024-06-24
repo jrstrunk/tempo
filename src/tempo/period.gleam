@@ -4,7 +4,7 @@ import gleam/list
 import tempo
 import tempo/date
 import tempo/duration
-import tempo/internal/unit
+import gtempo/internal as unit
 import tempo/month
 import tempo/time
 import tempo/year

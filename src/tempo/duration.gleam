@@ -2,7 +2,7 @@ import gleam/int
 import gleam/list
 import gleam/order
 import tempo
-import tempo/internal/unit
+import gtempo/internal as unit
 
 pub opaque type MonotonicClock {
   MonotonicClock(nanoseconds: Int)
