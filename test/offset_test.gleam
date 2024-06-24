@@ -79,6 +79,20 @@ pub fn from_string_test() {
   |> should.be_error
 }
 
+pub fn from_string_single_num_test() {
+  offset.from_string("+1")
+  |> should.be_ok
+  |> offset.to_string
+  |> should.equal("+01:00")
+}
+
+pub fn from_string_single_num_zero_test() {
+  offset.from_string("-0")
+  |> should.be_ok
+  |> offset.to_string
+  |> should.equal("-00:00")
+}
+
 pub fn from_string_z_test() {
   offset.from_string("Z")
   |> should.equal(Ok(tempo.Offset(0)))

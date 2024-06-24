@@ -8,14 +8,36 @@ pub fn local() -> tempo.Offset {
   local_minutes() |> tempo.Offset
 }
 
+/// The Tempo representation of the UTC offset.
 pub const utc = tempo.Offset(0)
 
+/// Creates a new offset from a number of minutes.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// offset.new(-65)
+/// |> result.map(offset.to_string)
+/// // -> Ok("-01:05")
+/// ```
 pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, tempo.Error) {
   tempo.Offset(minutes) |> validate
 }
 
+/// Creates a new offset from a string literal, but will panic if the string
+/// is invalid. Accepted formats are `(+-)hh:mm`, `(+-)hhmm`, `(+-)hh`, and
+/// `(+-)h`.
+///  
 /// Useful for declaring offset literals that you know are valid within your 
-/// program. Will crash if an invalid offset is provided.
+/// program.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// offset.literal("-04:00")
+/// |> offset.to_string
+/// // -> "-04:00"
+/// ```
 pub fn literal(offset: String) -> tempo.Offset {
   case from_string(offset) {
     Ok(offset) -> offset
@@ -33,9 +55,19 @@ fn validate(offset: tempo.Offset) -> Result(tempo.Offset, tempo.Error) {
   }
 }
 
+/// Converts an offset to a string representation.
+/// 
 /// Will not return "Z" for a zero offset because it is probably not what
 /// the user wants without the context of a full datetime. Datetime modules
 /// building on this should cover formatting for Z themselves.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// offset.literal("-00")
+/// |> offset.to_string
+/// // -> "-00:00"
+/// ```
 pub fn to_string(offset: tempo.Offset) -> String {
   let #(is_negative, hours) = case offset.minutes / 60 {
     h if h <= 0 -> #(True, -h)
@@ -66,6 +98,16 @@ pub fn to_string(offset: tempo.Offset) -> String {
   }
 }
 
+/// Tries to create a new offset from a string. Accepted formats are 
+/// `(+-)hh:mm`, `(+-)hhmm`, `(+-)hh`, and `(+-)h`.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// offset.from_string("-04")
+/// |> result.map(offset.to_string)
+/// // -> Ok("-04:00")
+/// ```
 pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
   case offset {
     // Parse Z format
@@ -88,7 +130,7 @@ pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
             _, _ -> Error(tempo.OffsetInvalidFormat)
           }
         _ ->
-          // Parse +-hhmm format or +-hh format
+          // Parse +-hhmm format, +-hh format, or +-h format
           case string.length(offset) {
             5 ->
               Ok(#(
@@ -100,6 +142,12 @@ pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
               Ok(#(
                 string.slice(offset, at_index: 0, length: 1),
                 string.slice(offset, at_index: 1, length: 2),
+                "0",
+              ))
+            2 ->
+              Ok(#(
+                string.slice(offset, at_index: 0, length: 1),
+                string.slice(offset, at_index: 1, length: 1),
                 "0",
               ))
             _ -> Error(tempo.OffsetInvalidFormat)
