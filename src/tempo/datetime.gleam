@@ -1,4 +1,5 @@
 import gleam/bool
+import gleam/dynamic
 import gleam/order
 import gleam/result
 import gleam/string
@@ -275,6 +276,148 @@ pub fn to_unix_micro_utc(datetime: tempo.DateTime) -> Int {
 
   date.to_unix_micro_utc(utc_dt.date)
   + { time.to_nanoseconds(utc_dt.time) / 1000 }
+}
+
+/// Checks if a dynamic value is a valid datetime string, and returns the
+/// datetime if it is.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// dynamic.from("2024-06-13T13:42:11.195Z")
+/// |> datetime.from_dynamic_string
+/// // -> Ok(datetime.literal("2024-06-13T13:42:11.195Z"))
+/// ```
+/// 
+/// ```gleam
+/// dynamic.from("24-06-13,13:42:11.195")
+/// |> datetime.from_dynamic_string
+/// // -> Error([
+/// //   dynamic.DecodeError(
+/// //     expected: "tempo.DateTime",
+/// //     found: "Invalid format: 24-06-13,13:42:11.195",
+/// //     path: [],
+/// //   ),
+/// // ])
+/// ```
+pub fn from_dynamic_string(
+  dynamic_string: dynamic.Dynamic,
+) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
+  use dt: String <- result.try(dynamic.string(dynamic_string))
+
+  case from_string(dt) {
+    Ok(datetime) -> Ok(datetime)
+    Error(tempo_error) ->
+      Error([
+        dynamic.DecodeError(
+          expected: "tempo.DateTime",
+          found: case tempo_error {
+            tempo.DateTimeInvalidFormat -> "Invalid format: "
+            tempo.NaiveDateTimeInvalidFormat -> "Invalid format: "
+            tempo.DateInvalidFormat -> "Invalid format: "
+            tempo.TimeInvalidFormat -> "Invalid format: "
+            tempo.OffsetInvalidFormat -> "Invalid format: "
+            tempo.DateOutOfBounds -> "Date out of bounds: "
+            tempo.MonthOutOfBounds -> "Month out of bounds: "
+            tempo.TimeOutOfBounds -> "Time out of bounds: "
+            tempo.OffsetOutOfBounds -> "Offset out of bounds: "
+            _ -> ""
+          }
+            <> dt,
+          path: [],
+        ),
+      ])
+  }
+}
+
+/// Checks if a dynamic value is a valid unix timestamp in seconds, and 
+/// returns the datetime if it is.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// dynamic.from(1_718_629_314)
+/// |> datetime.from_dynamic_unix_utc
+/// // -> Ok(datetime.literal("2024-06-17T13:01:54Z"))
+/// ```
+/// 
+/// ```gleam
+/// dynamic.from("hello")
+/// |> datetime.from_dynamic_unix_utc
+/// // -> Error([
+/// //   dynamic.DecodeError(
+/// //     expected: "Int",
+/// //     found: "String",
+/// //     path: [],
+/// //   ),
+/// // ])
+/// ```
+pub fn from_dynamic_unix_utc(
+  dynamic_ts: dynamic.Dynamic,
+) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
+  use dt: Int <- result.map(dynamic.int(dynamic_ts))
+
+  from_unix_utc(dt)
+}
+
+/// Checks if a dynamic value is a valid unix timestamp in milliseconds, and 
+/// returns the datetime if it is.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// dynamic.from(1_718_629_314_334)
+/// |> datetime.from_dynamic_unix_utc
+/// // -> Ok(datetime.literal("2024-06-17T13:01:54.334Z"))
+/// ```
+/// 
+/// ```gleam
+/// dynamic.from("hello")
+/// |> datetime.from_dynamic_unix_utc
+/// // -> Error([
+/// //   dynamic.DecodeError(
+/// //     expected: "Int",
+/// //     found: "String",
+/// //     path: [],
+/// //   ),
+/// // ])
+/// ```
+pub fn from_dynamic_unix_milli_utc(
+  dynamic_ts: dynamic.Dynamic,
+) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
+  use dt: Int <- result.map(dynamic.int(dynamic_ts))
+
+  from_unix_milli_utc(dt)
+}
+
+/// Checks if a dynamic value is a valid unix timestamp in microseconds, and 
+/// returns the datetime if it is.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// dynamic.from(1_718_629_314_334_734)
+/// |> datetime.from_dynamic_unix_utc
+/// // -> Ok(datetime.literal("2024-06-17T13:01:54.334734Z"))
+/// ```
+/// 
+/// ```gleam
+/// dynamic.from("hello")
+/// |> datetime.from_dynamic_unix_utc
+/// // -> Error([
+/// //   dynamic.DecodeError(
+/// //     expected: "Int",
+/// //     found: "String",
+/// //     path: [],
+/// //   ),
+/// // ])
+/// ```
+pub fn from_dynamic_unix_micro_utc(
+  dynamic_ts: dynamic.Dynamic,
+) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
+  use dt: Int <- result.map(dynamic.int(dynamic_ts))
+
+  from_unix_micro_utc(dt)
 }
 
 /// Gets the date of a datetime.
