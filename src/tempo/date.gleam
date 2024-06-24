@@ -1,4 +1,5 @@
 import gleam/bool
+import gleam/dynamic
 import gleam/int
 import gleam/list
 import gleam/order
@@ -266,6 +267,52 @@ pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, tempo.Error) {
 /// ```
 pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
   #(date.year, month.to_int(date.month), date.day)
+}
+
+/// Checks if a dynamic value is a valid date string, and returns the
+/// date if it is.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// dynamic.from("2024-06-21")
+/// |> date.from_dynamic_string
+/// // -> Ok(date.literal("2024-06-21"))
+/// ```
+/// 
+/// ```gleam
+/// dynamic.from("153")
+/// |> datetime.from_dynamic_string
+/// // -> Error([
+/// //   dynamic.DecodeError(
+/// //     expected: "tempo.Date",
+/// //     found: "Invalid format: 153",
+/// //     path: [],
+/// //   ),
+/// // ])
+/// ```
+pub fn from_dynamic_string(
+  dynamic_string: dynamic.Dynamic,
+) -> Result(tempo.Date, List(dynamic.DecodeError)) {
+  use dt: String <- result.try(dynamic.string(dynamic_string))
+
+  case from_string(dt) {
+    Ok(date) -> Ok(date)
+    Error(tempo_error) ->
+      Error([
+        dynamic.DecodeError(
+          expected: "tempo.Date",
+          found: case tempo_error {
+            tempo.DateInvalidFormat -> "Invalid format: "
+            tempo.DateOutOfBounds -> "Date out of bounds: "
+            tempo.MonthOutOfBounds -> "Month out of bounds: "
+            _ -> ""
+          }
+            <> dt,
+          path: [],
+        ),
+      ])
+  }
 }
 
 /// Returns the date of a unix timestamp. If the local date is 

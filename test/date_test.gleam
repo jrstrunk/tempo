@@ -1,3 +1,4 @@
+import gleam/dynamic
 import gleam/order
 import gleam/string
 import gleeunit
@@ -457,4 +458,53 @@ pub fn to_weekday_test() {
   date.literal("2024-06-17")
   |> date.to_weekday
   |> should.equal(date.Mon)
+}
+
+pub fn from_dynamic_string_test() {
+  dynamic.from("2024-06-21")
+  |> date.from_dynamic_string
+  |> should.be_ok
+  |> should.equal(date.literal("2024-06-21"))
+}
+
+pub fn from_dynamic_string_int_test() {
+  dynamic.from("153")
+  |> date.from_dynamic_string
+  |> should.equal(
+    Error([
+      dynamic.DecodeError(
+        expected: "tempo.Date",
+        found: "Invalid format: 153",
+        path: [],
+      ),
+    ]),
+  )
+}
+
+pub fn from_dynamic_string_bad_format_test() {
+  dynamic.from("2024,06,13")
+  |> date.from_dynamic_string
+  |> should.equal(
+    Error([
+      dynamic.DecodeError(
+        expected: "tempo.Date",
+        found: "Invalid format: 2024,06,13",
+        path: [],
+      ),
+    ]),
+  )
+}
+
+pub fn from_dynamic_string_bad_values_test() {
+  dynamic.from("2024-06-35")
+  |> date.from_dynamic_string
+  |> should.equal(
+    Error([
+      dynamic.DecodeError(
+        expected: "tempo.Date",
+        found: "Date out of bounds: 2024-06-35",
+        path: [],
+      ),
+    ]),
+  )
 }
