@@ -819,3 +819,29 @@ pub fn is_weekend(date: tempo.Date) -> Bool {
     _ -> False
   }
 }
+
+/// Gets the first date of the month a date occurs in.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-21")
+/// |> date.first_of_month
+/// // -> date.literal("2024-06-01")
+/// ```
+pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
+  tempo.Date(date.year, date.month, 1)
+}
+
+/// Gets the last date of the month a date occurs in.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-02-13")
+/// |> date.last_of_month
+/// // -> date.literal("2024-02-29")
+/// ```
+pub fn last_of_month(for date: tempo.Date) -> tempo.Date {
+  tempo.Date(date.year, date.month, month.days(of: date.month, in: date.year))
+}

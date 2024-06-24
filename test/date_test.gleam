@@ -508,3 +508,15 @@ pub fn from_dynamic_string_bad_values_test() {
     ]),
   )
 }
+
+pub fn first_of_month_test() {
+  date.literal("2024-06-21")
+  |> date.first_of_month
+  |> should.equal(date.literal("2024-06-01"))
+}
+
+pub fn last_of_month_test() {
+  date.literal("2024-02-13")
+  |> date.last_of_month
+  |> should.equal(date.literal("2024-02-29"))
+}
