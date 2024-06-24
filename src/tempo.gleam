@@ -8,9 +8,7 @@ pub type Error {
   OffsetInvalidFormat
   OffsetOutOfBounds
   NaiveDateTimeInvalidFormat
-  NaiveDateTimeOutOfBounds
   DateTimeInvalidFormat
-  DateTimeOutOfBounds
 }
 
 /// A datetime value that does not have a timezone offset associated with it. 

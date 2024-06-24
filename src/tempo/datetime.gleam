@@ -47,8 +47,10 @@ pub fn literal(datetime: String) -> tempo.DateTime {
     Ok(datetime) -> datetime
     Error(tempo.DateTimeInvalidFormat) ->
       panic as "Invalid datetime literal format"
-    Error(tempo.DateTimeOutOfBounds) ->
-      panic as "Invalid datetime literal value"
+    Error(tempo.DateOutOfBounds) ->
+      panic as "Invalid date in datetime literal value"
+    Error(tempo.TimeOutOfBounds) ->
+      panic as "Invalid time indatetime literal value"
     Error(_) -> panic as "Invalid datetime literal"
   }
 }

@@ -60,7 +60,17 @@ pub fn from_string_space_delim_test() {
 
 pub fn from_naive_string_test() {
   datetime.from_string("2024-06-13T13:42:11")
-  |> should.be_error
+  |> should.equal(Error(tempo.DateTimeInvalidFormat))
+}
+
+pub fn from_date_out_of_bounds_string_test() {
+  datetime.from_string("2024-06-54T13:42:11-04:00")
+  |> should.equal(Error(tempo.DateOutOfBounds))
+}
+
+pub fn from_time_out_of_bounds_string_test() {
+  datetime.from_string("2024-06-21T13:99:11-04:00")
+  |> should.equal(Error(tempo.TimeOutOfBounds))
 }
 
 pub fn to_string_test() {

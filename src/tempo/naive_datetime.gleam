@@ -47,8 +47,10 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
     Ok(naive_datetime) -> naive_datetime
     Error(tempo.NaiveDateTimeInvalidFormat) ->
       panic as "Invalid naive datetime literal format"
-    Error(tempo.NaiveDateTimeOutOfBounds) ->
-      panic as "Invalid naive datetime literal value"
+    Error(tempo.DateOutOfBounds) ->
+      panic as "Invalid date in naive datetime literal"
+    Error(tempo.TimeOutOfBounds) ->
+      panic as "Invalid time in naive datetime literal"
     Error(_) -> panic as "Invalid naive datetime literal"
   }
 }
