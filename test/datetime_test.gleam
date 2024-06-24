@@ -46,6 +46,18 @@ pub fn from_string_condensed_offset_test() {
   |> should.equal(datetime.literal("2024-05-23T19:16:12+00:00"))
 }
 
+pub fn from_string_char_offset_test() {
+  datetime.from_string("2024-06-13T13:42:11.354053-4")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11.354053-04:00"))
+}
+
+pub fn from_string_space_delim_test() {
+  datetime.from_string("2024-06-13 13:42:11.354053-04:00")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11.354053-04:00"))
+}
+
 pub fn from_naive_string_test() {
   datetime.from_string("2024-06-13T13:42:11")
   |> should.be_error

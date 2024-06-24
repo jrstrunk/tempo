@@ -106,7 +106,12 @@ pub fn now_utc() -> tempo.NaiveDateTime {
 /// // -> Error(tempo.NaiveDateTimeInvalidFormat)
 /// ```
 pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error) {
-  use _ <- result.try_recover(case string.split(datetime, "T") {
+  let split_dt = case string.contains(datetime, "T") {
+    True -> string.split(datetime, "T")
+    False -> string.split(datetime, " ")
+  }
+
+  case split_dt {
     [date, time] -> {
       use date: tempo.Date <- result.try(date.from_string(date))
       use time: tempo.Time <- result.map(time.from_string(time))
@@ -116,19 +121,6 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error)
       use date: tempo.Date <- result.map(date.from_string(date))
       tempo.NaiveDateTime(date, tempo.Time(0, 0, 0, 0))
       |> to_second_precision
-    }
-    _ -> Error(tempo.NaiveDateTimeInvalidFormat)
-  })
-
-  case string.split(datetime, " ") {
-    [date, time] -> {
-      use date: tempo.Date <- result.try(date.from_string(date))
-      use time: tempo.Time <- result.map(time.from_string(time))
-      tempo.NaiveDateTime(date, time)
-    }
-    [date] -> {
-      use date: tempo.Date <- result.map(date.from_string(date))
-      tempo.NaiveDateTime(date, tempo.Time(0, 0, 0, 0))
     }
     _ -> Error(tempo.NaiveDateTimeInvalidFormat)
   }

@@ -108,7 +108,8 @@ pub fn now_text() -> String {
 }
 
 /// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
-/// `YYYYMMDDThhmmss.sTZD`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
+/// `YYYYMMDDThhmmss.sTZD`, `YYYY-MM-DD hh:mm:ss.sTZD`,
+/// `YYYYMMDD hhmmss.sTZD`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, 
 /// `YYYY MM DD`, `YYYY M D`, or `YYYYMMDD`.
 /// 
@@ -119,7 +120,12 @@ pub fn now_text() -> String {
 /// // -> datetime.literal("2024-06-13T23:04:00.009Z")
 /// ```
 pub fn from_string(datetime: String) -> Result(tempo.DateTime, tempo.Error) {
-  case string.split(datetime, "T") {
+  let split_dt = case string.contains(datetime, "T") {
+    True -> string.split(datetime, "T")
+    False -> string.split(datetime, " ")
+  }
+
+  case split_dt {
     [date, time] -> {
       use date: tempo.Date <- result.try(date.from_string(date))
 
