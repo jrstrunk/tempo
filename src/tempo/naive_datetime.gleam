@@ -2,10 +2,10 @@ import gleam/bool
 import gleam/order
 import gleam/result
 import gleam/string
+import gtempo/internal as unit
 import tempo
 import tempo/date
 import tempo/duration
-import gtempo/internal as unit
 import tempo/offset
 import tempo/time
 

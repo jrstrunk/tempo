@@ -1,10 +1,10 @@
 import gleam/bool
 import gleam/int
 import gleam/list
+import gtempo/internal as unit
 import tempo
 import tempo/date
 import tempo/duration
-import gtempo/internal as unit
 import tempo/month
 import tempo/time
 import tempo/year
