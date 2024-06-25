@@ -49,11 +49,14 @@ pub fn new_milli_test() {
   time.new_milli(0, 0, 0, 0)
   |> should.equal(Ok(tempo.TimeMilli(0, 0, 0, 0)))
 
+  time.new_milli(23, 59, 60, 0)
+  |> should.equal(Ok(tempo.TimeMilli(23, 59, 60, 0)))
+
   time.new_milli(23, 59, 59, 1)
   |> should.equal(Ok(tempo.TimeMilli(23, 59, 59, 1_000_000)))
 
-  time.new_milli(23, 59, 60, 533)
-  |> should.equal(Ok(tempo.TimeMilli(23, 59, 60, 533_000_000)))
+  time.new_milli(23, 59, 59, 533)
+  |> should.equal(Ok(tempo.TimeMilli(23, 59, 59, 533_000_000)))
 
   time.new_milli(11, 25, 40, 32)
   |> should.equal(Ok(tempo.TimeMilli(11, 25, 40, 32_000_000)))
@@ -81,11 +84,14 @@ pub fn new_micro_test() {
   time.new_micro(0, 0, 0, 0)
   |> should.equal(Ok(tempo.TimeMicro(0, 0, 0, 0)))
 
+  time.new_micro(23, 59, 60, 0)
+  |> should.equal(Ok(tempo.TimeMicro(23, 59, 60, 0)))
+
   time.new_micro(23, 59, 59, 1)
   |> should.equal(Ok(tempo.TimeMicro(23, 59, 59, 1000)))
 
-  time.new_micro(23, 59, 60, 533)
-  |> should.equal(Ok(tempo.TimeMicro(23, 59, 60, 533_000)))
+  time.new_micro(23, 59, 59, 533)
+  |> should.equal(Ok(tempo.TimeMicro(23, 59, 59, 533_000)))
 
   time.new_micro(11, 25, 40, 32)
   |> should.equal(Ok(tempo.TimeMicro(11, 25, 40, 32_000)))
@@ -112,11 +118,14 @@ pub fn new_nano_test() {
   time.new_nano(0, 0, 0, 0)
   |> should.equal(Ok(tempo.TimeNano(0, 0, 0, 0)))
 
+  time.new_nano(23, 59, 60, 0)
+  |> should.equal(Ok(tempo.TimeNano(23, 59, 60, 0)))
+
   time.new_nano(23, 59, 59, 1)
   |> should.equal(Ok(tempo.TimeNano(23, 59, 59, 1)))
 
-  time.new_nano(23, 59, 60, 533)
-  |> should.equal(Ok(tempo.TimeNano(23, 59, 60, 533)))
+  time.new_nano(23, 59, 59, 533)
+  |> should.equal(Ok(tempo.TimeNano(23, 59, 59, 533)))
 
   time.new_nano(11, 25, 40, 32)
   |> should.equal(Ok(tempo.TimeNano(11, 25, 40, 32)))

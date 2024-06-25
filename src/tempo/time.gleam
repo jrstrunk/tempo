@@ -229,11 +229,16 @@ fn validate(time: tempo.Time) -> Result(tempo.Time, tempo.Error) {
       && time.second <= 59
     }
     // For end of day time https://en.wikipedia.org/wiki/ISO_8601
-    || { time.hour == 24 && time.minute == 0 && time.second == 0 }
+    || {
+      time.hour == 24
+      && time.minute == 0
+      && time.second == 0
+      && time.nanosecond == 0
+    }
     // For leap seconds https://en.wikipedia.org/wiki/Leap_second. Leap seconds
     // are not fully supported by this package, but can be parsed from ISO 8601
     // dates.
-    || { time.minute == 59 && time.second == 60 }
+    || { time.minute == 59 && time.second == 60 && time.nanosecond == 0 }
   {
     True ->
       case time {
