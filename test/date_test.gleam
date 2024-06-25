@@ -348,6 +348,18 @@ pub fn add_days_test() {
   |> should.equal(date.literal("2024-06-15"))
 }
 
+pub fn add_days_almost_month_boundary_test() {
+  date.literal("2024-06-29")
+  |> date.add(days: 1)
+  |> should.equal(date.literal("2024-06-30"))
+}
+
+pub fn add_days_month_boundary_one_day_test() {
+  date.literal("2024-06-30")
+  |> date.add(days: 1)
+  |> should.equal(date.literal("2024-07-01"))
+}
+
 pub fn add_days_month_boundary_test() {
   date.literal("2024-06-13")
   |> date.add(days: 45)

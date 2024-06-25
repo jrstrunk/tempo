@@ -700,7 +700,7 @@ pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
 pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
   let days_left_this_month =
     month.days(of: date.month, in: date.year) - date.day
-  case days < days_left_this_month {
+  case days <= days_left_this_month {
     True -> tempo.Date(date.year, date.month, date.day + days)
     False -> {
       let next_month = month.next(date.month)
