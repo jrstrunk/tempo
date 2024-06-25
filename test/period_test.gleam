@@ -351,6 +351,26 @@ pub fn month_period_contains_date_test() {
   |> should.be_true
 }
 
+pub fn month_period_contains_date_inclusive_test() {
+  period.from_month(tempo.Jun, 2024)
+  |> period.contains_date(date.literal("2024-06-30"))
+  |> should.be_true
+
+  period.from_month(tempo.Jun, 2024)
+  |> period.contains_date(date.literal("2024-06-01"))
+  |> should.be_true
+}
+
+pub fn month_period_contains_datetime_inclusive_test() {
+  period.from_month(tempo.Jun, 2024)
+  |> period.contains_datetime(datetime.literal("2024-06-30T24:00:00-07:00"))
+  |> should.be_true
+
+  period.from_month(tempo.Jun, 2024)
+  |> period.contains_datetime(datetime.literal("2024-06-01T00:00:00+07:00"))
+  |> should.be_true
+}
+
 pub fn month_period_contains_invalid_date_test() {
   period.from_month(tempo.Jun, 2024)
   |> period.contains_date(date.literal("2024-07-22"))
