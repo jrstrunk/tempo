@@ -2,7 +2,7 @@
 
 A gleam library for controlling the tempo of your application through helpful date and time functions!
 
-Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more. Over 262 unit tests, contributions welcome!
+Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and stringify datetimes, and more! Over 350 unit tests, contributions welcome!
 
 Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible. 
 

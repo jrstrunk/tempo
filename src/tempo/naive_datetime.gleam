@@ -456,7 +456,7 @@ pub fn difference(
   from a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
 ) -> tempo.Period {
-  to_period(a, b)
+  as_period(a, b)
 }
 
 /// Creates a period between two naive datetimes.
@@ -480,7 +480,7 @@ pub fn difference(
 /// |> period.format
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
-pub fn to_period(
+pub fn as_period(
   start start: tempo.NaiveDateTime,
   end end: tempo.NaiveDateTime,
 ) -> tempo.Period {
@@ -489,7 +489,7 @@ pub fn to_period(
     False -> #(end, start)
   }
 
-  tempo.Period(start, end)
+  tempo.NaivePeriod(start, end)
 }
 
 /// Adds a duration to a naive datetime.

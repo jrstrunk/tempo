@@ -894,7 +894,7 @@ pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
 pub fn difference(from a: tempo.DateTime, to b: tempo.DateTime) -> tempo.Period {
-  apply_offset(a) |> naive_datetime.difference(to: apply_offset(b))
+  as_period(a, b)
 }
 
 /// Creates a period between two datetimes, where the start and end times are
@@ -919,11 +919,16 @@ pub fn difference(from a: tempo.DateTime, to b: tempo.DateTime) -> tempo.Period 
 /// |> period.format
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
-pub fn to_period(
+pub fn as_period(
   start start: tempo.DateTime,
   end end: tempo.DateTime,
 ) -> tempo.Period {
-  apply_offset(start) |> naive_datetime.to_period(end: apply_offset(end))
+  let #(start, end) = case start |> is_earlier_or_equal(to: end) {
+    True -> #(start, end)
+    False -> #(end, start)
+  }
+
+  tempo.Period(start: start, end: end)
 }
 
 /// Adds a duration to a datetime.

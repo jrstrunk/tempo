@@ -622,7 +622,7 @@ pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
-/// Gets the difference between two dates as a period between the two UTC dates
+/// Gets the difference between two dates as a period between the two dates
 /// at 00:00:00 each.
 /// 
 /// ## Examples
@@ -641,10 +641,19 @@ pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
 /// // -> 9
 /// ```
 pub fn difference(of a: tempo.Date, from b: tempo.Date) -> tempo.Period {
-  as_period(a, b)
+  let #(start, end) = case a |> is_earlier_or_equal(to: b) {
+    True -> #(a, b)
+    False -> #(b, a)
+  }
+
+  tempo.NaivePeriod(
+    start: tempo.NaiveDateTime(date: start, time: tempo.Time(0, 0, 0, 0)),
+    end: tempo.NaiveDateTime(date: end, time: tempo.Time(0, 0, 0, 0)),
+  )
 }
 
-/// Creates a period between two UTC dates at 00:00:00 each.
+/// Creates a period between the first date at 00:00:00 and the second date at
+/// 24:00:00.
 /// 
 /// ## Examples
 /// 
@@ -661,15 +670,15 @@ pub fn difference(of a: tempo.Date, from b: tempo.Date) -> tempo.Period {
 /// |> period.as_days
 /// // -> 9
 /// ```
-pub fn as_period(start: tempo.Date, end: tempo.Date) -> tempo.Period {
+pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
   let #(start, end) = case start |> is_earlier_or_equal(to: end) {
     True -> #(start, end)
     False -> #(end, start)
   }
 
-  tempo.Period(
-    start: tempo.NaiveDateTime(start, tempo.Time(0, 0, 0, 0)),
-    end: tempo.NaiveDateTime(end, tempo.Time(0, 0, 0, 0)),
+  tempo.NaivePeriod(
+    start: tempo.NaiveDateTime(date: start, time: tempo.Time(0, 0, 0, 0)),
+    end: tempo.NaiveDateTime(date: end, time: tempo.Time(24, 0, 0, 0)),
   )
 }
 

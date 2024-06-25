@@ -37,12 +37,13 @@ pub type Date {
   Date(year: Int, month: Month, day: Int)
 }
 
-/// A period between two calendar dates. It represents a range of datetimes.
-/// It can be used to calculate the number of days, weeks, months, or years 
-/// between two dates. It can also be interated over and datetime values can
-/// be checked for inclusion in the period.
+/// A period between two calendar datetimes. It represents a range of
+/// datetimes and can be used to calculate the number of days, weeks, months, 
+/// or years between two dates. It can also be interated over and datetime 
+/// values can be checked for inclusion in the period.
 pub type Period {
-  Period(start: NaiveDateTime, end: NaiveDateTime)
+  NaivePeriod(start: NaiveDateTime, end: NaiveDateTime)
+  Period(start: DateTime, end: DateTime)
 }
 
 /// A time of day value. It represents a specific time on an unspecified date.
