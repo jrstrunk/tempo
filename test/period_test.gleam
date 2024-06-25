@@ -1,3 +1,4 @@
+import gleam/iterator
 import gleeunit
 import gleeunit/should
 import tempo
@@ -504,4 +505,118 @@ pub fn date_as_period_inclusive_test() {
     "2024-06-21T13:50:00",
   ))
   |> should.be_true
+}
+
+pub fn comprising_dates_test() {
+  period.new(
+    start: datetime.literal("2024-06-19T23:59:59-04:00"),
+    end: datetime.literal("2024-06-21T00:16:12+01:00"),
+  )
+  |> period.comprising_dates
+  |> iterator.to_list
+  |> should.equal([
+    date.literal("2024-06-19"),
+    date.literal("2024-06-20"),
+    date.literal("2024-06-21"),
+  ])
+}
+
+pub fn comprising_dates_one_day_test() {
+  period.new(
+    start: datetime.literal("2024-06-21T00:59:59Z"),
+    end: datetime.literal("2024-06-21T02:16:12Z"),
+  )
+  |> period.comprising_dates
+  |> iterator.to_list
+  |> should.equal([date.literal("2024-06-21")])
+}
+
+pub fn comprising_dates_month_boundary_test() {
+  period.new_naive(
+    start: naive_datetime.literal("2024-06-21T15:47:00"),
+    end: naive_datetime.literal("2024-07-04T07:16:12"),
+  )
+  |> period.comprising_dates
+  |> iterator.to_list
+  |> should.equal([
+    date.literal("2024-06-21"),
+    date.literal("2024-06-22"),
+    date.literal("2024-06-23"),
+    date.literal("2024-06-24"),
+    date.literal("2024-06-25"),
+    date.literal("2024-06-26"),
+    date.literal("2024-06-27"),
+    date.literal("2024-06-28"),
+    date.literal("2024-06-29"),
+    date.literal("2024-06-30"),
+    date.literal("2024-07-01"),
+    date.literal("2024-07-02"),
+    date.literal("2024-07-03"),
+    date.literal("2024-07-04"),
+  ])
+}
+
+pub fn comprising_dates_year_boundary_test() {
+  period.new_naive(
+    start: naive_datetime.literal("2024-12-25T00:47:00"),
+    end: naive_datetime.literal("2025-01-04T07:16:12"),
+  )
+  |> period.comprising_dates
+  |> iterator.to_list
+  |> should.equal([
+    date.literal("2024-12-25"),
+    date.literal("2024-12-26"),
+    date.literal("2024-12-27"),
+    date.literal("2024-12-28"),
+    date.literal("2024-12-29"),
+    date.literal("2024-12-30"),
+    date.literal("2024-12-31"),
+    date.literal("2025-01-01"),
+    date.literal("2025-01-02"),
+    date.literal("2025-01-03"),
+    date.literal("2025-01-04"),
+  ])
+}
+
+pub fn comprising_months_one_month_test() {
+  period.new(
+    start: datetime.literal("2024-06-19T23:59:59-04:00"),
+    end: datetime.literal("2024-06-21T00:16:12+01:00"),
+  )
+  |> period.comprising_months
+  |> iterator.to_list
+  |> should.equal([tempo.MonthYear(tempo.Jun, 2024)])
+}
+
+pub fn comprising_months_multiple_months_test() {
+  period.new(
+    start: datetime.literal("2024-06-19T23:59:59-04:00"),
+    end: datetime.literal("2024-09-21T00:16:12+01:00"),
+  )
+  |> period.comprising_months
+  |> iterator.to_list
+  |> should.equal([
+    tempo.MonthYear(tempo.Jun, 2024),
+    tempo.MonthYear(tempo.Jul, 2024),
+    tempo.MonthYear(tempo.Aug, 2024),
+    tempo.MonthYear(tempo.Sep, 2024),
+  ])
+}
+
+pub fn comprising_months_year_boundary_test() {
+  period.new(
+    start: datetime.literal("2024-10-25T00:47:00-04:00"),
+    end: datetime.literal("2025-04-30T23:59:59-04:00"),
+  )
+  |> period.comprising_months
+  |> iterator.to_list
+  |> should.equal([
+    tempo.MonthYear(tempo.Oct, 2024),
+    tempo.MonthYear(tempo.Nov, 2024),
+    tempo.MonthYear(tempo.Dec, 2024),
+    tempo.MonthYear(tempo.Jan, 2025),
+    tempo.MonthYear(tempo.Feb, 2025),
+    tempo.MonthYear(tempo.Mar, 2025),
+    tempo.MonthYear(tempo.Apr, 2025),
+  ])
 }

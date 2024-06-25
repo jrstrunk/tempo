@@ -1,5 +1,6 @@
 import gleam/bool
 import gleam/int
+import gleam/iterator
 import gleam/list
 import gtempo/internal as unit
 import tempo
@@ -366,6 +367,105 @@ pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool
 
     _ -> contains_naive_datetime(period, datetime.naive)
   }
+}
+
+/// Returns an iterator over all the dates in the period, inclusive of the 
+/// dates of both the start and end datetimes and ignoring the offset.
+///
+/// ## Examples
+/// 
+/// ```gleam
+/// period.new_naive(
+///   start: naive_datetime.literal("2024-06-19T23:59:59-04:00"),
+///   end: naive_datetime.literal("2024-06-21T00:16:12+01:00"),
+/// )
+/// |> period.comprising_dates
+/// |> iterator.to_list
+/// // -> [
+/// //   date.literal("2024-06-19"),
+/// //   date.literal("2024-06-20"),
+/// //   date.literal("2024-06-21"),
+/// // ]
+/// ```
+/// 
+/// ```gleam
+/// period.from_month(tempo.Feb, 2024)
+/// |> period.comprising_dates
+/// |> iterator.to_list
+/// // -> [
+/// //   date.literal("2024-02-01"),
+/// //   ...
+/// //   date.literal("2024-02-29"),
+/// // ]
+pub fn comprising_dates(period: tempo.Period) -> iterator.Iterator(tempo.Date) {
+  let #(start_date, end_date): #(tempo.Date, tempo.Date) = case period {
+    tempo.NaivePeriod(start, end) -> #(start.date, end.date)
+    tempo.Period(start, end) -> #(start.naive.date, end.naive.date)
+  }
+
+  iterator.unfold(from: start_date, with: fn(date) {
+    case date |> date.is_earlier_or_equal(to: end_date) {
+      True -> iterator.Next(date, date |> date.add(days: 1))
+      False -> iterator.Done
+    }
+  })
+}
+
+/// Returns an iterator over all the months in the period, inclusive of the
+/// months of both the start and end datetimes and ignoring the offset.
+///
+/// ## Examples
+/// 
+/// ```gleam
+/// period.new(
+///   start: datetime.literal("2024-10-25T00:47:00-04:00"),
+///   end: datetime.literal("2025-04-30T23:59:59-04:00"),
+/// )
+/// |> period.comprising_months
+/// |> iterator.to_list
+/// // -> [
+/// //   tempo.MonthYear(tempo.Oct, 2024),
+/// //   tempo.MonthYear(tempo.Nov, 2024),
+/// //   tempo.MonthYear(tempo.Dec, 2024),
+/// //   tempo.MonthYear(tempo.Jan, 2025),
+/// //   tempo.MonthYear(tempo.Feb, 2025),
+/// //   tempo.MonthYear(tempo.Mar, 2025),
+/// //   tempo.MonthYear(tempo.Apr, 2025),
+/// // ]
+/// ```
+pub fn comprising_months(
+  period: tempo.Period,
+) -> iterator.Iterator(tempo.MonthYear) {
+  let #(start_date, end_date) = case period {
+    tempo.NaivePeriod(start, end) -> #(start.date, end.date)
+    tempo.Period(start, end) -> #(start.naive.date, end.naive.date)
+  }
+
+  iterator.unfold(
+    from: tempo.MonthYear(
+      start_date |> date.get_month,
+      start_date |> date.get_year,
+    ),
+    with: fn(miy: tempo.MonthYear) {
+      case
+        tempo.Date(miy.year, miy.month, 1)
+        |> date.is_earlier_or_equal(to: end_date)
+      {
+        True ->
+          iterator.Next(
+            miy,
+            tempo.MonthYear(miy.month |> month.next, case
+              miy.month
+              == tempo.Dec
+            {
+              True -> miy.year + 1
+              False -> miy.year
+            }),
+          )
+        False -> iterator.Done
+      }
+    },
+  )
 }
 
 @internal
