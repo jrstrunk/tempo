@@ -754,10 +754,10 @@ pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
 /// 
 /// ```gleam
 /// date.literal("2024-06-20")
-/// |> date.to_weekday
+/// |> date.to_day_of_week
 /// // -> Thur
 /// ```
-pub fn to_weekday(date: tempo.Date) -> DayOfWeek {
+pub fn to_day_of_week(date: tempo.Date) -> DayOfWeek {
   let year_code =
     date.year % 100
     |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
@@ -813,6 +813,67 @@ pub fn to_weekday(date: tempo.Date) -> DayOfWeek {
   }
 }
 
+/// Gets the date of the next specified day of the week, exclusive of
+/// the passed date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-21")
+/// |> date.next_day_of_week(date.Mon)
+/// // -> date.literal("2024-06-24")
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-21")
+/// |> date.next_day_of_week(date.Fri)
+/// // -> date.literal("2024-06-28")
+/// ```
+pub fn next_day_of_week(
+  date date: tempo.Date,
+  day_of_week dow: DayOfWeek,
+) -> tempo.Date {
+  let next = date |> add(days: 1)
+
+  case next |> to_day_of_week == dow {
+    True -> next
+    False -> next_day_of_week(next, dow)
+  }
+}
+
+/// Gets the date of the prior specified day of the week, exclusive of
+/// the passed date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-21")
+/// |> date.prior_day_of_week(date.Mon)
+/// // -> date.literal("2024-06-17")
+/// ```
+/// 
+/// ```gleam
+/// date.literal("2024-06-21")
+/// |> date.prior_day_of_week(date.Fri)
+/// // -> date.literal("2024-06-14")
+/// ```
+pub fn prior_day_of_week(
+  date date: tempo.Date,
+  day_of_week dow: DayOfWeek,
+) -> tempo.Date {
+  let prior = date |> subtract(days: 1)
+
+  case prior |> to_day_of_week == dow {
+    True -> prior
+    False -> prior_day_of_week(prior, dow)
+  }
+}
+
+@deprecated("Use `to_day_of_week` instead")
+pub fn to_weekday(date: tempo.Date) -> DayOfWeek {
+  to_day_of_week(date)
+}
+
 /// Checks if a date falls in a weekend.
 /// 
 /// ## Examples
@@ -823,7 +884,7 @@ pub fn to_weekday(date: tempo.Date) -> DayOfWeek {
 /// // -> True
 /// ```
 pub fn is_weekend(date: tempo.Date) -> Bool {
-  case to_weekday(date) {
+  case to_day_of_week(date) {
     Sat | Sun -> True
     _ -> False
   }

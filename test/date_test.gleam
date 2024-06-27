@@ -440,35 +440,35 @@ pub fn subtract_days_leap_year_boundary_test() {
 
 pub fn to_weekday_jan_not_leap_year_test() {
   date.literal("2023-01-04")
-  |> date.to_weekday
+  |> date.to_day_of_week
   |> should.equal(date.Wed)
 }
 
 pub fn to_weekday_jan_leap_year_test() {
   date.literal("2024-01-09")
-  |> date.to_weekday
+  |> date.to_day_of_week
   |> should.equal(date.Tue)
 }
 
 pub fn to_weekday_test() {
   date.literal("2024-06-13")
-  |> date.to_weekday
+  |> date.to_day_of_week
   |> should.equal(date.Thu)
 
   date.literal("2024-06-14")
-  |> date.to_weekday
+  |> date.to_day_of_week
   |> should.equal(date.Fri)
 
   date.literal("2024-06-15")
-  |> date.to_weekday
+  |> date.to_day_of_week
   |> should.equal(date.Sat)
 
   date.literal("2024-06-16")
-  |> date.to_weekday
+  |> date.to_day_of_week
   |> should.equal(date.Sun)
 
   date.literal("2024-06-17")
-  |> date.to_weekday
+  |> date.to_day_of_week
   |> should.equal(date.Mon)
 }
 
@@ -531,4 +531,48 @@ pub fn last_of_month_test() {
   date.literal("2024-02-13")
   |> date.last_of_month
   |> should.equal(date.literal("2024-02-29"))
+}
+
+pub fn next_day_of_week_test() {
+  date.literal("2024-06-21")
+  |> date.next_day_of_week(date.Mon)
+  |> should.equal(date.literal("2024-06-24"))
+
+  date.literal("2024-06-21")
+  |> date.next_day_of_week(date.Fri)
+  |> should.equal(date.literal("2024-06-28"))
+}
+
+pub fn prior_day_of_week_test() {
+  date.literal("2024-06-21")
+  |> date.prior_day_of_week(date.Mon)
+  |> should.equal(date.literal("2024-06-17"))
+
+  date.literal("2024-06-21")
+  |> date.prior_day_of_week(date.Fri)
+  |> should.equal(date.literal("2024-06-14"))
+}
+
+pub fn next_day_of_week_leap_year_test() {
+  date.literal("2024-02-22")
+  |> date.next_day_of_week(date.Thu)
+  |> should.equal(date.literal("2024-02-29"))
+}
+
+pub fn next_day_of_week_month_boundary_test() {
+  date.literal("2024-06-30")
+  |> date.next_day_of_week(date.Wed)
+  |> should.equal(date.literal("2024-07-03"))
+}
+
+pub fn prior_day_of_week_leap_year_test() {
+  date.literal("2024-03-02")
+  |> date.prior_day_of_week(date.Mon)
+  |> should.equal(date.literal("2024-02-26"))
+}
+
+pub fn prior_day_of_week_month_boundary_test() {
+  date.literal("2024-07-03")
+  |> date.prior_day_of_week(date.Thu)
+  |> should.equal(date.literal("2024-06-27"))
 }
