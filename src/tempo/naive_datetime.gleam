@@ -525,8 +525,7 @@ pub fn add(
   // If the time to add crossed a day boundary, add an extra day to the 
   // number of days to add and adjust the time to add.
   let #(new_time_as_ns, days_to_add): #(Int, Int) = case
-    new_time_as_ns
-    >= unit.imprecise_day_nanoseconds
+    new_time_as_ns >= unit.imprecise_day_nanoseconds
   {
     True -> #(new_time_as_ns - unit.imprecise_day_nanoseconds, days_to_add + 1)
     False -> #(new_time_as_ns, days_to_add)

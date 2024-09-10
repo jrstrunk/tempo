@@ -197,7 +197,12 @@ pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
 }
 
 @internal
-pub fn test_literal_milli(hour: Int, minute: Int, second: Int, millisecond: Int) -> tempo.Time {
+pub fn test_literal_milli(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  millisecond: Int,
+) -> tempo.Time {
   let assert Ok(time) =
     tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000)
     |> validate
@@ -205,14 +210,24 @@ pub fn test_literal_milli(hour: Int, minute: Int, second: Int, millisecond: Int)
 }
 
 @internal
-pub fn test_literal_micro(hour: Int, minute: Int, second: Int, microsecond: Int) -> tempo.Time {
+pub fn test_literal_micro(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  microsecond: Int,
+) -> tempo.Time {
   let assert Ok(time) =
     tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
   time
 }
 
 @internal
-pub fn test_literal_nano(hour: Int, minute: Int, second: Int, nanosecond: Int) -> tempo.Time {
+pub fn test_literal_nano(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  nanosecond: Int,
+) -> tempo.Time {
   let assert Ok(time) =
     tempo.TimeNano(hour, minute, second, nanosecond) |> validate
   time
@@ -267,10 +282,10 @@ pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, tempo.Error) 
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_minute(time: tempo.Time, minute: Int) -> Result(
-  tempo.Time,
-  tempo.Error,
-) {
+pub fn set_minute(
+  time: tempo.Time,
+  minute: Int,
+) -> Result(tempo.Time, tempo.Error) {
   case time {
     tempo.Time(h, _, s, _) -> new(h, minute, s)
     tempo.TimeMilli(h, _, s, n) -> new_milli(h, minute, s, n)
@@ -282,10 +297,10 @@ pub fn set_minute(time: tempo.Time, minute: Int) -> Result(
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_second(time: tempo.Time, second: Int) -> Result(
-  tempo.Time,
-  tempo.Error,
-) {
+pub fn set_second(
+  time: tempo.Time,
+  second: Int,
+) -> Result(tempo.Time, tempo.Error) {
   case time {
     tempo.Time(h, m, _, _) -> new(h, m, second)
     tempo.TimeMilli(h, m, _, n) -> new_milli(h, m, second, n)
@@ -297,30 +312,30 @@ pub fn set_second(time: tempo.Time, second: Int) -> Result(
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_milli(time: tempo.Time, millisecond: Int) -> Result(
-  tempo.Time,
-  tempo.Error,
-) {
+pub fn set_milli(
+  time: tempo.Time,
+  millisecond: Int,
+) -> Result(tempo.Time, tempo.Error) {
   new_milli(time.hour, time.minute, time.second, millisecond)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_micro(time: tempo.Time, microsecond: Int) -> Result(
-  tempo.Time,
-  tempo.Error,
-) {
+pub fn set_micro(
+  time: tempo.Time,
+  microsecond: Int,
+) -> Result(tempo.Time, tempo.Error) {
   new_micro(time.hour, time.minute, time.second, microsecond)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_nano(time: tempo.Time, nanosecond: Int) -> Result(
-  tempo.Time,
-  tempo.Error,
-) {
+pub fn set_nano(
+  time: tempo.Time,
+  nanosecond: Int,
+) -> Result(tempo.Time, tempo.Error) {
   new_nano(time.hour, time.minute, time.second, nanosecond)
 }
 

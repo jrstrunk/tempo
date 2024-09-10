@@ -455,8 +455,7 @@ pub fn comprising_months(
           iterator.Next(
             miy,
             tempo.MonthYear(miy.month |> month.next, case
-              miy.month
-              == tempo.Dec
+              miy.month == tempo.Dec
             {
               True -> miy.year + 1
               False -> miy.year
