@@ -824,6 +824,46 @@ pub fn to_day_of_week(date: tempo.Date) -> DayOfWeek {
   }
 }
 
+/// Returns the short string representation of a day of the week.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.day_of_week_to_short_string(date.Mon)
+/// // -> "Mon"
+/// ```
+pub fn day_of_week_to_short_string(day_of_week: DayOfWeek) -> String {
+  case day_of_week {
+    Sun -> "Sun"
+    Mon -> "Mon"
+    Tue -> "Tue"
+    Wed -> "Wed"
+    Thu -> "Thu"
+    Fri -> "Fri"
+    Sat -> "Sat"
+  }
+}
+
+/// Returns the long string representation of a day of the week.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.day_of_week_to_long_string(date.Fri)
+/// // -> "Friday"
+/// ```
+pub fn day_of_week_to_long_string(day_of_week: DayOfWeek) -> String {
+  case day_of_week {
+    Sun -> "Sunday"
+    Mon -> "Monday"
+    Tue -> "Tuesday"
+    Wed -> "Wednesday"
+    Thu -> "Thursday"
+    Fri -> "Friday"
+    Sat -> "Saturday"
+  }
+}
+
 /// Gets the date of the next specified day of the week, exclusive of
 /// the passed date.
 /// 
