@@ -747,17 +747,17 @@ pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
   }
 }
 
-/// Returns the day of week a date falls on.
+/// Returns the number of the day of week a date falls on.
 /// Will be incorrect for dates before 1752 and dates after 2300.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// date.literal("2024-06-20")
-/// |> date.to_day_of_week
-/// // -> Thur
+/// date.literal("2024-06-21")
+/// |> date.to_day_of_week_number
+/// // -> 5
 /// ```
-pub fn to_day_of_week(date: tempo.Date) -> DayOfWeek {
+pub fn to_day_of_week_number(date: tempo.Date) -> Int {
   let year_code =
     date.year % 100
     |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
@@ -798,10 +798,21 @@ pub fn to_day_of_week(date: tempo.Date) -> DayOfWeek {
     False -> 0
   }
 
-  let day_of_week: Int =
-    { year_code + month_code + century_code + date.day - leap_year_code } % 7
+  { year_code + month_code + century_code + date.day - leap_year_code } % 7
+}
 
-  case day_of_week {
+/// Returns the day of week a date falls on.
+/// Will be incorrect for dates before 1752 and dates after 2300.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-20")
+/// |> date.to_day_of_week
+/// // -> Thur
+/// ```
+pub fn to_day_of_week(date: tempo.Date) -> DayOfWeek {
+  case to_day_of_week_number(date) {
     0 -> Sun
     1 -> Mon
     2 -> Tue
