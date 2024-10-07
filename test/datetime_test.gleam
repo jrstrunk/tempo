@@ -113,6 +113,18 @@ pub fn format_parenthesis_test() {
   |> should.equal("Fri @ 1:42 PM (-04)")
 }
 
+pub fn format_pm_test() {
+  datetime.literal("2024-06-21T12:42:11.314-04:00")
+  |> datetime.format("h:mm a")
+  |> should.equal("12:42 pm")
+}
+
+pub fn format_am_test() {
+  datetime.literal("2024-06-21T00:42:11.314-04:00")
+  |> datetime.format("h:mm a")
+  |> should.equal("12:42 am")
+}
+
 pub fn format_escape_test() {
   datetime.literal("2024-06-13T13:42:11.314-04:00")
   |> datetime.format("[Hi Mom! It is:] YYYY-MM-DD")

@@ -206,7 +206,7 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
 /// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
-/// A (AM/PM), a (am/pm).
+/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 /// 
 /// ## Example
 /// 
@@ -339,9 +339,10 @@ fn replace_format(content: String, datetime) -> String {
       |> get_time
       |> time.get_hour
       |> fn(hour) {
-        case hour > 12 {
-          True -> hour - 12
-          False -> hour
+        case hour {
+          _ if hour == 0 -> 12
+          _ if hour > 12 -> hour - 12
+          _ -> hour
         }
       }
       |> int.to_string
@@ -350,9 +351,10 @@ fn replace_format(content: String, datetime) -> String {
       |> get_time
       |> time.get_hour
       |> fn(hour) {
-        case hour > 12 {
-          True -> hour - 12
-          False -> hour
+        case hour {
+          _ if hour == 0 -> 12
+          _ if hour > 12 -> hour - 12
+          _ -> hour
         }
       }
       |> int.to_string
