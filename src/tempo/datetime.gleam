@@ -191,6 +191,190 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
   }
 }
 
+/// Parses a datetime string in the provided format. Always prefer using
+/// this over `parse_any`. All parsed formats must have all parts of a
+/// datetime (date, time, offset). Use the gother modules for parsing lesser
+/// date time values.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month),
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// datetime.parse("2024/06/08, 13:42:11, -04:00", "YYYY/MM/DD, HH:mm:ss, Z")
+/// // -> Ok(datetime.literal("2024-06-08T13:42:11-04"))
+/// ```
+/// 
+/// ```gleam
+/// datetime.parse("January 13, 2024. 3:42:11Z", "MMMM DD, YYYY. H:mm:ssz")
+/// // -> Ok(datetime.literal("2024-01-13T03:42:11Z"))
+/// ```
+/// 
+/// ```gleam
+/// datetime.parse("Hi! 2024 11 13 12 2 am Z", "[Hi!] YYYY M D h m a z")
+/// // -> Ok(datetime.literal("2024-11-13T00:02:00Z"))
+/// ```
+pub fn parse(str: String, in fmt: String) -> Result(tempo.DateTime, tempo.Error) {
+  use #(parts, _) <- result.try(tempo.consume_format(str, in: fmt))
+
+  use year <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Year(y) -> Ok(y)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(tempo.ParseMissingDate),
+  )
+
+  use month <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Month(m) -> Ok(m)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(tempo.ParseMissingDate),
+  )
+
+  use day <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Day(d) -> Ok(d)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(tempo.ParseMissingDate),
+  )
+
+  use date <- result.try(date.new(year, month, day))
+
+  use hour <- result.try({
+    use _ <- result.try_recover(
+      list.find_map(parts, fn(p) {
+        case p {
+          tempo.Hour(h) -> Ok(h)
+          _ -> Error(Nil)
+        }
+      })
+      |> result.replace_error(tempo.ParseMissingTime),
+    )
+
+    use twelve_hour <- result.try(
+      list.find_map(parts, fn(p) {
+        case p {
+          tempo.TwelveHour(o) -> Ok(o)
+          _ -> Error(Nil)
+        }
+      })
+      |> result.replace_error(tempo.ParseMissingTime),
+    )
+
+    let am_period =
+      list.find_map(parts, fn(p) {
+        case p {
+          tempo.AMPeriod -> Ok(Nil)
+          _ -> Error(Nil)
+        }
+      })
+
+    let pm_period =
+      list.find_map(parts, fn(p) {
+        case p {
+          tempo.PMPeriod -> Ok(Nil)
+          _ -> Error(Nil)
+        }
+      })
+
+    case am_period, pm_period {
+      Ok(Nil), Error(Nil) ->
+        case twelve_hour {
+          _ if twelve_hour == 12 -> Ok(0)
+          _ -> Ok(twelve_hour)
+        }
+      Error(Nil), Ok(Nil) ->
+        case twelve_hour {
+          _ if twelve_hour == 12 -> Ok(twelve_hour)
+          _ -> Ok(twelve_hour + 12)
+        }
+      _, _ -> Error(tempo.ParseMissingTime)
+    }
+  })
+
+  use minute <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Minute(m) -> Ok(m)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(tempo.ParseMissingTime),
+  )
+
+  let second =
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Second(s) -> Ok(s)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.unwrap(0)
+
+  let millisecond =
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Millisecond(n) -> Ok(n)
+        _ -> Error(Nil)
+      }
+    })
+
+  let microsecond =
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Microsecond(n) -> Ok(n)
+        _ -> Error(Nil)
+      }
+    })
+
+  let nanosecond =
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.Nanosecond(n) -> Ok(n)
+        _ -> Error(Nil)
+      }
+    })
+
+  use time <- result.try(case nanosecond, microsecond, millisecond {
+    Ok(nano), _, _ -> time.new_nano(hour, minute, second, nano)
+    _, Ok(micro), _ -> time.new_micro(hour, minute, second, micro)
+    _, _, Ok(milli) -> time.new_milli(hour, minute, second, milli)
+    _, _, _ -> time.new(hour, minute, second)
+  })
+
+  use offset_str <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        tempo.OffsetStr(o) -> Ok(o)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(tempo.ParseMissingOffset),
+  )
+
+  use offset <- result.try(offset.from_string(offset_str))
+
+  Ok(new(date, time, offset))
+}
+
 /// Formats a datetime value into a string using the provided format string.
 /// Implements the same formatting directives as the great Day.js 
 /// library: https://day.js.org/docs/en/display/format, plus short timezones

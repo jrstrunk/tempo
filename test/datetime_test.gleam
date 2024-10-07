@@ -75,6 +75,49 @@ pub fn from_time_out_of_bounds_string_test() {
   |> should.equal(Error(tempo.TimeOutOfBounds))
 }
 
+pub fn parse_isoish_test() {
+  datetime.parse("2024/06/08, 13:42:11, -04:00", "YYYY/MM/DD, HH:mm:ss, Z")
+  |> should.equal(Ok(datetime.literal("2024-06-08T13:42:11-04")))
+}
+
+pub fn parse_long_name_test() {
+  datetime.parse("January 13, 2024. 3:42:11Z", "MMMM DD, YYYY. H:mm:ssz")
+  |> should.equal(Ok(datetime.literal("2024-01-13T03:42:11Z")))
+}
+
+pub fn parse_short_name_test() {
+  datetime.parse("Jan 3, 1998. -04:00 13:42:11", "MMM D, YYYY. Z HH:mm:ss")
+  |> should.equal(Ok(datetime.literal("1998-01-03T13:42:11-04")))
+}
+
+pub fn parse_early_am_test() {
+  datetime.parse("2024 11 13 12 2 am Z", "YYYY M D h m a z")
+  |> should.equal(Ok(datetime.literal("2024-11-13T00:02:00Z")))
+}
+
+pub fn parse_late_am_test() {
+  datetime.parse("2024 11 13 02:42:12 AM -0400", "YYYY M D hh:mm:ss A ZZ")
+  |> should.equal(Ok(datetime.literal("2024-11-13T02:42:12-04")))
+}
+
+pub fn parse_early_pm_test() {
+  datetime.parse("2024 11 13 12:42:4 PM Z", "YYYY M D h:mm:s A z")
+  |> should.equal(Ok(datetime.literal("2024-11-13T12:42:04Z")))
+}
+
+pub fn parse_late_pm_test() {
+  datetime.parse("2024 11 13 2 42 pm -04", "YYYY M D h m a z")
+  |> should.equal(Ok(datetime.literal("2024-11-13T14:42:00-04")))
+}
+
+pub fn parse_escape_test() {
+  datetime.parse(
+    "Hello! It is: 2024/06/08, 13:42:11, -04:00",
+    "[Hello! It is:] YYYY/MM/DD, HH:mm:ss, Z",
+  )
+  |> should.equal(Ok(datetime.literal("2024-06-08T13:42:11-04")))
+}
+
 pub fn to_string_test() {
   datetime.literal("20240613T134211.314-04")
   |> datetime.to_string
@@ -87,7 +130,7 @@ pub fn date_to_string_test() {
   |> should.equal("2024-06-13T00:00:00Z")
 }
 
-pub fn format_am_pad_test() {
+pub fn format_pad_test() {
   datetime.literal("2024-06-03T09:02:01.014920202-04:00")
   |> datetime.format(
     "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ z",
@@ -97,7 +140,7 @@ pub fn format_am_pad_test() {
   )
 }
 
-pub fn format_am_no_pad_test() {
+pub fn format_no_pad_test() {
   datetime.literal("2001-12-25T22:52:21.914920202-00:00")
   |> datetime.format(
     "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ z",

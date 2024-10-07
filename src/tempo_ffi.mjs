@@ -5,3 +5,7 @@ export function now() {
 export function local_offset() {
   return -(new Date()).getTimezoneOffset();
 }
+
+export function current_year() {
+  new Date().getFullYear();
+}

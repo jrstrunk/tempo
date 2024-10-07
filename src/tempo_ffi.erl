@@ -2,7 +2,8 @@
 
 -export([
     now/0,
-    local_offset/0
+    local_offset/0,
+    current_year/0
 ]).
 
 now() -> os:system_time(nanosecond).
@@ -13,3 +14,7 @@ local_offset() ->
     (calendar:datetime_to_gregorian_seconds({Date, Time}) 
         - calendar:datetime_to_gregorian_seconds(UTC))
         div 60.
+
+current_year() ->
+    {{Year, _, _}, _} = calendar:local_time(),
+    Year.
