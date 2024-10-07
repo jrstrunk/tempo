@@ -193,7 +193,7 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 
 /// Parses a datetime string in the provided format. Always prefer using
 /// this over `parse_any`. All parsed formats must have all parts of a
-/// datetime (date, time, offset). Use the gother modules for parsing lesser
+/// datetime (date, time, offset). Use the other modules for parsing lesser
 /// date time values.
 /// 
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
@@ -242,12 +242,12 @@ pub fn parse(str: String, in fmt: String) -> Result(tempo.DateTime, tempo.Error)
 /// ## Example
 /// 
 /// ```gleam
-/// case tempo.parse_any("2024.06.21 01:32 PM -0400") {
+/// parse_any.parse_any("2024.06.21 01:32 PM -0400")
 /// // -> Ok(datetime.literal("2024-06-21T13:32:00-04:00"))
 /// ```
 /// 
 /// ```gleam
-/// case tempo.parse_any("2024.06.21 01:32 PM") {
+/// parse_any.parse_any("2024.06.21 01:32 PM")
 /// // -> Error(tempo.ParseMissingOffset)
 /// ```
 pub fn parse_any(str: String) -> Result(tempo.DateTime, tempo.Error) {

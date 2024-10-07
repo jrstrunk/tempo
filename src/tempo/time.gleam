@@ -1,4 +1,5 @@
 import gleam/int
+import gleam/option.{None, Some}
 import gleam/order
 import gleam/result
 import gleam/string
@@ -567,6 +568,61 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
     _, _, _ -> Error(tempo.TimeInvalidFormat)
   }
   |> result.try(validate)
+}
+
+/// Parses a time string in the provided format. Always prefer using
+/// this over `parse_any`. All parsed formats must have an hour and a second.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] HH".
+/// 
+/// Available directives: H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// SSSSS (nanosecond), A (AM/PM), a (am/pm),
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.parse("2024/06/08, 13:42:11", "YYYY/MM/DD")
+/// // -> Ok(time.literal("13:42:11"))
+/// ```
+/// 
+/// ```gleam
+/// time.parse("January 13, 2024", "MMMM DD, YYYY")
+/// // -> Error(tempo.ParseMissingTime)
+/// ```
+/// 
+/// ```gleam
+/// time.parse("Hi! 12 2 am", "[Hi!] h m a")
+/// // -> Ok(time.literal("00:02:00"))
+/// ```
+pub fn parse(str: String, in fmt: String) -> Result(tempo.Date, tempo.Error) {
+  use #(parts, _) <- result.try(tempo.consume_format(str, in: fmt))
+
+  tempo.find_date(in: parts)
+}
+
+/// Tries to parse a given date string without a known format. It will not 
+/// parse two digit years and will assume the month always comes before the 
+/// day in a date. Will leave off any time offset values present.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.parse_any("2024.06.21 01:32 PM -04:00")
+/// // -> Ok(time.literal("13:32:00"))
+/// ```
+/// 
+/// ```gleam
+/// time.parse_any("2024.06.21")
+/// // -> Error(tempo.ParseMissingTime)
+/// ```
+pub fn parse_any(str: String) -> Result(tempo.Time, tempo.Error) {
+  case tempo.parse_any(str) {
+    Ok(#(_, Some(time), _)) -> Ok(time)
+    Ok(#(_, None, _)) -> Error(tempo.ParseMissingTime)
+    Error(err) -> Error(err)
+  }
 }
 
 /// Gets the UTC time value of a unix timestamp. If the local time is needed,

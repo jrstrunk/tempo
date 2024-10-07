@@ -1,4 +1,5 @@
 import gleam/bool
+import gleam/option.{None, Some}
 import gleam/order
 import gleam/result
 import gleam/string
@@ -144,6 +145,74 @@ pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
   <> "T"
   <> datetime.time
   |> time.to_string
+}
+
+/// Parses a naive datetime string in the provided format. Always prefer using
+/// this over `parse_any`. All parsed formats must have all parts of a naive
+/// datetime (date and time). Use the other modules for parsing lesser
+/// date time values.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month),
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// SSSSS (nanosecond), A (AM/PM), a (am/pm).
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// naive_datetime.parse("2024/06/08, 13:42:11", "YYYY/MM/DD, HH:mm:ss")
+/// // -> Ok(naive_datetime.literal("2024-06-08T13:42:11"))
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.parse("January 13, 2024. 3:42:11", "MMMM DD, YYYY. H:mm:ss")
+/// // -> Ok(naive_datetime.literal("2024-01-13T03:42:11"))
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.parse("Hi! 2024 11 13 12 2 am", "[Hi!] YYYY M D h m a")
+/// // -> Ok(naive_datetime.literal("2024-11-13T00:02:00"))
+/// ```
+pub fn parse(
+  str: String,
+  in fmt: String,
+) -> Result(tempo.NaiveDateTime, tempo.Error) {
+  use #(parts, _) <- result.try(tempo.consume_format(str, in: fmt))
+
+  use date <- result.try(tempo.find_date(in: parts))
+
+  use time <- result.try(tempo.find_time(in: parts))
+
+  Ok(new(date, time))
+}
+
+/// Tries to parse a given date string without a known format. It will not 
+/// parse two digit years and will assume the month always comes before the 
+/// day in a date. Will leave off any time offset values present.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// naive_datetime.parse_any("2024.06.21 01:32 PM -04:00")
+/// // -> Ok(naive_datetime.literal("2024-06-21T13:32:00"))
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.parse_any("2024.06.21")
+/// // -> Error(tempo.ParseMissingTime)
+/// ```
+pub fn parse_any(str: String) -> Result(tempo.NaiveDateTime, tempo.Error) {
+  case tempo.parse_any(str) {
+    Ok(#(Some(date), Some(time), _)) -> Ok(new(date, time))
+    Ok(#(_, None, _)) -> Error(tempo.ParseMissingTime)
+    Ok(#(None, _, _)) -> Error(tempo.ParseMissingDate)
+    Error(err) -> Error(err)
+  }
 }
 
 /// Sets a naive datetime's offset to UTC, leaving the date and time unchanged

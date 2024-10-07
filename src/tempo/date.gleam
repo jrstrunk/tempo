@@ -2,6 +2,7 @@ import gleam/bool
 import gleam/dynamic
 import gleam/int
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/order
 import gleam/result
 import gleam/string
@@ -217,6 +218,60 @@ pub fn to_string(date: tempo.Date) -> String {
     int.to_string(date.day) |> string.pad_left(2, with: "0"),
   ])
   |> string_builder.to_string
+}
+
+/// Parses a date string in the provided format. Always prefer using
+/// this over `parse_any`. All parsed formats must have all parts of a date. 
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month),
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.parse("2024/06/08, 13:42:11", "YYYY/MM/DD")
+/// // -> Ok(date.literal("2024-06-08"))
+/// ```
+/// 
+/// ```gleam
+/// date.parse("January 13, 2024", "MMMM DD, YYYY")
+/// // -> Ok(date.literal("2024-01-13"))
+/// ```
+/// 
+/// ```gleam
+/// date.parse("Hi! 2024 11 13", "[Hi!] YYYY M D")
+/// // -> Ok(date.literal("2024-11-13"))
+/// ```
+pub fn parse(str: String, in fmt: String) -> Result(tempo.Date, tempo.Error) {
+  use #(parts, _) <- result.try(tempo.consume_format(str, in: fmt))
+
+  tempo.find_date(in: parts)
+}
+
+/// Tries to parse a given date string without a known format. It will not 
+/// parse two digit years and will assume the month always comes before the 
+/// day in a date. Will leave off any time offset values present.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.parse_any("2024.06.21 01:32 PM -04:00")
+/// // -> Ok(date.literal("2024-06-21"))
+/// ```
+/// 
+/// ```gleam
+/// date.parse_any("2024.06.21")
+/// // -> Ok(date.literal("2024-06-21"))
+/// ```
+pub fn parse_any(str: String) -> Result(tempo.Date, tempo.Error) {
+  case tempo.parse_any(str) {
+    Ok(#(Some(date), _, _)) -> Ok(date)
+    Ok(#(None, _, _)) -> Error(tempo.ParseMissingDate)
+    Error(err) -> Error(err)
+  }
 }
 
 /// Returns a date value from a tuple of ints if the values represent the 
