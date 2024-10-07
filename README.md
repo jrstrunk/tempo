@@ -4,9 +4,10 @@ A lightweight and Gleamy datetime library!
 
 Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and stringify datetimes, and more! Over 350 unit tests, contributions welcome!
 
-Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible. 
+Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible.
 
 ## Installation
+
 ```sh
 gleam add gtempo
 ```
@@ -15,6 +16,7 @@ gleam add gtempo
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gtempo/)
 
 #### Parsing and Formatting Example
+
 ```gleam
 import tempo
 import tempo/datetime
@@ -32,7 +34,30 @@ pub fn main() {
 }
 ```
 
+#### Iterating Over a Date Range Example
+
+```gleam
+import gleam/iterator
+import tempo/date
+import tempo/period
+
+pub fn main() {
+  date.literal("2024-06-21")
+  |> date.difference(from: date.literal("2024-06-24"))
+  |> period.comprising_dates
+  |> iterator.to_list
+  // -> [2024-06-21, 2024-06-22, 2024-06-23, 2024-06-24]
+
+  date.literal("2024-06-21")
+  |> date.difference(from: date.literal("2024-07-08"))
+  |> period.comprising_months
+  |> iterator.to_list
+  // -> [tempo.Jun, tempo.Jul]
+}
+```
+
 #### Time-Based Logical Branching and Logging Example
+
 ```gleam
 import gleam/int
 import gleam/io
@@ -53,13 +78,13 @@ pub fn main() {
     True -> {
       io.println(
         "Oh no! We are late by "
-        <> time.now_local() 
+        <> time.now_local()
         |> time.difference(from: target_time)
         |> duration.as_minutes
         |> int.to_string
         <> " minutes! This should take until "
-        <> time.now_utc() 
-        |> time.add(duration.minutes(16)) 
+        <> time.now_utc()
+        |> time.add(duration.minutes(16))
         |> time.to_milli_precision
         |> time.to_string
         <> " UTC",
@@ -71,8 +96,8 @@ pub fn main() {
     False -> {
       io.println(
         "No rush :) This should take until "
-        <> time.now_local() 
-        |> time.add(duration.hours(3)) 
+        <> time.now_local()
+        |> time.add(duration.hours(3))
         |> time.to_second_precision
         |> time.to_string,
       )
@@ -88,7 +113,9 @@ pub fn main() {
 // -> Oh no! We are late by 16 minutes! This should take until 12:22:54.301 UTC
 // -> Phew, that only took 978 microseconds
 ```
+
 #### Waiting Until a Specific Time Example
+
 ```gleam
 import gleam/erlang/process
 import tempo/duration
@@ -109,6 +136,7 @@ pub fn main() {
 Further documentation can be found at <https://hexdocs.pm/gtempo>.
 
 ## Time Zone and Leap Second Considerations
+
 This package purposefully **ignores leap seconds** and **will not convert between time zones**. Try to design your application so time zones do not have to be converted between and leap seconds are trivial. More below.
 
 Both time zones and leap seconds require maintaining a manually updated database of location offsets and leap seconds. This burdens any application that uses them to keep their dependencies up to date and burdens the package by invalidating all previous versions when an update needs to be made.
@@ -150,6 +178,7 @@ pub fn main() {
   // -> "00:00:02"
 }
 ```
+
 ## Development
 
 ```sh
