@@ -90,21 +90,27 @@ pub fn date_to_string_test() {
 pub fn format_am_pad_test() {
   datetime.literal("2024-06-03T09:02:01.014920202-04:00")
   |> datetime.format(
-    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ",
+    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ z",
   )
   |> should.equal(
-    "24 2024 6 06 Jun June 3 03 1 Mo Mon Monday 9 09 9 09 am AM 2 02 1 01 014 014920 014920202 -04:00 -0400",
+    "24 2024 6 06 Jun June 3 03 1 Mo Mon Monday 9 09 9 09 am AM 2 02 1 01 014 014920 014920202 -04:00 -0400 -04",
   )
 }
 
 pub fn format_am_no_pad_test() {
-  datetime.literal("2001-12-25T22:52:21.914920202-04:00")
+  datetime.literal("2001-12-25T22:52:21.914920202-00:00")
   |> datetime.format(
-    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ",
+    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ z",
   )
   |> should.equal(
-    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 914920202 -04:00 -0400",
+    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 914920202 -00:00 -0000 Z",
   )
+}
+
+pub fn format_parenthesis_test() {
+  datetime.literal("2024-06-21T13:42:11.314-04:00")
+  |> datetime.format("ddd @ h:mm A (z)")
+  |> should.equal("Fri @ 1:42 PM (-04)")
 }
 
 pub fn format_escape_test() {

@@ -193,7 +193,8 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 
 /// Formats a datetime value into a string using the provided format string.
 /// Implements the same formatting directives as the great Day.js 
-/// library: https://day.js.org/docs/en/display/format.
+/// library: https://day.js.org/docs/en/display/format, plus short timezones
+/// and nanosecond precision.
 /// 
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
 /// 
@@ -204,15 +205,15 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"), 
+/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// A (AM/PM), a (am/pm).
 /// 
 /// ## Example
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-21T13:42:11.314-04:00")
-/// |> datetime.format("ddd @ h:mm A")
-/// // -> "Fri @ 1:42 PM"
+/// |> datetime.format("ddd @ h:mm A (z)")
+/// // -> "Fri @ 1:42 PM (-04)"
 /// ```
 /// 
 /// ```gleam
@@ -222,15 +223,15 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// ```
 /// 
 /// ```gleam 
-/// datetime.literal("2024-06-03T09:02:01.014920202-04:00")
-/// |> datetime.format("dddd SSS SSSS SSSSS Z ZZ [ZZ]")
-/// // -> "Monday 014 014920 014920202 -04:00 -0400 ZZ"
+/// datetime.literal("2024-06-03T09:02:01.014920202-00:00")
+/// |> datetime.format("dddd SSS SSSS SSSSS Z ZZ z")
+/// // -> "Monday 014 014920 014920202 -00:00 -0000 Z"
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-03T13:02:01-04:00")
-/// |> datetime.format("H HH h hh m mm s ss a A")
-/// // -------------> "13 13 1 01 2 02 1 01 pm PM"
+/// |> datetime.format("H HH h hh m mm s ss a A [An ant]")
+/// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
   let assert Ok(re) =
@@ -410,6 +411,18 @@ fn replace_format(content: String, datetime) -> String {
       |> time.get_nanosecond
       |> int.to_string
       |> string.pad_left(with: "0", to: 9)
+    "z" ->
+      case datetime |> get_offset {
+        tempo.Offset(0) -> "Z"
+        offset -> {
+          let str_offset = offset |> offset.to_string
+
+          case str_offset |> string.split(":") {
+            [hours, "00"] -> hours
+            _ -> str_offset
+          }
+        }
+      }
     "Z" -> datetime |> get_offset |> offset.to_string
     "ZZ" ->
       datetime
