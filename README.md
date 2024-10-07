@@ -1,14 +1,10 @@
 # Tempo
 
-A gleam library for controlling the tempo of your application through helpful date and time functions!
+A lightweight and Gleamy datetime library!
 
 Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and stringify datetimes, and more! Over 350 unit tests, contributions welcome!
 
 Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible. 
-
-This package purposefully **ignores leap seconds** and **will not convert between time zones**. Try to design your application so time zones do not have to be converted between and leap seconds are trivial. More below.
-
-This package is focused on ISO 8601 and Unix Timestamp time representations. Currently it does not support parsing or formatting to other time representations.
 
 ## Installation
 ```sh
@@ -18,6 +14,23 @@ gleam add gtempo
 [![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gtempo)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gtempo/)
 
+#### Parsing and Formatting Example
+```gleam
+import tempo
+import tempo/datetime
+
+pub fn main() {
+  tempo.parse_any("Dec 25, 2024 at 1:00 PM")
+  // -> Ok(#(Some(date), Some(time), None))
+
+  datetime.literal("2024-12-25T06:00:00Z")
+  |> datetime.format("ddd @ h:mm A")
+  // -> "Fri @ 6:00 AM"
+
+  date.parse("03/02/1998", "DD/MM/YYYY")
+  // -> Ok(date.literal("1998-02-03"))
+}
+```
 
 #### Time-Based Logical Branching and Logging Example
 ```gleam
@@ -96,6 +109,8 @@ pub fn main() {
 Further documentation can be found at <https://hexdocs.pm/gtempo>.
 
 ## Time Zone and Leap Second Considerations
+This package purposefully **ignores leap seconds** and **will not convert between time zones**. Try to design your application so time zones do not have to be converted between and leap seconds are trivial. More below.
+
 Both time zones and leap seconds require maintaining a manually updated database of location offsets and leap seconds. This burdens any application that uses them to keep their dependencies up to date and burdens the package by invalidating all previous versions when an update needs to be made.
 
 If at all possible, try to design your application so that time zones do not have to be converted between. Client machines should have information about their time zone offset that can be polled and used for current time time zone conversions. This package will allow you to convert between local time and UTC time on the same date as the system date.
