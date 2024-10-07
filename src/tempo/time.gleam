@@ -81,7 +81,7 @@ pub fn new_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  tempo.new_micro(hour, minute, second, microsecond)
+  tempo.new_time_micro(hour, minute, second, microsecond)
 }
 
 /// Creates a new time value with nanosecond precision.
@@ -108,7 +108,7 @@ pub fn new_nano(
   second: Int,
   nanosecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  tempo.new_nano(hour, minute, second, nanosecond)
+  tempo.new_time_nano(hour, minute, second, nanosecond)
 }
 
 /// Creates a new time value from a string literal, but will panic if

@@ -297,15 +297,10 @@ pub fn parse(str: String, in fmt: String) -> Result(tempo.DateTime, tempo.Error)
 
     case am_period, pm_period {
       Ok(Nil), Error(Nil) ->
-        case twelve_hour {
-          _ if twelve_hour == 12 -> Ok(0)
-          _ -> Ok(twelve_hour)
-        }
+        tempo.adjust_12_hour_to_24_hour(twelve_hour, am: True) |> Ok
       Error(Nil), Ok(Nil) ->
-        case twelve_hour {
-          _ if twelve_hour == 12 -> Ok(twelve_hour)
-          _ -> Ok(twelve_hour + 12)
-        }
+        tempo.adjust_12_hour_to_24_hour(twelve_hour, am: False) |> Ok
+
       _, _ -> Error(tempo.ParseMissingTime)
     }
   })

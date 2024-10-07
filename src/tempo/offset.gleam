@@ -169,7 +169,7 @@ pub fn to_duration(offset: tempo.Offset) -> tempo.Duration {
 }
 
 @external(erlang, "tempo_ffi", "local_offset")
-@external(javascript, "./tempo_ffi.mjs", "local_offset")
+@external(javascript, "../tempo_ffi.mjs", "local_offset")
 @internal
 pub fn local_minutes() -> Int
 

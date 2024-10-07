@@ -4,8 +4,8 @@
 //// find the need to, consider contributing to the package so your needs can
 //// be met and handled properly by the package itself. 
 
+import gleam/bool
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/regex
@@ -135,7 +135,7 @@ pub fn new_time_milli(
 }
 
 @internal
-pub fn new_micro(
+pub fn new_time_micro(
   hour: Int,
   minute: Int,
   second: Int,
@@ -145,7 +145,7 @@ pub fn new_micro(
 }
 
 @internal
-pub fn new_nano(
+pub fn new_time_nano(
   hour: Int,
   minute: Int,
   second: Int,
@@ -186,6 +186,16 @@ pub fn validate_time(time: Time) -> Result(Time, Error) {
         _ -> Error(TimeOutOfBounds)
       }
     False -> Error(TimeOutOfBounds)
+  }
+}
+
+@internal
+pub fn adjust_12_hour_to_24_hour(hour, am am) {
+  case am, hour {
+    True, _ if hour == 12 -> 0
+    True, _ -> hour
+    False, _ if hour == 12 -> hour
+    False, _ -> hour + 12
   }
 }
 
@@ -338,6 +348,239 @@ pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
     Precise(a) -> Ok(a)
     Imprecise(_) -> Error(Nil)
   }
+}
+
+/// Will not parse two digit years and will assume the month always comes 
+/// before the day in a date. Always prefer to use a module's specific `parse`
+/// function when possible.
+/// 
+/// Using pattern matching, you can explicitly specify what to with the 
+/// missing values from the input. Many libaries will assume a missing time
+/// value means 00:00:00 or a missing offset means UTC. This design
+/// lets the user decide how fallbacks are handled. 
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// case tempo.parse_any("06/21/2024 at 01:42:11 PM") {
+///   Ok(#(Some(date), Some(time), Some(offset))) ->
+///     datetime.new(date, time, offset)
+/// 
+///   Ok(#(Some(date), Some(time), None)) ->
+///     datetime.new(date, time, offset.local())
+/// 
+///   _ -> datetime.now_local()
+/// }
+/// // -> datetime.literal("2024-06-21T13:42:11-04:00")
+/// ```
+/// 
+/// ```gleam
+/// case tempo.parse_any("2024.06.21 11:32 AM -0400") {
+/// // -> Ok(#(
+/// //  Some(date.literal("2024-06-21")), 
+/// //  Some(time.literal("11:32:00")),
+/// //  Some(offset.literal("-04:00"))
+/// // ))
+/// ```
+pub fn parse_any(
+  str: String,
+) -> Result(
+  #(option.Option(Date), option.Option(Time), option.Option(Offset)),
+  Error,
+) {
+  use serial_re <- result.try(
+    regex.from_string("\\d{9,}") |> result.replace_error(InvalidInputShape),
+  )
+
+  use <- bool.guard(
+    when: regex.check(serial_re, str),
+    return: Error(InvalidInputShape),
+  )
+
+  use date_re <- result.try(
+    regex.from_string(
+      "(\\d{4})[-_/\\.\\s]{0,1}(\\d{2})[-_/\\.\\s]{0,1}(\\d{2})",
+    )
+    |> result.replace_error(InvalidInputShape),
+  )
+
+  use date_human_re <- result.try(
+    regex.from_string(
+      "(\\d{2})[-_/\\.\\s]{0,1}(\\d{2})[-_/\\.\\s]{0,1}(\\d{4})",
+    )
+    |> result.replace_error(InvalidInputShape),
+  )
+
+  use time_re <- result.try(
+    regex.from_string(
+      "(\\d{1,2})[:_\\.\\s]{0,1}(\\d{1,2})[:_\\.\\s]{0,1}(\\d{0,2})[\\.]{0,1}(\\d{0,9})\\s*(AM|PM|am|pm)?",
+    )
+    |> result.replace_error(InvalidInputShape),
+  )
+
+  use offset_re <- result.try(
+    regex.from_string("([-+]\\d{2}):{0,1}(\\d{1,2})?")
+    |> result.replace_error(InvalidInputShape),
+  )
+
+  let unconsumed = str
+
+  let #(date, unconsumed): #(option.Option(Date), String) = {
+    case regex.scan(date_re, unconsumed) {
+      [regex.Match(content, [Some(year), Some(month), Some(day)]), ..] ->
+        case int.parse(year), int.parse(month), int.parse(day) {
+          Ok(year), Ok(month), Ok(day) ->
+            case new_date(year, month, day) {
+              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
+
+              _ -> #(None, unconsumed)
+            }
+
+          _, _, _ -> #(None, unconsumed)
+        }
+
+      _ -> #(None, unconsumed)
+    }
+  }
+
+  let #(date, unconsumed): #(option.Option(Date), String) = {
+    case date {
+      Some(d) -> #(Some(d), unconsumed)
+      None ->
+        case regex.scan(date_human_re, unconsumed) {
+          [regex.Match(content, [Some(month), Some(day), Some(year)]), ..] ->
+            case int.parse(year), int.parse(month), int.parse(day) {
+              Ok(year), Ok(month), Ok(day) ->
+                case new_date(year, month, day) {
+                  Ok(date) -> #(
+                    Some(date),
+                    string.replace(unconsumed, content, ""),
+                  )
+
+                  _ -> #(None, unconsumed)
+                }
+
+              _, _, _ -> #(None, unconsumed)
+            }
+
+          _ -> #(None, unconsumed)
+        }
+    }
+  }
+
+  let #(offset, unconsumed): #(option.Option(Offset), String) = {
+    case regex.scan(offset_re, unconsumed) {
+      [regex.Match(content, [Some(hours), Some(minutes)]), ..] ->
+        case int.parse(hours), int.parse(minutes) {
+          Ok(hour), Ok(minute) ->
+            case new_offset(hour * 60 + minute) {
+              Ok(offset) -> #(
+                Some(offset),
+                string.replace(unconsumed, content, ""),
+              )
+
+              _ -> #(None, unconsumed)
+            }
+
+          _, _ -> #(None, unconsumed)
+        }
+
+      _ -> #(None, unconsumed)
+    }
+  }
+
+  let #(time, _): #(option.Option(Time), String) = {
+    let scan_results = regex.scan(time_re, unconsumed)
+
+    let adj_hour = case scan_results {
+      [regex.Match(_, [_, _, _, _, Some("PM")]), ..] -> adjust_12_hour_to_24_hour(
+        _,
+        am: False,
+      )
+      [regex.Match(_, [_, _, _, _, Some("pm")]), ..] -> adjust_12_hour_to_24_hour(
+        _,
+        am: False,
+      )
+      [regex.Match(_, [_, _, _, _, Some("AM")]), ..] -> adjust_12_hour_to_24_hour(
+        _,
+        am: True,
+      )
+      [regex.Match(_, [_, _, _, _, Some("am")]), ..] -> adjust_12_hour_to_24_hour(
+        _,
+        am: True,
+      )
+      _ -> fn(hour) { hour }
+    }
+
+    case scan_results {
+      [regex.Match(content, [Some(h), Some(m), None, None, ..]), ..] ->
+        case int.parse(h), int.parse(m) {
+          Ok(hour), Ok(minute) ->
+            case adj_hour(hour) |> new_time(minute, 0) {
+              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
+
+              _ -> #(None, unconsumed)
+            }
+
+          _, _ -> #(None, unconsumed)
+        }
+
+      [regex.Match(content, [Some(h), Some(m), Some(s), None, ..]), ..] ->
+        case int.parse(h), int.parse(m), int.parse(s) {
+          Ok(hour), Ok(minute), Ok(second) ->
+            case adj_hour(hour) |> new_time(minute, second) {
+              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
+
+              _ -> #(None, unconsumed)
+            }
+
+          _, _, _ -> #(None, unconsumed)
+        }
+
+      [regex.Match(content, [Some(h), Some(m), Some(s), Some(d), ..]), ..] ->
+        case int.parse(h), int.parse(m), int.parse(s) {
+          Ok(hour), Ok(minute), Ok(second) ->
+            case string.length(d), int.parse(d) {
+              3, Ok(milli) ->
+                case adj_hour(hour) |> new_time_milli(minute, second, milli) {
+                  Ok(date) -> #(
+                    Some(date),
+                    string.replace(unconsumed, content, ""),
+                  )
+
+                  _ -> #(None, unconsumed)
+                }
+              6, Ok(micro) ->
+                case adj_hour(hour) |> new_time_micro(minute, second, micro) {
+                  Ok(date) -> #(
+                    Some(date),
+                    string.replace(unconsumed, content, ""),
+                  )
+
+                  _ -> #(None, unconsumed)
+                }
+
+              9, Ok(nano) ->
+                case adj_hour(hour) |> new_time_nano(minute, second, nano) {
+                  Ok(date) -> #(
+                    Some(date),
+                    string.replace(unconsumed, content, ""),
+                  )
+
+                  _ -> #(None, unconsumed)
+                }
+
+              _, _ -> #(None, unconsumed)
+            }
+
+          _, _, _ -> #(None, unconsumed)
+        }
+
+      _ -> #(None, unconsumed)
+    }
+  }
+
+  Ok(#(date, time, offset))
 }
 
 @external(erlang, "tempo_ffi", "now")
@@ -616,6 +859,6 @@ fn consume_two_digits(str, constructor) {
   #(constructor(val), string.drop_left(str, 2))
 }
 
-@external(erlang, "ffi", "current_year")
-@external(javascript, "./ffi.mjs", "current_year")
+@external(erlang, "tempo_ffi", "current_year")
+@external(javascript, "./tempo_ffi.mjs", "current_year")
 fn current_year() -> Int
