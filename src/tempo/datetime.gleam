@@ -1,10 +1,15 @@
 import gleam/bool
 import gleam/dynamic
+import gleam/int
+import gleam/list
+import gleam/option.{Some}
 import gleam/order
+import gleam/regex
 import gleam/result
 import gleam/string
 import tempo
 import tempo/date
+import tempo/month
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -183,6 +188,235 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
   <> case datetime.offset.minutes {
     0 -> "Z"
     _ -> datetime.offset |> offset.to_string
+  }
+}
+
+/// Formats a datetime value into a string using the provided format string.
+/// Implements the same formatting directives as the great Day.js 
+/// library: https://day.js.org/docs/en/display/format.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"), 
+/// A (AM/PM), a (am/pm).
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T13:42:11.314-04:00")
+/// |> datetime.format("ddd @ h:mm A")
+/// // -> "Fri @ 1:42 PM"
+/// ```
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-03T09:02:01-04:00")
+/// |> datetime.format("YY YYYY M MM MMM MMMM D DD d dd ddd")
+/// // --------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
+/// ```
+/// 
+/// ```gleam 
+/// datetime.literal("2024-06-03T09:02:01.014920202-04:00")
+/// |> datetime.format("dddd SSS SSSS SSSSS Z ZZ [ZZ]")
+/// // -> "Monday 014 014920 014920202 -04:00 -0400 ZZ"
+/// ```
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-03T13:02:01-04:00")
+/// |> datetime.format("H HH h hh m mm s ss a A")
+/// // -------------> "13 13 1 01 2 02 1 01 pm PM"
+/// ```
+pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
+  let assert Ok(re) =
+    regex.from_string(
+      "\\[([^\\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSSSS|SSSS|SSS|.",
+    )
+
+  regex.scan(re, fmt)
+  |> list.reverse
+  |> list.fold(from: [], with: fn(acc, match) {
+    case match {
+      regex.Match(content, []) -> [replace_format(content, datetime), ..acc]
+
+      // If there is a non-empty subpattern, then the escape 
+      // character "[ ... ]" matched, so we should not change anything here.
+      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+
+      // This case is not expected, not really sure what to do with it 
+      // so just prepend whatever was found
+      regex.Match(content, _) -> [content, ..acc]
+    }
+  })
+  |> string.join("")
+}
+
+fn replace_format(content: String, datetime) -> String {
+  case content {
+    "YY" ->
+      datetime
+      |> get_date
+      |> date.get_year
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+      |> string.slice(at_index: -2, length: 2)
+    "YYYY" ->
+      datetime
+      |> get_date
+      |> date.get_year
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 4)
+    "M" ->
+      datetime
+      |> get_date
+      |> date.get_month
+      |> month.to_int
+      |> int.to_string
+    "MM" ->
+      datetime
+      |> get_date
+      |> date.get_month
+      |> month.to_int
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "MMM" ->
+      datetime
+      |> get_date
+      |> date.get_month
+      |> month.to_short_string
+    "MMMM" ->
+      datetime
+      |> get_date
+      |> date.get_month
+      |> month.to_long_string
+    "D" ->
+      datetime
+      |> get_date
+      |> date.get_day
+      |> int.to_string
+    "DD" ->
+      datetime
+      |> get_date
+      |> date.get_day
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "d" ->
+      datetime
+      |> get_date
+      |> date.to_day_of_week_number
+      |> int.to_string
+    "dd" ->
+      datetime
+      |> get_date
+      |> date.to_day_of_week
+      |> date.day_of_week_to_short_string
+      |> string.slice(at_index: 0, length: 2)
+    "ddd" ->
+      datetime
+      |> get_date
+      |> date.to_day_of_week
+      |> date.day_of_week_to_short_string
+    "dddd" ->
+      datetime
+      |> get_date
+      |> date.to_day_of_week
+      |> date.day_of_week_to_long_string
+    "H" -> datetime |> get_time |> time.get_hour |> int.to_string
+    "HH" ->
+      datetime
+      |> get_time
+      |> time.get_hour
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "h" ->
+      datetime
+      |> get_time
+      |> time.get_hour
+      |> fn(hour) {
+        case hour > 12 {
+          True -> hour - 12
+          False -> hour
+        }
+      }
+      |> int.to_string
+    "hh" ->
+      datetime
+      |> get_time
+      |> time.get_hour
+      |> fn(hour) {
+        case hour > 12 {
+          True -> hour - 12
+          False -> hour
+        }
+      }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "a" ->
+      datetime
+      |> get_time
+      |> time.get_hour
+      |> fn(hour) {
+        case hour >= 12 {
+          True -> "pm"
+          False -> "am"
+        }
+      }
+    "A" ->
+      datetime
+      |> get_time
+      |> time.get_hour
+      |> fn(hour) {
+        case hour >= 12 {
+          True -> "PM"
+          False -> "AM"
+        }
+      }
+    "m" -> datetime |> get_time |> time.get_minute |> int.to_string
+    "mm" ->
+      datetime
+      |> get_time
+      |> time.get_minute
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "s" -> datetime |> get_time |> time.get_second |> int.to_string
+    "ss" ->
+      datetime
+      |> get_time
+      |> time.get_second
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "SSS" ->
+      datetime
+      |> get_time
+      |> time.get_nanosecond
+      |> fn(nano) { nano / 1_000_000 }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 3)
+    "SSSS" ->
+      datetime
+      |> get_time
+      |> time.get_nanosecond
+      |> fn(nano) { nano / 1000 }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 6)
+    "SSSSS" ->
+      datetime
+      |> get_time
+      |> time.get_nanosecond
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 9)
+    "Z" -> datetime |> get_offset |> offset.to_string
+    "ZZ" ->
+      datetime
+      |> get_offset
+      |> offset.to_string
+      |> string.replace(":", "")
+    _ -> content
   }
 }
 

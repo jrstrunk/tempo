@@ -87,6 +87,32 @@ pub fn date_to_string_test() {
   |> should.equal("2024-06-13T00:00:00Z")
 }
 
+pub fn format_am_pad_test() {
+  datetime.literal("2024-06-03T09:02:01.014920202-04:00")
+  |> datetime.format(
+    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ",
+  )
+  |> should.equal(
+    "24 2024 6 06 Jun June 3 03 1 Mo Mon Monday 9 09 9 09 am AM 2 02 1 01 014 014920 014920202 -04:00 -0400",
+  )
+}
+
+pub fn format_am_no_pad_test() {
+  datetime.literal("2001-12-25T22:52:21.914920202-04:00")
+  |> datetime.format(
+    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ",
+  )
+  |> should.equal(
+    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 914920202 -04:00 -0400",
+  )
+}
+
+pub fn format_escape_test() {
+  datetime.literal("2024-06-13T13:42:11.314-04:00")
+  |> datetime.format("[Hi Mom! It is:] YYYY-MM-DD")
+  |> should.equal("Hi Mom! It is: 2024-06-13")
+}
+
 pub fn get_date_test() {
   datetime.literal("20240613T134211.314+05")
   |> datetime.get_date
