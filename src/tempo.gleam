@@ -313,6 +313,61 @@ pub fn month_from_int(month: Int) -> Result(Month, Error) {
 }
 
 @internal
+pub fn month_from_short_string(month: String) -> Result(Month, Error) {
+  case month {
+    "Jan" -> Ok(Jan)
+    "Feb" -> Ok(Feb)
+    "Mar" -> Ok(Mar)
+    "Apr" -> Ok(Apr)
+    "May" -> Ok(May)
+    "Jun" -> Ok(Jun)
+    "Jul" -> Ok(Jul)
+    "Aug" -> Ok(Aug)
+    "Sep" -> Ok(Sep)
+    "Oct" -> Ok(Oct)
+    "Nov" -> Ok(Nov)
+    "Dec" -> Ok(Dec)
+    _ -> Error(MonthInvalidFormat)
+  }
+}
+
+pub fn month_from_long_string(month: String) -> Result(Month, Error) {
+  case month {
+    "January" -> Ok(Jan)
+    "February" -> Ok(Feb)
+    "March" -> Ok(Mar)
+    "April" -> Ok(Apr)
+    "May" -> Ok(May)
+    "June" -> Ok(Jun)
+    "July" -> Ok(Jul)
+    "August" -> Ok(Aug)
+    "September" -> Ok(Sep)
+    "October" -> Ok(Oct)
+    "November" -> Ok(Nov)
+    "December" -> Ok(Dec)
+    _ -> Error(MonthInvalidFormat)
+  }
+}
+
+@internal
+pub fn month_to_int(month: Month) -> Int {
+  case month {
+    Jan -> 1
+    Feb -> 2
+    Mar -> 3
+    Apr -> 4
+    May -> 5
+    Jun -> 6
+    Jul -> 7
+    Aug -> 8
+    Sep -> 9
+    Oct -> 10
+    Nov -> 11
+    Dec -> 12
+  }
+}
+
+@internal
 pub fn days_of_month(month: Month, in year: Int) -> Int {
   case month {
     Jan -> 31
@@ -435,11 +490,20 @@ pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
 /// ```
 /// 
 /// ```gleam
-/// case tempo.parse_any("2024.06.21 11:32 AM -0400") {
+/// tempo.parse_any("2024.06.21 11:32 AM -0400")
 /// // -> Ok(#(
 /// //  Some(date.literal("2024-06-21")), 
 /// //  Some(time.literal("11:32:00")),
 /// //  Some(offset.literal("-04:00"))
+/// // ))
+/// ```
+/// 
+/// ```gleam
+/// tempo.parse_any("Dec 25, 2024 at 6:00 AM")
+/// // -> Ok(#(
+/// //  Some(date.literal("2024-12-25")), 
+/// //  Some(time.literal("06:00:00")),
+/// //  None
 /// // ))
 /// ```
 pub fn parse_any(
@@ -459,14 +523,14 @@ pub fn parse_any(
 
   use date_re <- result.try(
     regex.from_string(
-      "(\\d{4})[-_/\\.\\s]{0,1}(\\d{2})[-_/\\.\\s]{0,1}(\\d{2})",
+      "(\\d{4})[-_/\\.\\s,]{0,2}(\\d{2})[-_/\\.\\s,]{0,2}(\\d{2})",
     )
     |> result.replace_error(InvalidInputShape),
   )
 
   use date_human_re <- result.try(
     regex.from_string(
-      "(\\d{2})[-_/\\.\\s]{0,1}(\\d{2})[-_/\\.\\s]{0,1}(\\d{4})",
+      "(\\d{2}|January|Jan|january|jan|February|Feb|february|feb|March|Mar|march|mar|April|Apr|april|apr|May|may|June|Jun|june|jun|July|Jul|july|jul|August|Aug|august|aug|September|Sep|september|sep|October|Oct|october|oct|November|Nov|november|nov|December|Dec|december|dec)[-_/\\.\\s,]{0,2}(\\d{2})[-_/\\.\\s,]{0,2}(\\d{4})",
     )
     |> result.replace_error(InvalidInputShape),
   )
@@ -509,9 +573,20 @@ pub fn parse_any(
       None ->
         case regex.scan(date_human_re, unconsumed) {
           [regex.Match(content, [Some(month), Some(day), Some(year)]), ..] ->
-            case int.parse(year), int.parse(month), int.parse(day) {
+            case
+              int.parse(year),
+              // Parse an int month or a written month
+              int.parse(month)
+              |> result.replace_error(MonthInvalidFormat)
+              |> result.try(month_from_int)
+              |> result.try_recover(fn(_) {
+                month_from_short_string(month)
+                |> result.try_recover(fn(_) { month_from_long_string(month) })
+              }),
+              int.parse(day)
+            {
               Ok(year), Ok(month), Ok(day) ->
-                case new_date(year, month, day) {
+                case new_date(year, month_to_int(month), day) {
                   Ok(date) -> #(
                     Some(date),
                     string.replace(unconsumed, content, ""),

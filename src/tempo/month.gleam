@@ -92,21 +92,7 @@ pub fn from_string(month: String) -> Result(tempo.Month, tempo.Error) {
 /// // -> Error(Nil)
 /// ```
 pub fn from_short_string(month: String) -> Result(tempo.Month, tempo.Error) {
-  case month {
-    "Jan" -> Ok(tempo.Jan)
-    "Feb" -> Ok(tempo.Feb)
-    "Mar" -> Ok(tempo.Mar)
-    "Apr" -> Ok(tempo.Apr)
-    "May" -> Ok(tempo.May)
-    "Jun" -> Ok(tempo.Jun)
-    "Jul" -> Ok(tempo.Jul)
-    "Aug" -> Ok(tempo.Aug)
-    "Sep" -> Ok(tempo.Sep)
-    "Oct" -> Ok(tempo.Oct)
-    "Nov" -> Ok(tempo.Nov)
-    "Dec" -> Ok(tempo.Dec)
-    _ -> Error(tempo.MonthInvalidFormat)
-  }
+  tempo.month_from_short_string(month)
 }
 
 /// Gets a month from a long month string.
@@ -123,21 +109,7 @@ pub fn from_short_string(month: String) -> Result(tempo.Month, tempo.Error) {
 /// // -> Error(Nil)
 /// ```
 pub fn from_long_string(month: String) -> Result(tempo.Month, tempo.Error) {
-  case month {
-    "January" -> Ok(tempo.Jan)
-    "February" -> Ok(tempo.Feb)
-    "March" -> Ok(tempo.Mar)
-    "April" -> Ok(tempo.Apr)
-    "May" -> Ok(tempo.May)
-    "June" -> Ok(tempo.Jun)
-    "July" -> Ok(tempo.Jul)
-    "August" -> Ok(tempo.Aug)
-    "September" -> Ok(tempo.Sep)
-    "October" -> Ok(tempo.Oct)
-    "November" -> Ok(tempo.Nov)
-    "December" -> Ok(tempo.Dec)
-    _ -> Error(tempo.MonthInvalidFormat)
-  }
+  tempo.month_from_long_string(month)
 }
 
 /// Returns a month's number on the civil calendar.
@@ -151,20 +123,7 @@ pub fn from_long_string(month: String) -> Result(tempo.Month, tempo.Error) {
 /// // -> 6
 /// ```
 pub fn to_int(month: tempo.Month) -> Int {
-  case month {
-    tempo.Jan -> 1
-    tempo.Feb -> 2
-    tempo.Mar -> 3
-    tempo.Apr -> 4
-    tempo.May -> 5
-    tempo.Jun -> 6
-    tempo.Jul -> 7
-    tempo.Aug -> 8
-    tempo.Sep -> 9
-    tempo.Oct -> 10
-    tempo.Nov -> 11
-    tempo.Dec -> 12
-  }
+  tempo.month_to_int(month)
 }
 
 /// Gets a month from an integer representing the order of the month on the 

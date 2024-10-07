@@ -74,7 +74,26 @@ pub fn parse_any_squished_test() {
   )
 }
 
+pub fn parse_any_squished_american_test() {
+  tempo.parse_any("06222024_134211")
+  |> should.equal(
+    Ok(#(Some(date.literal("2024-06-22")), Some(time.literal("13:42:11")), None)),
+  )
+}
+
 pub fn parse_any_dots_test() {
   tempo.parse_any("2024.06.22")
   |> should.equal(Ok(#(Some(date.literal("2024.06.22")), None, None)))
+}
+
+pub fn parse_any_written_date_test() {
+  tempo.parse_any("June 21, 2024")
+  |> should.equal(Ok(#(Some(date.literal("2024-06-21")), None, None)))
+}
+
+pub fn parse_any_written_short_date_test() {
+  tempo.parse_any("Dec 25, 2024 at 6:00 AM")
+  |> should.equal(
+    Ok(#(Some(date.literal("2024-12-25")), Some(time.literal("06:00:00")), None)),
+  )
 }
