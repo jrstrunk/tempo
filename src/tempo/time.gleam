@@ -1,6 +1,8 @@
 import gleam/int
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
+import gleam/regex
 import gleam/result
 import gleam/string
 import gleam/string_builder
@@ -622,6 +624,140 @@ pub fn parse_any(str: String) -> Result(tempo.Time, tempo.Error) {
     Ok(#(_, Some(time), _)) -> Ok(time)
     Ok(#(_, None, _)) -> Error(tempo.ParseMissingTime)
     Error(err) -> Error(err)
+  }
+}
+
+/// Formats a time value using the provided format string.
+/// Implements the same formatting directives as the great Day.js 
+/// library: https://day.js.org/docs/en/display/format.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] HH".
+/// 
+/// Available directives: H (hour), HH (two-digit hour), h (12-hour clock hour),
+/// hh (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// SSSSS (nanosecond), A (AM/PM), a (am/pm).
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11.314")
+/// |> time.format("h:mm A")
+/// // -> "1:42 PM"
+/// ```
+/// 
+/// ```gleam 
+/// time.literal("09:02:01.014920202")
+/// |> time.format("HH:mm:ss SSS SSSS SSSSS")
+/// // -> "09:02:01 014 014920 014920202"
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("13:02:01")
+/// |> naive_datetime.format("H HH h hh m mm s ss a A [An ant]")
+/// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
+/// ```
+pub fn format(time: tempo.Time, in fmt: String) -> String {
+  let assert Ok(re) = regex.from_string(tempo.format_regex)
+
+  regex.scan(re, fmt)
+  |> list.reverse
+  |> list.fold(from: [], with: fn(acc, match) {
+    case match {
+      regex.Match(content, []) -> [replace_format(content, time), ..acc]
+
+      // If there is a non-empty subpattern, then the escape 
+      // character "[ ... ]" matched, so we should not change anything here.
+      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+
+      // This case is not expected, not really sure what to do with it 
+      // so just prepend whatever was found
+      regex.Match(content, _) -> [content, ..acc]
+    }
+  })
+  |> string.join("")
+}
+
+@internal
+pub fn replace_format(content: String, time) -> String {
+  case content {
+    "H" -> time |> get_hour |> int.to_string
+    "HH" ->
+      time
+      |> get_hour
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "h" ->
+      time
+      |> get_hour
+      |> fn(hour) {
+        case hour {
+          _ if hour == 0 -> 12
+          _ if hour > 12 -> hour - 12
+          _ -> hour
+        }
+      }
+      |> int.to_string
+    "hh" ->
+      time
+      |> get_hour
+      |> fn(hour) {
+        case hour {
+          _ if hour == 0 -> 12
+          _ if hour > 12 -> hour - 12
+          _ -> hour
+        }
+      }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "a" ->
+      time
+      |> get_hour
+      |> fn(hour) {
+        case hour >= 12 {
+          True -> "pm"
+          False -> "am"
+        }
+      }
+    "A" ->
+      time
+      |> get_hour
+      |> fn(hour) {
+        case hour >= 12 {
+          True -> "PM"
+          False -> "AM"
+        }
+      }
+    "m" -> time |> get_minute |> int.to_string
+    "mm" ->
+      time
+      |> get_minute
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "s" -> time |> get_second |> int.to_string
+    "ss" ->
+      time
+      |> get_second
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "SSS" ->
+      time
+      |> get_nanosecond
+      |> fn(nano) { nano / 1_000_000 }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 3)
+    "SSSS" ->
+      time
+      |> get_nanosecond
+      |> fn(nano) { nano / 1000 }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 6)
+    "SSSSS" ->
+      time
+      |> get_nanosecond
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 9)
+    _ -> content
   }
 }
 

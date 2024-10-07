@@ -533,6 +533,12 @@ pub fn nanoseconds_round_trip_test() {
   |> should.equal(time.test_literal_nano(13, 42, 10, 20))
 }
 
+pub fn format_test() {
+  time.literal("13:42:11")
+  |> time.format("hh:mm:ss a")
+  |> should.equal("01:42:11 pm")
+}
+
 pub fn to_duration_test() {
   time.literal("0:0:0.000000300")
   |> time.to_duration

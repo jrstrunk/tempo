@@ -1,6 +1,8 @@
 import gleam/bool
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
+import gleam/regex
 import gleam/result
 import gleam/string
 import gtempo/internal as unit
@@ -213,6 +215,72 @@ pub fn parse_any(str: String) -> Result(tempo.NaiveDateTime, tempo.Error) {
     Ok(#(None, _, _)) -> Error(tempo.ParseMissingDate)
     Error(err) -> Error(err)
   }
+}
+
+/// Formats a naive datetime value using the provided format string.
+/// Implements the same formatting directives as the great Day.js 
+/// library: https://day.js.org/docs/en/display/format.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// SSSSS (nanosecond), A (AM/PM), a (am/pm).
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-21T13:42:11.314")
+/// |> naive_datetime.format("ddd @ h:mm A")
+/// // -> "Fri @ 1:42 PM"
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-03T09:02:01")
+/// |> naive_datetime.format("YY YYYY M MM MMM MMMM D DD d dd ddd")
+/// // --------------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
+/// ```
+/// 
+/// ```gleam 
+/// naive_datetime.literal("2024-06-03T09:02:01.014920202")
+/// |> naive_datetime.format("dddd SSS SSSS SSSSS")
+/// // -> "Monday 014 014920 014920202"
+/// ```
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-03T13:02:01")
+/// |> naive_datetime.format("H HH h hh m mm s ss a A [An ant]")
+/// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
+/// ```
+pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
+  let assert Ok(re) = regex.from_string(tempo.format_regex)
+
+  regex.scan(re, fmt)
+  |> list.reverse
+  |> list.fold(from: [], with: fn(acc, match) {
+    case match {
+      regex.Match(content, []) -> [
+        content
+          |> date.replace_format(naive_datetime |> get_date)
+          |> time.replace_format(naive_datetime |> get_time),
+        ..acc
+      ]
+
+      // If there is a non-empty subpattern, then the escape 
+      // character "[ ... ]" matched, so we should not change anything here.
+      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+
+      // This case is not expected, not really sure what to do with it 
+      // so just prepend whatever was found
+      regex.Match(content, _) -> [content, ..acc]
+    }
+  })
+  |> string.join("")
 }
 
 /// Sets a naive datetime's offset to UTC, leaving the date and time unchanged

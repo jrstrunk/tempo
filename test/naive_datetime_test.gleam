@@ -45,6 +45,12 @@ pub fn to_string_test() {
   |> should.equal("2024-06-13T13:42:11")
 }
 
+pub fn format_test() {
+  naive_datetime.literal("2024-06-21T13:42:11")
+  |> naive_datetime.format("ddd @ h:mm A")
+  |> should.equal("Fri @ 1:42 PM")
+}
+
 pub fn get_date_test() {
   naive_datetime.literal("2024-06-13T13:42:11")
   |> naive_datetime.get_date

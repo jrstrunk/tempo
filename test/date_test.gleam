@@ -122,6 +122,12 @@ pub fn to_string_test() {
   |> should.equal("2024-06-03")
 }
 
+pub fn format_test() {
+  date.literal("2024-06-13")
+  |> date.format("MMMM 'YY")
+  |> should.equal("June '24")
+}
+
 pub fn to_tuple_test() {
   date.literal("2024-06-13")
   |> date.to_tuple

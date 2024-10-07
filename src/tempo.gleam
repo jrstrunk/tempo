@@ -1243,3 +1243,6 @@ pub fn find_offset(in parts) {
 @external(erlang, "tempo_ffi", "current_year")
 @external(javascript, "./tempo_ffi.mjs", "current_year")
 fn current_year() -> Int
+
+@internal
+pub const format_regex = "\\[([^\\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."

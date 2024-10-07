@@ -1,6 +1,5 @@
 import gleam/bool
 import gleam/dynamic
-import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
@@ -9,7 +8,6 @@ import gleam/result
 import gleam/string
 import tempo
 import tempo/date
-import tempo/month
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -303,16 +301,19 @@ pub fn parse_any(str: String) -> Result(tempo.DateTime, tempo.Error) {
 /// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
-  let assert Ok(re) =
-    regex.from_string(
-      "\\[([^\\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSSSS|SSSS|SSS|.",
-    )
+  let assert Ok(re) = regex.from_string(tempo.format_regex)
 
   regex.scan(re, fmt)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-      regex.Match(content, []) -> [replace_format(content, datetime), ..acc]
+      regex.Match(content, []) -> [
+        content
+          |> date.replace_format(datetime |> get_date)
+          |> time.replace_format(datetime |> get_time)
+          |> replace_format(datetime),
+        ..acc
+      ]
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.
@@ -328,160 +329,6 @@ pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
 
 fn replace_format(content: String, datetime) -> String {
   case content {
-    "YY" ->
-      datetime
-      |> get_date
-      |> date.get_year
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-      |> string.slice(at_index: -2, length: 2)
-    "YYYY" ->
-      datetime
-      |> get_date
-      |> date.get_year
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 4)
-    "M" ->
-      datetime
-      |> get_date
-      |> date.get_month
-      |> month.to_int
-      |> int.to_string
-    "MM" ->
-      datetime
-      |> get_date
-      |> date.get_month
-      |> month.to_int
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "MMM" ->
-      datetime
-      |> get_date
-      |> date.get_month
-      |> month.to_short_string
-    "MMMM" ->
-      datetime
-      |> get_date
-      |> date.get_month
-      |> month.to_long_string
-    "D" ->
-      datetime
-      |> get_date
-      |> date.get_day
-      |> int.to_string
-    "DD" ->
-      datetime
-      |> get_date
-      |> date.get_day
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "d" ->
-      datetime
-      |> get_date
-      |> date.to_day_of_week_number
-      |> int.to_string
-    "dd" ->
-      datetime
-      |> get_date
-      |> date.to_day_of_week
-      |> date.day_of_week_to_short_string
-      |> string.slice(at_index: 0, length: 2)
-    "ddd" ->
-      datetime
-      |> get_date
-      |> date.to_day_of_week
-      |> date.day_of_week_to_short_string
-    "dddd" ->
-      datetime
-      |> get_date
-      |> date.to_day_of_week
-      |> date.day_of_week_to_long_string
-    "H" -> datetime |> get_time |> time.get_hour |> int.to_string
-    "HH" ->
-      datetime
-      |> get_time
-      |> time.get_hour
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "h" ->
-      datetime
-      |> get_time
-      |> time.get_hour
-      |> fn(hour) {
-        case hour {
-          _ if hour == 0 -> 12
-          _ if hour > 12 -> hour - 12
-          _ -> hour
-        }
-      }
-      |> int.to_string
-    "hh" ->
-      datetime
-      |> get_time
-      |> time.get_hour
-      |> fn(hour) {
-        case hour {
-          _ if hour == 0 -> 12
-          _ if hour > 12 -> hour - 12
-          _ -> hour
-        }
-      }
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "a" ->
-      datetime
-      |> get_time
-      |> time.get_hour
-      |> fn(hour) {
-        case hour >= 12 {
-          True -> "pm"
-          False -> "am"
-        }
-      }
-    "A" ->
-      datetime
-      |> get_time
-      |> time.get_hour
-      |> fn(hour) {
-        case hour >= 12 {
-          True -> "PM"
-          False -> "AM"
-        }
-      }
-    "m" -> datetime |> get_time |> time.get_minute |> int.to_string
-    "mm" ->
-      datetime
-      |> get_time
-      |> time.get_minute
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "s" -> datetime |> get_time |> time.get_second |> int.to_string
-    "ss" ->
-      datetime
-      |> get_time
-      |> time.get_second
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "SSS" ->
-      datetime
-      |> get_time
-      |> time.get_nanosecond
-      |> fn(nano) { nano / 1_000_000 }
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 3)
-    "SSSS" ->
-      datetime
-      |> get_time
-      |> time.get_nanosecond
-      |> fn(nano) { nano / 1000 }
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 6)
-    "SSSSS" ->
-      datetime
-      |> get_time
-      |> time.get_nanosecond
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 9)
     "z" ->
       case datetime |> get_offset {
         tempo.Offset(0) -> "Z"

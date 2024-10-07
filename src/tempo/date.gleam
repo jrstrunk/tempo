@@ -4,6 +4,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
+import gleam/regex
 import gleam/result
 import gleam/string
 import gleam/string_builder
@@ -271,6 +272,132 @@ pub fn parse_any(str: String) -> Result(tempo.Date, tempo.Error) {
     Ok(#(Some(date), _, _)) -> Ok(date)
     Ok(#(None, _, _)) -> Error(tempo.ParseMissingDate)
     Error(err) -> Error(err)
+  }
+}
+
+/// Formats a datetime value into a string using the provided format string.
+/// Implements the same formatting directives as the great Day.js 
+/// library: https://day.js.org/docs/en/display/format, plus short timezones
+/// and nanosecond precision.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T13:42:11.314-04:00")
+/// |> datetime.format("ddd @ h:mm A (z)")
+/// // -> "Fri @ 1:42 PM (-04)"
+/// ```
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-03T09:02:01-04:00")
+/// |> datetime.format("YY YYYY M MM MMM MMMM D DD d dd ddd")
+/// // --------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
+/// ```
+/// 
+/// ```gleam 
+/// datetime.literal("2024-06-03T09:02:01.014920202-00:00")
+/// |> datetime.format("dddd SSS SSSS SSSSS Z ZZ z")
+/// // -> "Monday 014 014920 014920202 -00:00 -0000 Z"
+/// ```
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-03T13:02:01-04:00")
+/// |> datetime.format("H HH h hh m mm s ss a A [An ant]")
+/// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
+/// ```
+pub fn format(date: tempo.Date, in fmt: String) -> String {
+  let assert Ok(re) = regex.from_string(tempo.format_regex)
+
+  regex.scan(re, fmt)
+  |> list.reverse
+  |> list.fold(from: [], with: fn(acc, match) {
+    case match {
+      regex.Match(content, []) -> [replace_format(content, date), ..acc]
+
+      // If there is a non-empty subpattern, then the escape 
+      // character "[ ... ]" matched, so we should not change anything here.
+      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+
+      // This case is not expected, not really sure what to do with it 
+      // so just prepend whatever was found
+      regex.Match(content, _) -> [content, ..acc]
+    }
+  })
+  |> string.join("")
+}
+
+@internal
+pub fn replace_format(content: String, date) -> String {
+  case content {
+    "YY" ->
+      date
+      |> get_year
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+      |> string.slice(at_index: -2, length: 2)
+    "YYYY" ->
+      date
+      |> get_year
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 4)
+    "M" ->
+      date
+      |> get_month
+      |> month.to_int
+      |> int.to_string
+    "MM" ->
+      date
+      |> get_month
+      |> month.to_int
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "MMM" ->
+      date
+      |> get_month
+      |> month.to_short_string
+    "MMMM" ->
+      date
+      |> get_month
+      |> month.to_long_string
+    "D" ->
+      date
+      |> get_day
+      |> int.to_string
+    "DD" ->
+      date
+      |> get_day
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "d" ->
+      date
+      |> to_day_of_week_number
+      |> int.to_string
+    "dd" ->
+      date
+      |> to_day_of_week
+      |> day_of_week_to_short_string
+      |> string.slice(at_index: 0, length: 2)
+    "ddd" ->
+      date
+      |> to_day_of_week
+      |> day_of_week_to_short_string
+    "dddd" ->
+      date
+      |> to_day_of_week
+      |> day_of_week_to_long_string
+    _ -> content
   }
 }
 
