@@ -39,7 +39,7 @@ pub fn new(
   month month: Int,
   day day: Int,
 ) -> Result(tempo.Date, tempo.Error) {
-  from_tuple(#(year, month, day))
+  tempo.new_date(year, month, day)
 }
 
 /// Creates a new date value from a string literal, but will panic if
@@ -239,20 +239,7 @@ pub fn to_string(date: tempo.Date) -> String {
 /// // -> Error(tempo.DateOutOfBounds)
 /// ```
 pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, tempo.Error) {
-  let year = date.0
-  let month = date.1
-  let day = date.2
-
-  use month <- result.try(month.from_int(month))
-
-  case year >= 1000 && year <= 9999 {
-    True ->
-      case day >= 1 && day <= month.days(of: month, in: year) {
-        True -> Ok(tempo.Date(year, month, day))
-        False -> Error(tempo.DateOutOfBounds)
-      }
-    False -> Error(tempo.DateOutOfBounds)
-  }
+  tempo.date_from_tuple(date)
 }
 
 /// Returns a tuple of ints from a date value that represent the year, month,

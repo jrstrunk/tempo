@@ -1,3 +1,5 @@
+import tempo
+
 /// Checks if a year is a leap year.
 /// 
 /// ## Examples
@@ -12,18 +14,7 @@
 /// // -> False
 /// ```
 pub fn is_leap_year(year: Int) -> Bool {
-  case year % 4 == 0 {
-    True ->
-      case year % 100 == 0 {
-        True ->
-          case year % 400 == 0 {
-            True -> True
-            False -> False
-          }
-        False -> True
-      }
-    False -> False
-  }
+  tempo.is_leap_year(year)
 }
 
 /// Get the number of days in a year. Accounts for leap years.

@@ -21,7 +21,7 @@ pub const utc = tempo.Offset(0)
 /// // -> Ok("-01:05")
 /// ```
 pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, tempo.Error) {
-  tempo.Offset(minutes) |> validate
+  tempo.new_offset(minutes)
 }
 
 /// Creates a new offset from a string literal, but will panic if the string
@@ -48,11 +48,7 @@ pub fn literal(offset: String) -> tempo.Offset {
 }
 
 fn validate(offset: tempo.Offset) -> Result(tempo.Offset, tempo.Error) {
-  // Valid time offsets are between -12:00 and +14:00
-  case offset.minutes >= -720 && offset.minutes <= 840 {
-    True -> Ok(offset)
-    False -> Error(tempo.OffsetOutOfBounds)
-  }
+  tempo.validate_offset(offset)
 }
 
 /// Converts an offset to a string representation.

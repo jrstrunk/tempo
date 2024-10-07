@@ -1,6 +1,5 @@
 import gleam/result
 import tempo
-import tempo/year
 
 /// Returns a month's short name.
 /// 
@@ -183,21 +182,7 @@ pub fn to_int(month: tempo.Month) -> Int {
 /// // -> Error(Nil)
 /// ```
 pub fn from_int(month: Int) -> Result(tempo.Month, tempo.Error) {
-  case month {
-    1 -> Ok(tempo.Jan)
-    2 -> Ok(tempo.Feb)
-    3 -> Ok(tempo.Mar)
-    4 -> Ok(tempo.Apr)
-    5 -> Ok(tempo.May)
-    6 -> Ok(tempo.Jun)
-    7 -> Ok(tempo.Jul)
-    8 -> Ok(tempo.Aug)
-    9 -> Ok(tempo.Sep)
-    10 -> Ok(tempo.Oct)
-    11 -> Ok(tempo.Nov)
-    12 -> Ok(tempo.Dec)
-    _ -> Error(tempo.MonthOutOfBounds)
-  }
+  tempo.month_from_int(month)
 }
 
 /// Returns the number of days in a month.
@@ -218,27 +203,7 @@ pub fn from_int(month: Int) -> Result(tempo.Month, tempo.Error) {
 /// // -> 31
 /// ```
 pub fn days(of month: tempo.Month, in year: Int) -> Int {
-  case month {
-    tempo.Jan -> 31
-    tempo.Mar -> 31
-    tempo.May -> 31
-    tempo.Jul -> 31
-    tempo.Aug -> 31
-    tempo.Oct -> 31
-    tempo.Dec -> 31
-    _ ->
-      case month {
-        tempo.Apr -> 30
-        tempo.Jun -> 30
-        tempo.Sep -> 30
-        tempo.Nov -> 30
-        _ ->
-          case year.is_leap_year(year) {
-            True -> 29
-            False -> 28
-          }
-      }
-  }
+  tempo.days_of_month(month, in: year)
 }
 
 /// Returns the next month in the civil calendar.

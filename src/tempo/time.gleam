@@ -27,7 +27,7 @@ pub fn new(
   minute: Int,
   second: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  tempo.Time(hour, minute, second, 0) |> validate
+  tempo.new_time(hour, minute, second)
 }
 
 /// Creates a new time value with millisecond precision.
@@ -54,8 +54,7 @@ pub fn new_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000)
-  |> validate
+  tempo.new_time_milli(hour, minute, second, millisecond)
 }
 
 /// Creates a new time value with microsecond precision.
@@ -82,7 +81,7 @@ pub fn new_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
+  tempo.new_micro(hour, minute, second, microsecond)
 }
 
 /// Creates a new time value with nanosecond precision.
@@ -109,7 +108,7 @@ pub fn new_nano(
   second: Int,
   nanosecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  tempo.TimeNano(hour, minute, second, nanosecond) |> validate
+  tempo.new_nano(hour, minute, second, nanosecond)
 }
 
 /// Creates a new time value from a string literal, but will panic if
@@ -234,37 +233,7 @@ pub fn test_literal_nano(
 }
 
 fn validate(time: tempo.Time) -> Result(tempo.Time, tempo.Error) {
-  case
-    {
-      time.hour >= 0
-      && time.hour <= 23
-      && time.minute >= 0
-      && time.minute <= 59
-      && time.second >= 0
-      && time.second <= 59
-    }
-    // For end of day time https://en.wikipedia.org/wiki/ISO_8601
-    || {
-      time.hour == 24
-      && time.minute == 0
-      && time.second == 0
-      && time.nanosecond == 0
-    }
-    // For leap seconds https://en.wikipedia.org/wiki/Leap_second. Leap seconds
-    // are not fully supported by this package, but can be parsed from ISO 8601
-    // dates.
-    || { time.minute == 59 && time.second == 60 && time.nanosecond == 0 }
-  {
-    True ->
-      case time {
-        tempo.Time(_, _, _, _) -> Ok(time)
-        tempo.TimeMilli(_, _, _, millis) if millis <= 999_000_000 -> Ok(time)
-        tempo.TimeMicro(_, _, _, micros) if micros <= 999_999_000 -> Ok(time)
-        tempo.TimeNano(_, _, _, nanos) if nanos <= 999_999_999 -> Ok(time)
-        _ -> Error(tempo.TimeOutOfBounds)
-      }
-    False -> Error(tempo.TimeOutOfBounds)
-  }
+  tempo.validate_time(time)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people

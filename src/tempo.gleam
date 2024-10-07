@@ -4,10 +4,10 @@
 //// find the need to, consider contributing to the package so your needs can
 //// be met and handled properly by the package itself. 
 
-import gleam/bool
 import gleam/int
+import gleam/io
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/regex
 import gleam/result
 import gleam/string
@@ -23,6 +23,7 @@ pub type Error {
   OffsetOutOfBounds
   NaiveDateTimeInvalidFormat
   DateTimeInvalidFormat
+  InvalidInputShape
   UnableToParseDirective(String)
   ParseMissingDate
   ParseMissingTime
@@ -49,10 +50,49 @@ pub type Offset {
   Offset(minutes: Int)
 }
 
+pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Error) {
+  Offset(minutes) |> validate_offset
+}
+
+pub fn validate_offset(offset: Offset) -> Result(Offset, Error) {
+  // Valid time offsets are between -12:00 and +14:00
+  case offset.minutes >= -720 && offset.minutes <= 840 {
+    True -> Ok(offset)
+    False -> Error(OffsetOutOfBounds)
+  }
+}
+
 /// A date value. It represents a specific day on the civil calendar with no
 /// time of day associated with it.
 pub type Date {
   Date(year: Int, month: Month, day: Int)
+}
+
+@internal
+pub fn new_date(
+  year year: Int,
+  month month: Int,
+  day day: Int,
+) -> Result(Date, Error) {
+  date_from_tuple(#(year, month, day))
+}
+
+@internal
+pub fn date_from_tuple(date: #(Int, Int, Int)) -> Result(Date, Error) {
+  let year = date.0
+  let month = date.1
+  let day = date.2
+
+  use month <- result.try(month_from_int(month))
+
+  case year >= 1000 && year <= 9999 {
+    True ->
+      case day >= 1 && day <= days_of_month(month, in: year) {
+        True -> Ok(Date(year, month, day))
+        False -> Error(DateOutOfBounds)
+      }
+    False -> Error(DateOutOfBounds)
+  }
 }
 
 /// A period between two calendar datetimes. It represents a range of
@@ -78,6 +118,77 @@ pub type Time {
   TimeNano(hour: Int, minute: Int, second: Int, nanosecond: Int)
 }
 
+@internal
+pub fn new_time(hour: Int, minute: Int, second: Int) -> Result(Time, Error) {
+  Time(hour, minute, second, 0) |> validate_time
+}
+
+@internal
+pub fn new_time_milli(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  millisecond: Int,
+) -> Result(Time, Error) {
+  TimeMilli(hour, minute, second, millisecond * 1_000_000)
+  |> validate_time
+}
+
+@internal
+pub fn new_micro(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  microsecond: Int,
+) -> Result(Time, Error) {
+  TimeMicro(hour, minute, second, microsecond * 1000) |> validate_time
+}
+
+@internal
+pub fn new_nano(
+  hour: Int,
+  minute: Int,
+  second: Int,
+  nanosecond: Int,
+) -> Result(Time, Error) {
+  TimeNano(hour, minute, second, nanosecond) |> validate_time
+}
+
+@internal
+pub fn validate_time(time: Time) -> Result(Time, Error) {
+  case
+    {
+      time.hour >= 0
+      && time.hour <= 23
+      && time.minute >= 0
+      && time.minute <= 59
+      && time.second >= 0
+      && time.second <= 59
+    }
+    // For end of day time https://en.wikipedia.org/wiki/ISO_8601
+    || {
+      time.hour == 24
+      && time.minute == 0
+      && time.second == 0
+      && time.nanosecond == 0
+    }
+    // For leap seconds https://en.wikipedia.org/wiki/Leap_second. Leap seconds
+    // are not fully supported by this package, but can be parsed from ISO 8601
+    // dates.
+    || { time.minute == 59 && time.second == 60 && time.nanosecond == 0 }
+  {
+    True ->
+      case time {
+        Time(_, _, _, _) -> Ok(time)
+        TimeMilli(_, _, _, millis) if millis <= 999_000_000 -> Ok(time)
+        TimeMicro(_, _, _, micros) if micros <= 999_999_000 -> Ok(time)
+        TimeNano(_, _, _, nanos) if nanos <= 999_999_999 -> Ok(time)
+        _ -> Error(TimeOutOfBounds)
+      }
+    False -> Error(TimeOutOfBounds)
+  }
+}
+
 /// A duration between two times. It represents a range of time values and
 /// can be span more than a day. It can be used to calculate the number of
 /// days, weeks, hours, minutes, or seconds between two times, but cannot
@@ -87,25 +198,6 @@ pub type Time {
 /// a datetime or time value.
 pub type Duration {
   Duration(nanoseconds: Int)
-}
-
-/// The result of an uncertain conversion. Since this package does not track
-/// timezone offsets, it uses the host system's offset to convert to local
-/// time. If the datetime being converted to local time is of a different
-/// day than the current one, the offset value provided by the host may
-/// not be accurate (and could be accurate by up to the amount the offset 
-/// changes throughout the year). To account for this, when converting to 
-/// local time, a precise value is returned when the datetime being converted
-/// is in th current date, while an imprecise value is returned when it is
-/// on any other date. This allows the application logic to handle the 
-/// two cases differently: some applications may only need to convert to 
-/// local time on the current date or may only need generic time 
-/// representations, while other applications may need precise conversions 
-/// for arbitrary dates. More notes on how to plug time zones into this
-/// package to aviod uncertain conversions can be found in the README.
-pub type UncertainConversion(a) {
-  Precise(a)
-  Imprecise(a)
 }
 
 /// A month in a specific year.
@@ -131,6 +223,85 @@ pub type Month {
 
 /// An ordered list of all months in the year.
 pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+
+@internal
+pub fn month_from_int(month: Int) -> Result(Month, Error) {
+  case month {
+    1 -> Ok(Jan)
+    2 -> Ok(Feb)
+    3 -> Ok(Mar)
+    4 -> Ok(Apr)
+    5 -> Ok(May)
+    6 -> Ok(Jun)
+    7 -> Ok(Jul)
+    8 -> Ok(Aug)
+    9 -> Ok(Sep)
+    10 -> Ok(Oct)
+    11 -> Ok(Nov)
+    12 -> Ok(Dec)
+    _ -> Error(MonthOutOfBounds)
+  }
+}
+
+@internal
+pub fn days_of_month(month: Month, in year: Int) -> Int {
+  case month {
+    Jan -> 31
+    Mar -> 31
+    May -> 31
+    Jul -> 31
+    Aug -> 31
+    Oct -> 31
+    Dec -> 31
+    _ ->
+      case month {
+        Apr -> 30
+        Jun -> 30
+        Sep -> 30
+        Nov -> 30
+        _ ->
+          case is_leap_year(year) {
+            True -> 29
+            False -> 28
+          }
+      }
+  }
+}
+
+@internal
+pub fn is_leap_year(year: Int) -> Bool {
+  case year % 4 == 0 {
+    True ->
+      case year % 100 == 0 {
+        True ->
+          case year % 400 == 0 {
+            True -> True
+            False -> False
+          }
+        False -> True
+      }
+    False -> False
+  }
+}
+
+/// The result of an uncertain conversion. Since this package does not track
+/// timezone offsets, it uses the host system's offset to convert to local
+/// time. If the datetime being converted to local time is of a different
+/// day than the current one, the offset value provided by the host may
+/// not be accurate (and could be accurate by up to the amount the offset 
+/// changes throughout the year). To account for this, when converting to 
+/// local time, a precise value is returned when the datetime being converted
+/// is in th current date, while an imprecise value is returned when it is
+/// on any other date. This allows the application logic to handle the 
+/// two cases differently: some applications may only need to convert to 
+/// local time on the current date or may only need generic time 
+/// representations, while other applications may need precise conversions 
+/// for arbitrary dates. More notes on how to plug time zones into this
+/// package to aviod uncertain conversions can be found in the README.
+pub type UncertainConversion(a) {
+  Precise(a)
+  Imprecise(a)
+}
 
 /// Accepts either a precise or imprecise value of an uncertain conversion.
 /// Useful for pipelines.
@@ -173,15 +344,6 @@ pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal
 pub fn now_utc() -> Int
-
-/// Will not parse two digit years and will assume the month always comes 
-/// before the day in a date. Always prefer to use a module's specific `parse`
-/// function.
-pub fn parse_any(str: String) {
-  use serial_re <- result.try(regex.from_string("\\d{8,}"))
-
-  use <- bool.guard(when: serial_re.check(str), return: Error())
-}
 
 @internal
 pub type DatetimePart {
@@ -454,6 +616,6 @@ fn consume_two_digits(str, constructor) {
   #(constructor(val), string.drop_left(str, 2))
 }
 
-@external(erlang, "tempo_ffi", "current_year")
-@external(javascript, "./tempo_ffi.mjs", "current_year")
+@external(erlang, "ffi", "current_year")
+@external(javascript, "./ffi.mjs", "current_year")
 fn current_year() -> Int
