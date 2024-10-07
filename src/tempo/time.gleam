@@ -339,6 +339,58 @@ pub fn set_nano(
   new_nano(time.hour, time.minute, time.second, nanosecond)
 }
 
+/// Gets the hour value of a time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.get_hour
+/// // -> 13
+/// ```
+pub fn get_hour(time: tempo.Time) -> Int {
+  time.hour
+}
+
+/// Gets the minute value of a time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.get_minute
+/// // -> 42
+/// ```
+pub fn get_minute(time: tempo.Time) -> Int {
+  time.minute
+}
+
+/// Gets the second value of a time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.get_second
+/// // -> 11
+/// ```
+pub fn get_second(time: tempo.Time) -> Int {
+  time.second
+}
+
+/// Gets the nanosecond value of a time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11.123")
+/// |> time.get_nanosecond
+/// // -> 123000000
+/// ```
+pub fn get_nanosecond(time: tempo.Time) -> Int {
+  time.nanosecond
+}
+
 /// Sets the time to a second precision. Drops any milliseconds from the
 /// underlying time value.
 /// 
