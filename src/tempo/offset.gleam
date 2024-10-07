@@ -1,5 +1,4 @@
 import gleam/int
-import gleam/result
 import gleam/string
 import tempo
 
@@ -45,10 +44,6 @@ pub fn literal(offset: String) -> tempo.Offset {
     Error(tempo.OffsetOutOfBounds) -> panic as "Invalid offset literal value"
     Error(_) -> panic as "Invalid offset literal"
   }
-}
-
-fn validate(offset: tempo.Offset) -> Result(tempo.Offset, tempo.Error) {
-  tempo.validate_offset(offset)
 }
 
 /// Converts an offset to a string representation.
@@ -105,62 +100,7 @@ pub fn to_string(offset: tempo.Offset) -> String {
 /// // -> Ok("-04:00")
 /// ```
 pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
-  case offset {
-    // Parse Z format
-    "Z" -> Ok(tempo.Offset(0))
-    "z" -> Ok(tempo.Offset(0))
-
-    // Parse +-hh:mm format
-    _ -> {
-      use #(sign, hour, minute): #(String, String, String) <- result.try(case
-        string.split(offset, ":")
-      {
-        [hour, minute] ->
-          case string.length(hour), string.length(minute) {
-            3, 2 ->
-              Ok(#(
-                string.slice(hour, at_index: 0, length: 1),
-                string.slice(hour, at_index: 1, length: 2),
-                minute,
-              ))
-            _, _ -> Error(tempo.OffsetInvalidFormat)
-          }
-        _ ->
-          // Parse +-hhmm format, +-hh format, or +-h format
-          case string.length(offset) {
-            5 ->
-              Ok(#(
-                string.slice(offset, at_index: 0, length: 1),
-                string.slice(offset, at_index: 1, length: 2),
-                string.slice(offset, at_index: 3, length: 2),
-              ))
-            3 ->
-              Ok(#(
-                string.slice(offset, at_index: 0, length: 1),
-                string.slice(offset, at_index: 1, length: 2),
-                "0",
-              ))
-            2 ->
-              Ok(#(
-                string.slice(offset, at_index: 0, length: 1),
-                string.slice(offset, at_index: 1, length: 1),
-                "0",
-              ))
-            _ -> Error(tempo.OffsetInvalidFormat)
-          }
-      })
-
-      case sign, int.parse(hour), int.parse(minute) {
-        _, Ok(0), Ok(0) -> Ok(tempo.Offset(0))
-        "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-          Ok(tempo.Offset(-{ hour * 60 + minute }))
-        "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-          Ok(tempo.Offset(hour * 60 + minute))
-        _, _, _ -> Error(tempo.OffsetInvalidFormat)
-      }
-    }
-  }
-  |> result.try(validate)
+  tempo.offset_from_string(offset)
 }
 
 @internal

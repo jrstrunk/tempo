@@ -54,6 +54,65 @@ pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Error) {
   Offset(minutes) |> validate_offset
 }
 
+pub fn offset_from_string(offset: String) -> Result(Offset, Error) {
+  case offset {
+    // Parse Z format
+    "Z" -> Ok(Offset(0))
+    "z" -> Ok(Offset(0))
+
+    // Parse +-hh:mm format
+    _ -> {
+      use #(sign, hour, minute): #(String, String, String) <- result.try(case
+        string.split(offset, ":")
+      {
+        [hour, minute] ->
+          case string.length(hour), string.length(minute) {
+            3, 2 ->
+              Ok(#(
+                string.slice(hour, at_index: 0, length: 1),
+                string.slice(hour, at_index: 1, length: 2),
+                minute,
+              ))
+            _, _ -> Error(OffsetInvalidFormat)
+          }
+        _ ->
+          // Parse +-hhmm format, +-hh format, or +-h format
+          case string.length(offset) {
+            5 ->
+              Ok(#(
+                string.slice(offset, at_index: 0, length: 1),
+                string.slice(offset, at_index: 1, length: 2),
+                string.slice(offset, at_index: 3, length: 2),
+              ))
+            3 ->
+              Ok(#(
+                string.slice(offset, at_index: 0, length: 1),
+                string.slice(offset, at_index: 1, length: 2),
+                "0",
+              ))
+            2 ->
+              Ok(#(
+                string.slice(offset, at_index: 0, length: 1),
+                string.slice(offset, at_index: 1, length: 1),
+                "0",
+              ))
+            _ -> Error(OffsetInvalidFormat)
+          }
+      })
+
+      case sign, int.parse(hour), int.parse(minute) {
+        _, Ok(0), Ok(0) -> Ok(Offset(0))
+        "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
+          Ok(Offset(-{ hour * 60 + minute }))
+        "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
+          Ok(Offset(hour * 60 + minute))
+        _, _, _ -> Error(OffsetInvalidFormat)
+      }
+    }
+  }
+  |> result.try(validate_offset)
+}
+
 pub fn validate_offset(offset: Offset) -> Result(Offset, Error) {
   // Valid time offsets are between -12:00 and +14:00
   case offset.minutes >= -720 && offset.minutes <= 840 {
@@ -350,9 +409,10 @@ pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
   }
 }
 
-/// Will not parse two digit years and will assume the month always comes 
-/// before the day in a date. Always prefer to use a module's specific `parse`
-/// function when possible.
+/// Tries to parse a given date string without a known format. It will not 
+/// parse two digit years and will assume the month always comes before the 
+/// day in a date. Always prefer to use a module's specific `parse` function
+/// when possible.
 /// 
 /// Using pattern matching, you can explicitly specify what to with the 
 /// missing values from the input. Many libaries will assume a missing time
@@ -771,6 +831,7 @@ fn consume_part(fmt, from str) {
           #(OffsetStr(offset), string.drop_left(str, 6))
         }),
       )
+
       use _ <- result.try_recover(
         string.slice(str, at_index: 0, length: 5)
         |> fn(offset) {
@@ -787,6 +848,7 @@ fn consume_part(fmt, from str) {
           #(OffsetStr(offset), string.drop_left(str, 5))
         }),
       )
+
       use _ <- result.try_recover(
         string.slice(str, at_index: 0, length: 3)
         |> fn(offset) {
@@ -803,6 +865,7 @@ fn consume_part(fmt, from str) {
           #(OffsetStr(offset), string.drop_left(str, 3))
         }),
       )
+
       use _ <- result.try_recover(
         string.slice(str, at_index: 0, length: 1)
         |> fn(offset) {
@@ -815,6 +878,7 @@ fn consume_part(fmt, from str) {
           #(OffsetStr(offset), string.drop_left(str, 1))
         }),
       )
+
       Error(Nil)
     }
     "Z" -> {
@@ -857,6 +921,248 @@ fn consume_two_digits(str, constructor) {
   use val <- result.map(string.slice(str, at_index: 0, length: 2) |> int.parse)
 
   #(constructor(val), string.drop_left(str, 2))
+}
+
+@internal
+pub fn find_year(in parts) {
+  list.find_map(parts, fn(p) {
+    case p {
+      Year(y) -> Ok(y)
+      _ -> Error(Nil)
+    }
+  })
+  |> result.replace_error(ParseMissingDate)
+}
+
+@internal
+pub fn find_month(in parts) {
+  list.find_map(parts, fn(p) {
+    case p {
+      Month(m) -> Ok(m)
+      _ -> Error(Nil)
+    }
+  })
+  |> result.replace_error(ParseMissingDate)
+}
+
+@internal
+pub fn find_day(in parts) {
+  list.find_map(parts, fn(p) {
+    case p {
+      Day(d) -> Ok(d)
+      _ -> Error(Nil)
+    }
+  })
+  |> result.replace_error(ParseMissingDate)
+}
+
+@internal
+pub fn find_hour(in parts) {
+  use _ <- result.try_recover(
+    list.find_map(parts, fn(p) {
+      case p {
+        Hour(h) -> Ok(h)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(ParseMissingTime),
+  )
+
+  use twelve_hour <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        TwelveHour(o) -> Ok(o)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(ParseMissingTime),
+  )
+
+  let am_period =
+    list.find_map(parts, fn(p) {
+      case p {
+        AMPeriod -> Ok(Nil)
+        _ -> Error(Nil)
+      }
+    })
+
+  let pm_period =
+    list.find_map(parts, fn(p) {
+      case p {
+        PMPeriod -> Ok(Nil)
+        _ -> Error(Nil)
+      }
+    })
+
+  case am_period, pm_period {
+    Ok(Nil), Error(Nil) ->
+      adjust_12_hour_to_24_hour(twelve_hour, am: True) |> Ok
+    Error(Nil), Ok(Nil) ->
+      adjust_12_hour_to_24_hour(twelve_hour, am: False) |> Ok
+
+    _, _ -> Error(ParseMissingTime)
+  }
+}
+
+@internal
+pub fn find_minute(in parts) {
+  list.find_map(parts, fn(p) {
+    case p {
+      Minute(m) -> Ok(m)
+      _ -> Error(Nil)
+    }
+  })
+  |> result.replace_error(ParseMissingTime)
+}
+
+@internal
+pub fn find_date(in parts) {
+  use year <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        Year(y) -> Ok(y)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(ParseMissingDate),
+  )
+
+  use month <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        Month(m) -> Ok(m)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(ParseMissingDate),
+  )
+
+  use day <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        Day(d) -> Ok(d)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(ParseMissingDate),
+  )
+
+  new_date(year, month, day)
+}
+
+@internal
+pub fn find_time(in parts) {
+  use hour <- result.try({
+    use _ <- result.try_recover(
+      list.find_map(parts, fn(p) {
+        case p {
+          Hour(h) -> Ok(h)
+          _ -> Error(Nil)
+        }
+      })
+      |> result.replace_error(ParseMissingTime),
+    )
+
+    use twelve_hour <- result.try(
+      list.find_map(parts, fn(p) {
+        case p {
+          TwelveHour(o) -> Ok(o)
+          _ -> Error(Nil)
+        }
+      })
+      |> result.replace_error(ParseMissingTime),
+    )
+
+    let am_period =
+      list.find_map(parts, fn(p) {
+        case p {
+          AMPeriod -> Ok(Nil)
+          _ -> Error(Nil)
+        }
+      })
+
+    let pm_period =
+      list.find_map(parts, fn(p) {
+        case p {
+          PMPeriod -> Ok(Nil)
+          _ -> Error(Nil)
+        }
+      })
+
+    case am_period, pm_period {
+      Ok(Nil), Error(Nil) ->
+        adjust_12_hour_to_24_hour(twelve_hour, am: True) |> Ok
+      Error(Nil), Ok(Nil) ->
+        adjust_12_hour_to_24_hour(twelve_hour, am: False) |> Ok
+
+      _, _ -> Error(ParseMissingTime)
+    }
+  })
+
+  use minute <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        Minute(m) -> Ok(m)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(ParseMissingTime),
+  )
+
+  let second =
+    list.find_map(parts, fn(p) {
+      case p {
+        Second(s) -> Ok(s)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.unwrap(0)
+
+  let millisecond =
+    list.find_map(parts, fn(p) {
+      case p {
+        Millisecond(n) -> Ok(n)
+        _ -> Error(Nil)
+      }
+    })
+
+  let microsecond =
+    list.find_map(parts, fn(p) {
+      case p {
+        Microsecond(n) -> Ok(n)
+        _ -> Error(Nil)
+      }
+    })
+
+  let nanosecond =
+    list.find_map(parts, fn(p) {
+      case p {
+        Nanosecond(n) -> Ok(n)
+        _ -> Error(Nil)
+      }
+    })
+
+  case nanosecond, microsecond, millisecond {
+    Ok(nano), _, _ -> new_time_nano(hour, minute, second, nano)
+    _, Ok(micro), _ -> new_time_micro(hour, minute, second, micro)
+    _, _, Ok(milli) -> new_time_milli(hour, minute, second, milli)
+    _, _, _ -> new_time(hour, minute, second)
+  }
+}
+
+@internal
+pub fn find_offset(in parts) {
+  use offset_str <- result.try(
+    list.find_map(parts, fn(p) {
+      case p {
+        OffsetStr(o) -> Ok(o)
+        _ -> Error(Nil)
+      }
+    })
+    |> result.replace_error(ParseMissingOffset),
+  )
+
+  offset_from_string(offset_str)
 }
 
 @external(erlang, "tempo_ffi", "current_year")
