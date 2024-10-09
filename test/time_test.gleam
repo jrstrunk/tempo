@@ -5,6 +5,11 @@ import tempo
 import tempo/duration
 import tempo/time
 
+fn assert_ok(res) {
+  let assert Ok(v) = res
+  v
+}
+
 pub fn main() {
   gleeunit.main()
 }
@@ -21,19 +26,19 @@ pub fn time_now_test() {
 
 pub fn new_time_test() {
   time.new(0, 0, 0)
-  |> should.equal(Ok(tempo.Time(0, 0, 0, 0)))
+  |> should.equal(time.from_string("00:00:00"))
 
   time.new(23, 59, 59)
-  |> should.equal(Ok(tempo.Time(23, 59, 59, 0)))
+  |> should.equal(time.from_string("23:59:59"))
 
   time.new(23, 59, 60)
-  |> should.equal(Ok(tempo.Time(23, 59, 60, 0)))
+  |> should.equal(time.from_string("23:59:60"))
 
   time.new(23, 60, 0)
   |> should.be_error
 
   time.new(11, 25, 40)
-  |> should.equal(Ok(tempo.Time(11, 25, 40, 0)))
+  |> should.equal(time.from_string("11:25:40"))
 
   time.new(110, 25, 40)
   |> should.be_error
@@ -47,19 +52,25 @@ pub fn new_time_test() {
 
 pub fn new_milli_test() {
   time.new_milli(0, 0, 0, 0)
-  |> should.equal(Ok(tempo.TimeMilli(0, 0, 0, 0)))
+  |> should.equal(time.from_string("00:00:00.0"))
 
   time.new_milli(23, 59, 60, 0)
-  |> should.equal(Ok(tempo.TimeMilli(23, 59, 60, 0)))
+  |> should.equal(time.from_string("23:59:60.0"))
 
   time.new_milli(23, 59, 59, 1)
-  |> should.equal(Ok(tempo.TimeMilli(23, 59, 59, 1_000_000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(1_000_000)
 
   time.new_milli(23, 59, 59, 533)
-  |> should.equal(Ok(tempo.TimeMilli(23, 59, 59, 533_000_000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(533_000_000)
 
   time.new_milli(11, 25, 40, 32)
-  |> should.equal(Ok(tempo.TimeMilli(11, 25, 40, 32_000_000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(32_000_000)
 
   time.new_milli(23, 60, 0, 0)
   |> should.be_error
@@ -82,24 +93,35 @@ pub fn new_milli_test() {
 
 pub fn new_micro_test() {
   time.new_micro(0, 0, 0, 0)
-  |> should.equal(Ok(tempo.TimeMicro(0, 0, 0, 0)))
+  |> should.equal(time.from_string("00:00:00.000000"))
 
   time.new_micro(23, 59, 60, 0)
-  |> should.equal(Ok(tempo.TimeMicro(23, 59, 60, 0)))
+  |> should.equal(time.from_string("23:59:60.000000"))
 
   time.new_micro(23, 59, 59, 1)
-  |> should.equal(Ok(tempo.TimeMicro(23, 59, 59, 1000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(1000)
 
   time.new_micro(23, 59, 59, 533)
-  |> should.equal(Ok(tempo.TimeMicro(23, 59, 59, 533_000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(533_000)
 
   time.new_micro(11, 25, 40, 32)
-  |> should.equal(Ok(tempo.TimeMicro(11, 25, 40, 32_000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(32_000)
+
   time.new_micro(11, 25, 40, 1532)
-  |> should.equal(Ok(tempo.TimeMicro(11, 25, 40, 1_532_000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(1_532_000)
 
   time.new_micro(11, 25, 40, 320_532)
-  |> should.equal(Ok(tempo.TimeMicro(11, 25, 40, 320_532_000)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(320_532_000)
 
   time.new_micro(11, 25, 40, 3_205_322)
   |> should.be_error
@@ -116,28 +138,38 @@ pub fn new_micro_test() {
 
 pub fn new_nano_test() {
   time.new_nano(0, 0, 0, 0)
-  |> should.equal(Ok(tempo.TimeNano(0, 0, 0, 0)))
+  |> should.equal(time.from_string("00:00:00.000000000"))
 
   time.new_nano(23, 59, 60, 0)
-  |> should.equal(Ok(tempo.TimeNano(23, 59, 60, 0)))
+  |> should.equal(time.from_string("23:59:60.000000000"))
 
   time.new_nano(23, 59, 59, 1)
-  |> should.equal(Ok(tempo.TimeNano(23, 59, 59, 1)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(1)
 
   time.new_nano(23, 59, 59, 533)
-  |> should.equal(Ok(tempo.TimeNano(23, 59, 59, 533)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(533)
 
   time.new_nano(11, 25, 40, 32)
-  |> should.equal(Ok(tempo.TimeNano(11, 25, 40, 32)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(32)
 
   time.new_nano(23, 60, 0, 0)
   |> should.be_error
 
   time.new_nano(11, 25, 40, 1532)
-  |> should.equal(Ok(tempo.TimeNano(11, 25, 40, 1532)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(1532)
 
   time.new_nano(11, 25, 40, 109_513_532)
-  |> should.equal(Ok(tempo.TimeNano(11, 25, 40, 109_513_532)))
+  |> assert_ok
+  |> time.get_nanosecond
+  |> should.equal(109_513_532)
 
   time.new_nano(11, 25, 40, 1_095_135_322)
   |> should.be_error
@@ -150,154 +182,154 @@ pub fn new_nano_test() {
 }
 
 pub fn set_hour_test() {
-  tempo.Time(4, 0, 0, 0)
+  tempo.time(4, 0, 0, 0, tempo.Sec)
   |> time.set_hour(0)
-  |> should.equal(Ok(tempo.Time(0, 0, 0, 0)))
+  |> should.equal(Ok(tempo.time(0, 0, 0, 0, tempo.Sec)))
 
-  tempo.Time(13, 0, 0, 0)
+  tempo.time(13, 0, 0, 0, tempo.Sec)
   |> time.set_hour(23)
-  |> should.equal(Ok(tempo.Time(23, 0, 0, 0)))
+  |> should.equal(Ok(tempo.time(23, 0, 0, 0, tempo.Sec)))
 
   time.literal("00:00:00")
   |> time.set_hour(24)
   |> should.be_ok
   |> should.equal(time.literal("24:00"))
 
-  tempo.Time(11, 31, 4, 0)
+  tempo.time(11, 31, 4, 0, tempo.Sec)
   |> time.set_hour(35)
   |> should.be_error
 }
 
 pub fn set_minute_test() {
-  tempo.Time(0, 0, 0, 0)
+  tempo.time(0, 0, 0, 0, tempo.Sec)
   |> time.set_minute(53)
-  |> should.equal(Ok(tempo.Time(0, 53, 0, 0)))
+  |> should.equal(Ok(tempo.time(0, 53, 0, 0, tempo.Sec)))
 
-  tempo.Time(14, 57, 3, 0)
+  tempo.time(14, 57, 3, 0, tempo.Sec)
   |> time.set_minute(5)
-  |> should.equal(Ok(tempo.Time(14, 5, 3, 0)))
+  |> should.equal(Ok(tempo.time(14, 5, 3, 0, tempo.Sec)))
 
-  tempo.Time(14, 57, 3, 0)
+  tempo.time(14, 57, 3, 0, tempo.Sec)
   |> time.set_minute(60)
   |> should.be_error
 }
 
 pub fn set_second_test() {
-  tempo.Time(0, 0, 0, 0)
+  tempo.time(0, 0, 0, 0, tempo.Sec)
   |> time.set_second(53)
-  |> should.equal(Ok(tempo.Time(0, 0, 53, 0)))
+  |> should.equal(Ok(tempo.time(0, 0, 53, 0, tempo.Sec)))
 
-  tempo.Time(14, 57, 3, 0)
+  tempo.time(14, 57, 3, 0, tempo.Sec)
   |> time.set_second(5)
-  |> should.equal(Ok(tempo.Time(14, 57, 5, 0)))
+  |> should.equal(Ok(tempo.time(14, 57, 5, 0, tempo.Sec)))
 
-  tempo.Time(14, 57, 3, 0)
+  tempo.time(14, 57, 3, 0, tempo.Sec)
   |> time.set_second(60)
   |> should.be_error
 }
 
 pub fn set_leap_second_test() {
-  tempo.Time(23, 59, 15, 0)
+  tempo.time(23, 59, 15, 0, tempo.Sec)
   |> time.set_second(60)
-  |> should.equal(Ok(tempo.Time(23, 59, 60, 0)))
+  |> should.equal(Ok(tempo.time(23, 59, 60, 0, tempo.Sec)))
 }
 
 pub fn set_milli_test() {
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_milli(123)
-  |> should.equal(Ok(tempo.TimeMilli(11, 54, 4, 123_000_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 123_000_000, tempo.Milli)))
 
-  tempo.TimeMilli(11, 54, 4, 123_000_000)
+  tempo.time(11, 54, 4, 123_000_000, tempo.Milli)
   |> time.set_milli(456)
-  |> should.equal(Ok(tempo.TimeMilli(11, 54, 4, 456_000_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 456_000_000, tempo.Milli)))
 
-  tempo.TimeMicro(11, 54, 4, 123_000)
+  tempo.time(11, 54, 4, 123_000, tempo.Micro)
   |> time.set_milli(789)
-  |> should.equal(Ok(tempo.TimeMilli(11, 54, 4, 789_000_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 789_000_000, tempo.Milli)))
 
-  tempo.TimeNano(11, 54, 4, 123)
+  tempo.time(11, 54, 4, 123, tempo.Nano)
   |> time.set_milli(11)
-  |> should.equal(Ok(tempo.TimeMilli(11, 54, 4, 11_000_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 11_000_000, tempo.Milli)))
 
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_milli(5123)
   |> should.be_error
 }
 
 pub fn set_micro_test() {
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_micro(123)
-  |> should.equal(Ok(tempo.TimeMicro(11, 54, 4, 123_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 123_000, tempo.Micro)))
 
-  tempo.TimeMilli(11, 54, 4, 123_000_000)
+  tempo.time(11, 54, 4, 123_000_000, tempo.Milli)
   |> time.set_micro(45)
-  |> should.equal(Ok(tempo.TimeMicro(11, 54, 4, 45_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 45_000, tempo.Micro)))
 
-  tempo.TimeMicro(11, 54, 4, 123_000)
+  tempo.time(11, 54, 4, 123_000, tempo.Micro)
   |> time.set_micro(456)
-  |> should.equal(Ok(tempo.TimeMicro(11, 54, 4, 456_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 456_000, tempo.Micro)))
 
-  tempo.TimeNano(11, 54, 4, 123)
+  tempo.time(11, 54, 4, 123, tempo.Nano)
   |> time.set_micro(789)
-  |> should.equal(Ok(tempo.TimeMicro(11, 54, 4, 789_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 789_000, tempo.Micro)))
 
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_micro(512_325)
-  |> should.equal(Ok(tempo.TimeMicro(11, 54, 4, 512_325_000)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 512_325_000, tempo.Micro)))
 
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_micro(5_123_252)
   |> should.be_error
 }
 
 pub fn set_nano_test() {
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_nano(123)
-  |> should.equal(Ok(tempo.TimeNano(11, 54, 4, 123)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 123, tempo.Nano)))
 
-  tempo.TimeMilli(11, 54, 4, 123_000_000)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_nano(45)
-  |> should.equal(Ok(tempo.TimeNano(11, 54, 4, 45)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 45, tempo.Nano)))
 
-  tempo.TimeMicro(11, 54, 4, 123_000)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_nano(456)
-  |> should.equal(Ok(tempo.TimeNano(11, 54, 4, 456)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 456, tempo.Nano)))
 
-  tempo.TimeNano(11, 54, 4, 123)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_nano(789)
-  |> should.equal(Ok(tempo.TimeNano(11, 54, 4, 789)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 789, tempo.Nano)))
 
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_nano(512_305_530)
-  |> should.equal(Ok(tempo.TimeNano(11, 54, 4, 512_305_530)))
+  |> should.equal(Ok(tempo.time(11, 54, 4, 512_305_530, tempo.Nano)))
 
-  tempo.Time(11, 54, 4, 0)
+  tempo.time(11, 54, 4, 0, tempo.Sec)
   |> time.set_nano(5_123_055_300)
   |> should.be_error
 }
 
 pub fn to_string_test() {
-  tempo.Time(4, 0, 0, 0)
+  tempo.time(4, 0, 0, 0, tempo.Sec)
   |> time.to_string
   |> should.equal("04:00:00")
 
-  tempo.Time(12, 13, 25, 0)
+  tempo.time(12, 13, 25, 0, tempo.Sec)
   |> time.to_string
   |> should.equal("12:13:25")
 
-  tempo.TimeMilli(12, 13, 25, 123_000_000)
+  tempo.time(12, 13, 25, 123_000_000, tempo.Milli)
   |> time.to_string
   |> should.equal("12:13:25.123")
 
-  tempo.TimeMilli(8, 7, 25, 1_000_000)
+  tempo.time(8, 7, 25, 1_000_000, tempo.Milli)
   |> time.to_string
   |> should.equal("08:07:25.001")
 
-  tempo.TimeMicro(12, 13, 25, 12_345_000)
+  tempo.time(12, 13, 25, 12_345_000, tempo.Micro)
   |> time.to_string
   |> should.equal("12:13:25.012345")
 
-  tempo.TimeNano(12, 13, 25, 124_567)
+  tempo.time(12, 13, 25, 124_567, tempo.Nano)
   |> time.to_string
   |> should.equal("12:13:25.000124567")
 }
@@ -305,15 +337,15 @@ pub fn to_string_test() {
 pub fn from_string_test() {
   "04:00:00"
   |> time.from_string
-  |> should.equal(Ok(tempo.Time(4, 0, 0, 0)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 0, tempo.Sec)))
 
   "04:00:01"
   |> time.from_string
-  |> should.equal(Ok(tempo.Time(4, 0, 1, 0)))
+  |> should.equal(Ok(tempo.time(4, 0, 1, 0, tempo.Sec)))
 
   "4:0:1"
   |> time.from_string
-  |> should.equal(Ok(tempo.Time(4, 0, 1, 0)))
+  |> should.equal(Ok(tempo.time(4, 0, 1, 0, tempo.Sec)))
 
   "04:00"
   |> time.from_string
@@ -322,49 +354,49 @@ pub fn from_string_test() {
 
   "16:05:23"
   |> time.from_string
-  |> should.equal(Ok(tempo.Time(16, 5, 23, 0)))
+  |> should.equal(Ok(tempo.time(16, 5, 23, 0, tempo.Sec)))
 
   "16:55:23"
   |> time.from_string
-  |> should.equal(Ok(tempo.Time(16, 55, 23, 0)))
+  |> should.equal(Ok(tempo.time(16, 55, 23, 0, tempo.Sec)))
 }
 
 pub fn from_string_milli_test() {
   "04:00:00.1"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeMilli(4, 0, 0, 100_000_000)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 100_000_000, tempo.Milli)))
 
   "14:50:04.945"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeMilli(14, 50, 4, 945_000_000)))
+  |> should.equal(Ok(tempo.time(14, 50, 4, 945_000_000, tempo.Milli)))
 }
 
 pub fn from_string_micro_test() {
   "04:00:00.0000"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeMicro(4, 0, 0, 0)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 0, tempo.Micro)))
 
   "04:00:00.0100"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeMicro(4, 0, 0, 10_000_000)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 10_000_000, tempo.Micro)))
 
   "04:00:00.000007"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeMicro(4, 0, 0, 7000)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 7000, tempo.Micro)))
 }
 
 pub fn from_string_nano_test() {
   "15:18:50.0000003"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeNano(15, 18, 50, 300)))
+  |> should.equal(Ok(tempo.time(15, 18, 50, 300, tempo.Nano)))
 
   "15:18:50.000000001"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeNano(15, 18, 50, 1)))
+  |> should.equal(Ok(tempo.time(15, 18, 50, 1, tempo.Nano)))
 
   "15:18:50.000000000"
   |> time.from_string
-  |> should.equal(Ok(tempo.TimeNano(15, 18, 50, 0)))
+  |> should.equal(Ok(tempo.time(15, 18, 50, 0, tempo.Nano)))
 }
 
 pub fn from_condensed_string_test() {

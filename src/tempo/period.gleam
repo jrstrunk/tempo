@@ -115,9 +115,9 @@ pub fn as_days(period: tempo.Period) -> Int {
   // the last moment of the day and the start time being the first second
   // of the day, then 1 needs to be atted to the days count.
   + case
-    start_time |> time.is_equal(to: tempo.Time(0, 0, 0, 0))
+    start_time |> time.is_equal(to: tempo.time(0, 0, 0, 0, tempo.Sec))
     && end_time
-    |> time.is_equal(to: tempo.Time(24, 0, 0, 0))
+    |> time.is_equal(to: tempo.time(24, 0, 0, 0, tempo.Sec))
   {
     True -> 1
     False -> 0
@@ -167,7 +167,7 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
       // The as_days functions alread accounted for the time between the
       // start and end dates when the end is at the last moment of the day,
       // so we do not need to account for it here as well.
-      case time.is_equal(end_time, to: tempo.Time(24, 0, 0, 0)) {
+      case time.is_equal(end_time, to: tempo.time(24, 0, 0, 0, tempo.Sec)) {
         True -> 0.0
         False ->
           int.to_float(
@@ -184,16 +184,16 @@ fn get_start_and_end_date_and_time(
 ) -> #(tempo.Date, tempo.Date, tempo.Time, tempo.Time) {
   case period {
     tempo.NaivePeriod(start, end) -> #(
-      start.date,
-      end.date,
-      start.time,
-      end.time,
+      start |> tempo.naive_datetime_get_date,
+      end |> tempo.naive_datetime_get_date,
+      start |> tempo.naive_datetime_get_time,
+      end |> tempo.naive_datetime_get_time,
     )
     tempo.Period(start, end) -> #(
-      start.naive.date,
-      end.naive.date,
-      start.naive.time,
-      end.naive.time,
+      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_time,
+      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_time,
     )
   }
 }
@@ -229,12 +229,15 @@ pub fn as_duration(period: tempo.Period) -> tempo.Duration {
 /// ```
 pub fn from_month(month: tempo.Month, year: Int) -> tempo.Period {
   let start =
-    tempo.NaiveDateTime(tempo.Date(year, month, 1), tempo.Time(0, 0, 0, 0))
+    tempo.naive_datetime(
+      tempo.date(year, month, 1),
+      tempo.time(0, 0, 0, 0, tempo.Sec),
+    )
 
   let end =
-    tempo.NaiveDateTime(
-      tempo.Date(year, month, month.days(of: month, in: year)),
-      tempo.Time(24, 0, 0, 0),
+    tempo.naive_datetime(
+      tempo.date(year, month, month.days(of: month, in: year)),
+      tempo.time(24, 0, 0, 0, tempo.Sec),
     )
 
   new_naive(start, end)
@@ -326,12 +329,12 @@ pub fn contains_naive_datetime(
     get_start_and_end_date_and_time(period)
 
   naive_datetime
-  |> naive_datetime.is_later_or_equal(tempo.NaiveDateTime(
+  |> naive_datetime.is_later_or_equal(tempo.naive_datetime(
     start_date,
     start_time,
   ))
   && naive_datetime
-  |> naive_datetime.is_earlier_or_equal(tempo.NaiveDateTime(end_date, end_time))
+  |> naive_datetime.is_earlier_or_equal(tempo.naive_datetime(end_date, end_time))
 }
 
 /// Checks if a datetime is contained within a period, inclusive of the
@@ -365,7 +368,7 @@ pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool
       && datetime
       |> datetime.is_earlier_or_equal(to: end)
 
-    _ -> contains_naive_datetime(period, datetime.naive)
+    _ -> contains_naive_datetime(period, datetime |> tempo.datetime_get_naive)
   }
 }
 
@@ -399,8 +402,14 @@ pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool
 /// // ]
 pub fn comprising_dates(period: tempo.Period) -> iterator.Iterator(tempo.Date) {
   let #(start_date, end_date): #(tempo.Date, tempo.Date) = case period {
-    tempo.NaivePeriod(start, end) -> #(start.date, end.date)
-    tempo.Period(start, end) -> #(start.naive.date, end.naive.date)
+    tempo.NaivePeriod(start, end) -> #(
+      start |> tempo.naive_datetime_get_date,
+      end |> tempo.naive_datetime_get_date,
+    )
+    tempo.Period(start, end) -> #(
+      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+    )
   }
 
   iterator.unfold(from: start_date, with: fn(date) {
@@ -437,8 +446,14 @@ pub fn comprising_months(
   period: tempo.Period,
 ) -> iterator.Iterator(tempo.MonthYear) {
   let #(start_date, end_date) = case period {
-    tempo.NaivePeriod(start, end) -> #(start.date, end.date)
-    tempo.Period(start, end) -> #(start.naive.date, end.naive.date)
+    tempo.NaivePeriod(start, end) -> #(
+      start |> tempo.naive_datetime_get_date,
+      end |> tempo.naive_datetime_get_date,
+    )
+    tempo.Period(start, end) -> #(
+      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+    )
   }
 
   iterator.unfold(
@@ -448,7 +463,7 @@ pub fn comprising_months(
     ),
     with: fn(miy: tempo.MonthYear) {
       case
-        tempo.Date(miy.year, miy.month, 1)
+        tempo.date(miy.year, miy.month, 1)
         |> date.is_earlier_or_equal(to: end_date)
       {
         True ->
@@ -476,7 +491,7 @@ pub fn days_apart(from start_date: tempo.Date, to end_date: tempo.Date) {
   {
     years_apart if years_apart >= 2 ->
       list.range(1, years_apart - 1)
-      |> list.map(fn(i) { end_date.year + i |> year.days })
+      |> list.map(fn(i) { tempo.date_get_year(end_date) + i |> year.days })
       |> int.sum
     _ -> 0
   }
@@ -492,13 +507,22 @@ pub fn days_apart(from start_date: tempo.Date, to end_date: tempo.Date) {
   // dates and can ignore the fact that they may be in different years or 
   // months.
   let days_apart = case
-    end_date.year == start_date.year
-    && { end_date.month |> month.to_int <= start_date.month |> month.to_int }
+    tempo.date_get_year(end_date) == tempo.date_get_year(start_date)
+    && {
+      tempo.date_get_month(end_date) |> month.to_int
+      <= tempo.date_get_month(start_date) |> month.to_int
+    }
   {
-    True -> end_date.day - start_date.day
+    True -> tempo.date_get_day(end_date) - tempo.date_get_day(start_date)
     False ->
-      end_date.day
-      + { month.days(start_date.month, start_date.year) - start_date.day }
+      tempo.date_get_day(end_date)
+      + {
+        month.days(
+          tempo.date_get_month(start_date),
+          tempo.date_get_year(start_date),
+        )
+        - tempo.date_get_day(start_date)
+      }
   }
 
   // Now add the days from each section back up together.
@@ -507,37 +531,42 @@ pub fn days_apart(from start_date: tempo.Date, to end_date: tempo.Date) {
 
 fn exclusive_months_between_days(from: tempo.Date, to: tempo.Date) {
   use <- bool.guard(
-    when: to.year == from.year
+    when: to |> tempo.date_get_year == from |> tempo.date_get_year
       && {
-      to.month |> month.prior |> month.to_int
-      < from.month |> month.next |> month.to_int
+      to |> tempo.date_get_month |> month.prior |> month.to_int
+      < from |> tempo.date_get_month |> month.next |> month.to_int
     },
     return: 0,
   )
 
-  case to.year == from.year {
+  case to |> tempo.date_get_year == from |> tempo.date_get_year {
     True ->
       list.range(
-        month.to_int(from.month |> month.next),
-        month.to_int(to.month |> month.prior),
+        month.to_int(from |> tempo.date_get_month |> month.next),
+        month.to_int(to |> tempo.date_get_month |> month.prior),
       )
       |> list.map(fn(m) {
         let assert Ok(m) = month.from_int(m)
         m
       })
     False -> {
-      case to.month == tempo.Jan {
+      case to |> tempo.date_get_month == tempo.Jan {
         True -> []
-        False -> list.range(1, month.to_int(to.month |> month.prior))
+        False ->
+          list.range(1, month.to_int(to |> tempo.date_get_month |> month.prior))
       }
       |> list.map(fn(m) {
         let assert Ok(m) = month.from_int(m)
         m
       })
       |> list.append(
-        case from.month == tempo.Dec {
+        case from |> tempo.date_get_month == tempo.Dec {
           True -> []
-          False -> list.range(month.to_int(from.month |> month.next), 12)
+          False ->
+            list.range(
+              month.to_int(from |> tempo.date_get_month |> month.next),
+              12,
+            )
         }
         |> list.map(fn(m) {
           let assert Ok(m) = month.from_int(m)
@@ -546,12 +575,12 @@ fn exclusive_months_between_days(from: tempo.Date, to: tempo.Date) {
       )
     }
   }
-  |> list.map(fn(m) { month.days(of: m, in: to.year) })
+  |> list.map(fn(m) { month.days(of: m, in: to |> tempo.date_get_year) })
   |> int.sum
 }
 
 fn calendar_years_apart(later: tempo.Date, from earlier: tempo.Date) -> Int {
-  later.year - earlier.year
+  { later |> tempo.date_get_year } - { earlier |> tempo.date_get_year }
 }
 
 @internal
@@ -567,8 +596,8 @@ fn calendar_months_apart_ordered(
   from earlier: tempo.Date,
 ) -> Int {
   { full_years_apart_ordered(later, earlier) * 12 }
-  + month.to_int(later.month)
-  - month.to_int(earlier.month)
+  + month.to_int(later |> tempo.date_get_month)
+  - month.to_int(earlier |> tempo.date_get_month)
 }
 
 @internal
@@ -588,9 +617,12 @@ pub fn full_years_apart_abs(a: tempo.Date, from b: tempo.Date) -> Int {
 }
 
 fn full_years_apart_ordered(later: tempo.Date, earlier: tempo.Date) -> Int {
-  later.year
-  - earlier.year
-  + case month.to_int(later.month) >= month.to_int(earlier.month) {
+  tempo.date_get_year(later)
+  - tempo.date_get_year(earlier)
+  + case
+    month.to_int(later |> tempo.date_get_month)
+    >= month.to_int(earlier |> tempo.date_get_month)
+  {
     True -> 0
     False -> -1
   }
@@ -614,9 +646,9 @@ pub fn full_months_apart_abs(a: tempo.Date, from b: tempo.Date) -> Int {
 
 fn full_months_apart_ordered(later: tempo.Date, earlier: tempo.Date) -> Int {
   { full_years_apart_ordered(later, earlier) * 12 }
-  + month.to_int(later.month)
-  - month.to_int(earlier.month)
-  + case later.day >= earlier.day {
+  + month.to_int(later |> tempo.date_get_month)
+  - month.to_int(earlier |> tempo.date_get_month)
+  + case tempo.date_get_day(later) >= tempo.date_get_day(earlier) {
     True -> 0
     False -> -1
   }

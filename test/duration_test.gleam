@@ -10,7 +10,7 @@ pub fn main() {
 pub fn monotomic_time_test() {
   duration.start()
   |> duration.stop
-  |> fn(d: tempo.Duration) { d.nanoseconds >= 0 }
+  |> fn(d: tempo.Duration) { d |> tempo.duration_get_ns >= 0 }
   |> should.be_true
 }
 

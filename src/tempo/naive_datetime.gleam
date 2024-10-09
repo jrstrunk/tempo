@@ -24,7 +24,7 @@ import tempo/time
 /// // -> naive_datetime.literal("2024-06-21T23:04:00.009")
 /// ```
 pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
-  tempo.NaiveDateTime(date, time)
+  tempo.naive_datetime(date, time)
 }
 
 /// Creates a new naive datetime value from a string literal, but will panic 
@@ -120,11 +120,11 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error)
     [date, time] -> {
       use date: tempo.Date <- result.try(date.from_string(date))
       use time: tempo.Time <- result.map(time.from_string(time))
-      tempo.NaiveDateTime(date, time)
+      tempo.naive_datetime(date, time)
     }
     [date] -> {
       use date: tempo.Date <- result.map(date.from_string(date))
-      tempo.NaiveDateTime(date, tempo.Time(0, 0, 0, 0))
+      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, tempo.Sec))
       |> to_second_precision
     }
     _ -> Error(tempo.NaiveDateTimeInvalidFormat)
@@ -142,10 +142,12 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error)
 /// // -> "2024-06-21T23:17:00"
 /// ```
 pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
-  datetime.date
+  datetime
+  |> get_date
   |> date.to_string
   <> "T"
-  <> datetime.time
+  <> datetime
+  |> get_time
   |> time.to_string
 }
 
@@ -295,7 +297,7 @@ pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
 /// // -> datetime.literal("2024-06-21T23:17:00Z")
 /// ```
 pub fn set_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
-  set_offset(datetime, offset.utc)
+  set_offset(datetime, tempo.utc)
 }
 
 /// Gets the date of a naive datetime.
@@ -308,7 +310,7 @@ pub fn set_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
 /// // -> date.literal("2024-06-21")
 /// ```
 pub fn get_date(datetime: tempo.NaiveDateTime) -> tempo.Date {
-  datetime.date
+  tempo.naive_datetime_get_date(datetime)
 }
 
 /// Gets the time of a naive datetime.
@@ -321,7 +323,7 @@ pub fn get_date(datetime: tempo.NaiveDateTime) -> tempo.Date {
 /// // -> time.literal("23:17:00")
 /// ```
 pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
-  datetime.time
+  tempo.naive_datetime_get_time(datetime)
 }
 
 /// Drops the time of a naive datetime, setting it to zero.
@@ -334,7 +336,8 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 /// // -> datetime.literal("2024-06-13T00:00:00")
 /// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
-  tempo.NaiveDateTime(datetime.date, tempo.Time(0, 0, 0, 0))
+  tempo.naive_datetime_get_date(datetime)
+  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, tempo.Sec))
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and
@@ -351,7 +354,7 @@ pub fn set_offset(
   datetime: tempo.NaiveDateTime,
   offset: tempo.Offset,
 ) -> tempo.DateTime {
-  tempo.DateTime(naive: datetime, offset: offset)
+  tempo.datetime(naive: datetime, offset: offset)
 }
 
 /// Sets a naive datetime's time value to a second precision. Drops any 
@@ -368,7 +371,10 @@ pub fn set_offset(
 pub fn to_second_precision(
   naive_datetime: tempo.NaiveDateTime,
 ) -> tempo.NaiveDateTime {
-  new(naive_datetime.date, naive_datetime.time |> time.to_second_precision)
+  new(
+    naive_datetime |> tempo.naive_datetime_get_date,
+    naive_datetime |> tempo.naive_datetime_get_time |> time.to_second_precision,
+  )
 }
 
 /// Sets a naive datetime's time value to a millisecond precision. Drops any 
@@ -385,7 +391,10 @@ pub fn to_second_precision(
 pub fn to_milli_precision(
   naive_datetime: tempo.NaiveDateTime,
 ) -> tempo.NaiveDateTime {
-  new(naive_datetime.date, naive_datetime.time |> time.to_milli_precision)
+  new(
+    naive_datetime |> tempo.naive_datetime_get_date,
+    naive_datetime |> tempo.naive_datetime_get_time |> time.to_milli_precision,
+  )
 }
 
 /// Sets a naive datetime's time value to a microsecond precision. Drops any 
@@ -402,7 +411,10 @@ pub fn to_milli_precision(
 pub fn to_micro_precision(
   naive_datetime: tempo.NaiveDateTime,
 ) -> tempo.NaiveDateTime {
-  new(naive_datetime.date, naive_datetime.time |> time.to_micro_precision)
+  new(
+    naive_datetime |> tempo.naive_datetime_get_date,
+    naive_datetime |> tempo.naive_datetime_get_time |> time.to_micro_precision,
+  )
 }
 
 /// Sets a naive datetime's time value to a nanosecond precision. Leaves the
@@ -419,7 +431,10 @@ pub fn to_micro_precision(
 pub fn to_nano_precision(
   naive_datetime: tempo.NaiveDateTime,
 ) -> tempo.NaiveDateTime {
-  new(naive_datetime.date, naive_datetime.time |> time.to_nano_precision)
+  new(
+    naive_datetime |> tempo.naive_datetime_get_date,
+    naive_datetime |> tempo.naive_datetime_get_time |> time.to_nano_precision,
+  )
 }
 
 /// Compares two naive datetimes.
@@ -438,8 +453,14 @@ pub fn to_nano_precision(
 /// // -> order.Lt
 /// ```
 pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
-  case date.compare(a.date, b.date) {
-    order.Eq -> time.compare(a.time, b.time)
+  let a_date = a |> tempo.naive_datetime_get_date
+  let b_date = b |> tempo.naive_datetime_get_date
+
+  let a_time = a |> tempo.naive_datetime_get_time
+  let b_time = b |> tempo.naive_datetime_get_time
+
+  case date.compare(a_date, b_date) {
+    order.Eq -> time.compare(a_time, b_time)
     od -> od
   }
 }
@@ -645,16 +666,18 @@ pub fn add(
   // Positive date overflows are only handled in this function, while negative
   // date overflows are only handled in the subtract function -- so if the 
   // duration is negative, we can just subtract the absolute value of it.
-  use <- bool.lazy_guard(when: duration_to_add.nanoseconds < 0, return: fn() {
-    datetime |> subtract(duration.absolute(duration_to_add))
-  })
+  use <- bool.lazy_guard(
+    when: tempo.duration_get_ns(duration_to_add) < 0,
+    return: fn() { datetime |> subtract(duration.absolute(duration_to_add)) },
+  )
 
   let days_to_add: Int = duration.as_days(duration_to_add)
   let time_to_add: tempo.Duration =
     duration.decrease(duration_to_add, by: duration.days(days_to_add))
 
   let new_time_as_ns =
-    datetime.time
+    datetime
+    |> tempo.naive_datetime_get_time
     |> time.to_duration
     |> duration.increase(by: time_to_add)
     |> duration.as_nanoseconds
@@ -669,12 +692,17 @@ pub fn add(
   }
 
   let time_to_add =
-    duration.nanoseconds(new_time_as_ns - time.to_nanoseconds(datetime.time))
+    duration.nanoseconds(
+      new_time_as_ns
+      - time.to_nanoseconds(datetime |> tempo.naive_datetime_get_time),
+    )
 
-  let new_date = datetime.date |> date.add(days: days_to_add)
-  let new_time = datetime.time |> time.add(duration: time_to_add)
+  let new_date =
+    datetime |> tempo.naive_datetime_get_date |> date.add(days: days_to_add)
+  let new_time =
+    datetime |> tempo.naive_datetime_get_time |> time.add(duration: time_to_add)
 
-  tempo.NaiveDateTime(new_date, new_time)
+  tempo.naive_datetime(new_date, new_time)
 }
 
 /// Subtracts a duration from a naive datetime.
@@ -694,7 +722,7 @@ pub fn subtract(
   // date overflows are only handled in the add function -- so if the 
   // duration is negative, we can just add the absolute value of it.
   use <- bool.lazy_guard(
-    when: duration_to_subtract.nanoseconds < 0,
+    when: tempo.duration_get_ns(duration_to_subtract) < 0,
     return: fn() { datetime |> add(duration.absolute(duration_to_subtract)) },
   )
 
@@ -703,7 +731,8 @@ pub fn subtract(
     duration.decrease(duration_to_subtract, by: duration.days(days_to_sub))
 
   let new_time_as_ns =
-    datetime.time
+    datetime
+    |> tempo.naive_datetime_get_time
     |> time.to_duration
     |> duration.decrease(by: time_to_sub)
     |> duration.as_nanoseconds
@@ -716,15 +745,24 @@ pub fn subtract(
   }
 
   let time_to_sub =
-    duration.nanoseconds(time.to_nanoseconds(datetime.time) - new_time_as_ns)
+    duration.nanoseconds(
+      time.to_nanoseconds(datetime |> tempo.naive_datetime_get_time)
+      - new_time_as_ns,
+    )
 
   // Using the proper subtract functions here to modify the date and time
   // values instead of declaring a new date is important for perserving date 
   // correctness and time precision.
-  let new_date = datetime.date |> date.subtract(days: days_to_sub)
-  let new_time = datetime.time |> time.subtract(duration: time_to_sub)
+  let new_date =
+    datetime
+    |> tempo.naive_datetime_get_date
+    |> date.subtract(days: days_to_sub)
+  let new_time =
+    datetime
+    |> tempo.naive_datetime_get_time
+    |> time.subtract(duration: time_to_sub)
 
-  tempo.NaiveDateTime(new_date, new_time)
+  tempo.naive_datetime(new_date, new_time)
 }
 
 /// Gets the time left in the day.
@@ -735,15 +773,15 @@ pub fn subtract(
 ///
 /// ```gleam
 /// naive_datetime.literal("2015-06-30T23:59:03")
-/// |> naive_datetime.time_left_in_day
+/// |> naive_datetime |> tempo.naive_datetime_get_time_left_in_day
 /// // -> time.literal("00:00:57")
 /// ```
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-18T08:05:20")
-/// |> naive_datetime.time_left_in_day
+/// |> naive_datetime |> tempo.naive_datetime_get_time_left_in_day
 /// // -> time.literal("15:54:40")
 /// ```
 pub fn time_left_in_day(naive_datetime: tempo.NaiveDateTime) -> tempo.Time {
-  naive_datetime.time |> time.left_in_day
+  naive_datetime |> tempo.naive_datetime_get_time |> time.left_in_day
 }

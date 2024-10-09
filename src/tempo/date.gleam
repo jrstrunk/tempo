@@ -117,7 +117,7 @@ pub fn current_utc() {
 /// // -> 2024
 /// ```
 pub fn get_year(date: tempo.Date) -> Int {
-  date.year
+  date |> tempo.date_get_year
 }
 
 /// Gets the month value of a date.
@@ -130,7 +130,7 @@ pub fn get_year(date: tempo.Date) -> Int {
 /// // -> tempo.Jun
 /// ```
 pub fn get_month(date: tempo.Date) -> tempo.Month {
-  date.month
+  date |> tempo.date_get_month
 }
 
 /// Gets the day value of a date.
@@ -143,7 +143,7 @@ pub fn get_month(date: tempo.Date) -> tempo.Month {
 /// // -> 13
 /// ```
 pub fn get_day(date: tempo.Date) -> Int {
-  date.day
+  date |> tempo.date_get_day
 }
 
 /// Parses a date string in the format `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
@@ -212,11 +212,13 @@ fn split_int_tuple(
 /// ```
 pub fn to_string(date: tempo.Date) -> String {
   string_builder.from_strings([
-    int.to_string(date.year),
+    int.to_string(date |> tempo.date_get_year),
     "-",
-    month.to_int(date.month) |> int.to_string |> string.pad_left(2, with: "0"),
+    month.to_int(date |> tempo.date_get_month)
+      |> int.to_string
+      |> string.pad_left(2, with: "0"),
     "-",
-    int.to_string(date.day) |> string.pad_left(2, with: "0"),
+    int.to_string(date |> tempo.date_get_day) |> string.pad_left(2, with: "0"),
   ])
   |> string_builder.to_string
 }
@@ -435,7 +437,11 @@ pub fn from_tuple(date: #(Int, Int, Int)) -> Result(tempo.Date, tempo.Error) {
 /// // -> #(2024, 6, 14)
 /// ```
 pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
-  #(date.year, month.to_int(date.month), date.day)
+  #(
+    date |> tempo.date_get_year,
+    month.to_int(date |> tempo.date_get_month),
+    date |> tempo.date_get_day,
+  )
 }
 
 /// Checks if a dynamic value is a valid date string, and returns the
@@ -525,7 +531,7 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
 
   let assert Ok(month) = month.from_int(m)
 
-  tempo.Date(y, month, d)
+  tempo.date(y, month, d)
 }
 
 /// Returns the UTC unix timestamp of a date, assuming the time on that date 
@@ -545,7 +551,7 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
 /// instead and get the date from there if they need it.
 @internal
 pub fn to_unix_utc(date: tempo.Date) -> Int {
-  let full_years_since_epoch = date.year - 1970
+  let full_years_since_epoch = tempo.date_get_year(date) - 1970
   // Offset the year by one to cacluate the number of leap years since the
   // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
   // so when the date is 1972, the elpased leap years (1972 has not elapsed
@@ -560,12 +566,12 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
     { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
     + { full_elapsed_leap_years_since_epoch * 31_622_400 }
 
-  let feb_milli = case year.is_leap_year(date.year) {
+  let feb_milli = case year.is_leap_year(date |> tempo.date_get_year) {
     True -> 2_505_600
     False -> 2_419_200
   }
 
-  let month_sec = case date.month {
+  let month_sec = case date |> tempo.date_get_month {
     tempo.Jan -> 0
     tempo.Feb -> 2_678_400
     tempo.Mar -> 2_678_400 + feb_milli
@@ -580,7 +586,7 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
     tempo.Dec -> 26_438_400 + feb_milli
   }
 
-  let day_sec = { date.day - 1 } * 86_400
+  let day_sec = { tempo.date_get_day(date) - 1 } * 86_400
 
   year_sec + month_sec + day_sec
 }
@@ -689,17 +695,22 @@ pub fn to_unix_micro_utc(date: tempo.Date) -> Int {
 /// // -> order.Gt
 /// ```
 pub fn compare(a: tempo.Date, to b: tempo.Date) -> order.Order {
-  case a.year == b.year {
+  case a |> tempo.date_get_year == b |> tempo.date_get_year {
     True ->
-      case a.month == b.month {
+      case a |> tempo.date_get_month == b |> tempo.date_get_month {
         True ->
-          case a.day == b.day {
+          case a |> tempo.date_get_day == b |> tempo.date_get_day {
             True -> order.Eq
-            False -> int.compare(a.day, b.day)
+            False ->
+              int.compare(a |> tempo.date_get_day, b |> tempo.date_get_day)
           }
-        False -> int.compare(month.to_int(a.month), month.to_int(b.month))
+        False ->
+          int.compare(
+            month.to_int(a |> tempo.date_get_month),
+            month.to_int(b |> tempo.date_get_month),
+          )
       }
-    False -> int.compare(a.year, b.year)
+    False -> int.compare(a |> tempo.date_get_year, b |> tempo.date_get_year)
   }
 }
 
@@ -816,8 +827,14 @@ pub fn difference(of a: tempo.Date, from b: tempo.Date) -> tempo.Period {
   }
 
   tempo.NaivePeriod(
-    start: tempo.NaiveDateTime(date: start, time: tempo.Time(0, 0, 0, 0)),
-    end: tempo.NaiveDateTime(date: end, time: tempo.Time(0, 0, 0, 0)),
+    start: tempo.naive_datetime(
+      date: start,
+      time: tempo.time(0, 0, 0, 0, tempo.Sec),
+    ),
+    end: tempo.naive_datetime(
+      date: end,
+      time: tempo.time(0, 0, 0, 0, tempo.Sec),
+    ),
   )
 }
 
@@ -846,8 +863,14 @@ pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
   }
 
   tempo.NaivePeriod(
-    start: tempo.NaiveDateTime(date: start, time: tempo.Time(0, 0, 0, 0)),
-    end: tempo.NaiveDateTime(date: end, time: tempo.Time(24, 0, 0, 0)),
+    start: tempo.naive_datetime(
+      date: start,
+      time: tempo.time(0, 0, 0, 0, tempo.Sec),
+    ),
+    end: tempo.naive_datetime(
+      date: end,
+      time: tempo.time(24, 0, 0, 0, tempo.Sec),
+    ),
   )
 }
 
@@ -868,17 +891,27 @@ pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
 /// ```
 pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
   let days_left_this_month =
-    month.days(of: date.month, in: date.year) - date.day
+    month.days(
+      of: date |> tempo.date_get_month,
+      in: date |> tempo.date_get_year,
+    )
+    - tempo.date_get_day(date)
+
   case days <= days_left_this_month {
-    True -> tempo.Date(date.year, date.month, date.day + days)
+    True ->
+      tempo.date(
+        date |> tempo.date_get_year,
+        date |> tempo.date_get_month,
+        { date |> tempo.date_get_day } + days,
+      )
     False -> {
-      let next_month = month.next(date.month)
+      let next_month = month.next(date |> tempo.date_get_month)
       let year = case next_month == tempo.Jan {
-        True -> date.year + 1
-        False -> date.year
+        True -> { date |> tempo.date_get_year } + 1
+        False -> date |> tempo.date_get_year
       }
 
-      add(tempo.Date(year, next_month, 1), days - days_left_this_month - 1)
+      add(tempo.date(year, next_month, 1), days - days_left_this_month - 1)
     }
   }
 }
@@ -899,18 +932,23 @@ pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
 /// // -> date.literal("2024-05-31")
 /// ```
 pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
-  case days < date.day {
-    True -> tempo.Date(date.year, date.month, date.day - days)
+  case days < date |> tempo.date_get_day {
+    True ->
+      tempo.date(
+        date |> tempo.date_get_year,
+        date |> tempo.date_get_month,
+        { date |> tempo.date_get_day } - days,
+      )
     False -> {
-      let prior_month = month.prior(date.month)
+      let prior_month = month.prior(date |> tempo.date_get_month)
       let year = case prior_month == tempo.Dec {
-        True -> date.year - 1
-        False -> date.year
+        True -> { date |> tempo.date_get_year } - 1
+        False -> date |> tempo.date_get_year
       }
 
       subtract(
-        tempo.Date(year, prior_month, month.days(of: prior_month, in: year)),
-        days - date.day,
+        tempo.date(year, prior_month, month.days(of: prior_month, in: year)),
+        days - tempo.date_get_day(date),
       )
     }
   }
@@ -928,10 +966,10 @@ pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
 /// ```
 pub fn to_day_of_week_number(date: tempo.Date) -> Int {
   let year_code =
-    date.year % 100
+    tempo.date_get_year(date) % 100
     |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
 
-  let month_code = case date.month {
+  let month_code = case date |> tempo.date_get_month {
     tempo.Jan -> 0
     tempo.Feb -> 3
     tempo.Mar -> 3
@@ -946,7 +984,7 @@ pub fn to_day_of_week_number(date: tempo.Date) -> Int {
     tempo.Dec -> 5
   }
 
-  let century_code = case date.year {
+  let century_code = case date |> tempo.date_get_year {
     year if year < 1752 -> 0
     year if year < 1800 -> 4
     year if year < 1900 -> 2
@@ -958,16 +996,23 @@ pub fn to_day_of_week_number(date: tempo.Date) -> Int {
     _ -> 0
   }
 
-  let leap_year_code = case year.is_leap_year(date.year) {
+  let leap_year_code = case year.is_leap_year(date |> tempo.date_get_year) {
     True ->
-      case date.month {
+      case date |> tempo.date_get_month {
         tempo.Jan | tempo.Feb -> 1
         _ -> 0
       }
     False -> 0
   }
 
-  { year_code + month_code + century_code + date.day - leap_year_code } % 7
+  {
+    year_code
+    + month_code
+    + century_code
+    + tempo.date_get_day(date)
+    - leap_year_code
+  }
+  % 7
 }
 
 /// Returns the day of week a date falls on.
@@ -998,7 +1043,7 @@ pub fn to_day_of_week(date: tempo.Date) -> DayOfWeek {
 /// ## Examples
 /// 
 /// ```gleam
-/// date.day_of_week_to_short_string(date.Mon)
+/// date|> tempo.date_get_day_of_week_to_short_string(date.Mon)
 /// // -> "Mon"
 /// ```
 pub fn day_of_week_to_short_string(day_of_week: DayOfWeek) -> String {
@@ -1018,7 +1063,7 @@ pub fn day_of_week_to_short_string(day_of_week: DayOfWeek) -> String {
 /// ## Examples
 /// 
 /// ```gleam
-/// date.day_of_week_to_long_string(date.Fri)
+/// date|> tempo.date_get_day_of_week_to_long_string(date.Fri)
 /// // -> "Friday"
 /// ```
 pub fn day_of_week_to_long_string(day_of_week: DayOfWeek) -> String {
@@ -1089,11 +1134,6 @@ pub fn prior_day_of_week(
   }
 }
 
-@deprecated("Use `to_day_of_week` instead")
-pub fn to_weekday(date: tempo.Date) -> DayOfWeek {
-  to_day_of_week(date)
-}
-
 /// Checks if a date falls in a weekend.
 /// 
 /// ## Examples
@@ -1120,7 +1160,7 @@ pub fn is_weekend(date: tempo.Date) -> Bool {
 /// // -> date.literal("2024-06-01")
 /// ```
 pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
-  tempo.Date(date.year, date.month, 1)
+  tempo.date(date |> tempo.date_get_year, date |> tempo.date_get_month, 1)
 }
 
 /// Gets the last date of the month a date occurs in.
@@ -1133,5 +1173,12 @@ pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
 /// // -> date.literal("2024-02-29")
 /// ```
 pub fn last_of_month(for date: tempo.Date) -> tempo.Date {
-  tempo.Date(date.year, date.month, month.days(of: date.month, in: date.year))
+  tempo.date(
+    date |> tempo.date_get_year,
+    date |> tempo.date_get_month,
+    month.days(
+      of: date |> tempo.date_get_month,
+      in: date |> tempo.date_get_year,
+    ),
+  )
 }

@@ -29,7 +29,7 @@ pub fn new(
   time time: tempo.Time,
   offset offset: tempo.Offset,
 ) -> tempo.DateTime {
-  tempo.DateTime(naive_datetime.new(date, time), offset: offset)
+  tempo.datetime(naive_datetime.new(date, time), offset: offset)
 }
 
 /// Create a new datetime value from a string literal, but will panic if
@@ -91,7 +91,7 @@ pub fn now_utc() -> tempo.DateTime {
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
     time.from_unix_nano_utc(now_ts_nano),
-    offset.utc,
+    tempo.utc,
   )
 }
 
@@ -147,7 +147,7 @@ pub fn from_string(datetime: String) -> Result(tempo.DateTime, tempo.Error) {
 
     [date] ->
       date.from_string(date)
-      |> result.map(new(_, tempo.Time(0, 0, 0, 0), offset.utc))
+      |> result.map(new(_, tempo.time(0, 0, 0, 0, tempo.Sec), tempo.utc))
 
     _ -> Error(tempo.DateTimeInvalidFormat)
   }
@@ -182,10 +182,10 @@ fn split_time_and_offset(
 /// // -> "2024-06-21T05:22:22.009Z" 
 /// ```
 pub fn to_string(datetime: tempo.DateTime) -> String {
-  datetime.naive |> naive_datetime.to_string
-  <> case datetime.offset.minutes {
+  datetime |> tempo.datetime_get_naive |> naive_datetime.to_string
+  <> case datetime |> tempo.datetime_get_offset |> tempo.offset_get_minutes {
     0 -> "Z"
-    _ -> datetime.offset |> offset.to_string
+    _ -> datetime |> tempo.datetime_get_offset |> offset.to_string
   }
 }
 
@@ -328,11 +328,13 @@ pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
 }
 
 fn replace_format(content: String, datetime) -> String {
+  let offset = datetime |> get_offset
+
   case content {
     "z" ->
-      case datetime |> get_offset {
-        tempo.Offset(0) -> "Z"
-        offset -> {
+      case offset |> tempo.offset_get_minutes {
+        0 -> "Z"
+        _ -> {
           let str_offset = offset |> offset.to_string
 
           case str_offset |> string.split(":") {
@@ -341,10 +343,9 @@ fn replace_format(content: String, datetime) -> String {
           }
         }
       }
-    "Z" -> datetime |> get_offset |> offset.to_string
+    "Z" -> offset |> offset.to_string
     "ZZ" ->
-      datetime
-      |> get_offset
+      offset
       |> offset.to_string
       |> string.replace(":", "")
     _ -> content
@@ -360,7 +361,7 @@ fn replace_format(content: String, datetime) -> String {
 /// // -> datetime.literal("2024-06-17T12:59:51Z")
 /// ```
 pub fn from_unix_utc(unix_ts: Int) -> tempo.DateTime {
-  new(date.from_unix_utc(unix_ts), time.from_unix_utc(unix_ts), offset.utc)
+  new(date.from_unix_utc(unix_ts), time.from_unix_utc(unix_ts), tempo.utc)
 }
 
 /// Returns the UTC unix timestamp of a datetime.
@@ -375,8 +376,10 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.DateTime {
 pub fn to_unix_utc(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_utc(utc_dt.date)
-  + { time.to_nanoseconds(utc_dt.time) / 1_000_000_000 }
+  date.to_unix_utc(utc_dt |> tempo.naive_datetime_get_date)
+  + {
+    time.to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1_000_000_000
+  }
 }
 
 /// Returns the UTC datetime of a unix timestamp in milliseconds.
@@ -391,7 +394,7 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.DateTime {
   new(
     date.from_unix_milli_utc(unix_ts),
     time.from_unix_milli_utc(unix_ts),
-    offset.utc,
+    tempo.utc,
   )
 }
 
@@ -407,8 +410,8 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.DateTime {
 pub fn to_unix_milli_utc(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_milli_utc(utc_dt.date)
-  + { time.to_nanoseconds(utc_dt.time) / 1_000_000 }
+  date.to_unix_milli_utc(utc_dt |> tempo.naive_datetime_get_date)
+  + { time.to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1_000_000 }
 }
 
 /// Returns the UTC datetime of a unix timestamp in microseconds.
@@ -423,7 +426,7 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.DateTime {
   new(
     date.from_unix_micro_utc(unix_ts),
     time.from_unix_micro_utc(unix_ts),
-    offset.utc,
+    tempo.utc,
   )
 }
 
@@ -439,8 +442,8 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.DateTime {
 pub fn to_unix_micro_utc(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_micro_utc(utc_dt.date)
-  + { time.to_nanoseconds(utc_dt.time) / 1000 }
+  date.to_unix_micro_utc(utc_dt |> tempo.naive_datetime_get_date)
+  + { time.to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000 }
 }
 
 /// Checks if a dynamic value is a valid datetime string, and returns the
@@ -595,7 +598,7 @@ pub fn from_dynamic_unix_micro_utc(
 /// // -> date.literal("2024-06-21")
 /// ```
 pub fn get_date(datetime: tempo.DateTime) -> tempo.Date {
-  datetime.naive.date
+  datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date
 }
 
 /// Gets the time of a datetime.
@@ -608,7 +611,7 @@ pub fn get_date(datetime: tempo.DateTime) -> tempo.Date {
 /// // -> time.literal("13:42:11.195")
 /// ```
 pub fn get_time(datetime: tempo.DateTime) -> tempo.Time {
-  datetime.naive.time
+  datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_time
 }
 
 /// Gets the offset of a datetime.
@@ -621,7 +624,7 @@ pub fn get_time(datetime: tempo.DateTime) -> tempo.Time {
 /// // -> offset.literal("+04:00")
 /// ```
 pub fn get_offset(datetime: tempo.DateTime) -> tempo.Offset {
-  datetime.offset
+  datetime |> tempo.datetime_get_offset
 }
 
 /// Drops the time of a datetime, leaving the date and time values unchanged.
@@ -634,7 +637,7 @@ pub fn get_offset(datetime: tempo.DateTime) -> tempo.Offset {
 /// // -> naive_datetime.literal("2024-06-13T13:42:11")
 /// ```
 pub fn drop_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
-  datetime.naive
+  datetime |> tempo.datetime_get_naive
 }
 
 /// Drops the time of a datetime, leaving the date value unchanged.
@@ -647,9 +650,9 @@ pub fn drop_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
 /// // -> naive_datetime.literal("2024-06-18T00:00:00Z")
 /// ```
 pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
-  tempo.DateTime(
-    naive_datetime.drop_time(datetime.naive),
-    offset: datetime.offset,
+  tempo.datetime(
+    naive_datetime.drop_time(datetime |> tempo.datetime_get_naive),
+    offset: datetime |> tempo.datetime_get_offset,
   )
 }
 
@@ -657,7 +660,7 @@ pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
 /// in a new naive datetime value that represents the original datetime in 
 /// UTC time.
 /// 
-/// ## Examples
+/// P## Examples
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-21T05:36:11.195-04:00")
@@ -666,7 +669,7 @@ pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
 /// ```
 pub fn apply_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
   datetime
-  |> add(offset.to_duration(datetime.offset))
+  |> add(offset.to_duration(datetime |> tempo.datetime_get_offset))
   |> drop_offset
 }
 
@@ -681,9 +684,9 @@ pub fn apply_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
 /// ```
 pub fn to_utc(datetime: tempo.DateTime) -> tempo.DateTime {
   datetime
-  |> add(offset.to_duration(datetime.offset))
+  |> add(offset.to_duration(datetime |> tempo.datetime_get_offset))
   |> drop_offset
-  |> naive_datetime.set_offset(offset.utc)
+  |> naive_datetime.set_offset(tempo.utc)
 }
 
 /// Converts a datetime to the equivalent time in an offset.
@@ -737,13 +740,17 @@ pub fn to_offset(
 pub fn to_local(
   datetime: tempo.DateTime,
 ) -> tempo.UncertainConversion(tempo.DateTime) {
-  use <- bool.lazy_guard(when: datetime.offset == offset.local(), return: fn() {
-    tempo.Precise(datetime)
-  })
+  use <- bool.lazy_guard(
+    when: datetime |> tempo.datetime_get_offset == offset.local(),
+    return: fn() { tempo.Precise(datetime) },
+  )
 
   let local_dt = datetime |> to_offset(offset.local())
 
-  case local_dt.naive.date == date.current_local() {
+  case
+    local_dt |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date
+    == date.current_local()
+  {
     True -> tempo.Precise(local_dt)
     False -> tempo.Imprecise(local_dt)
   }
@@ -781,8 +788,16 @@ pub fn to_local_time(
   datetime: tempo.DateTime,
 ) -> tempo.UncertainConversion(tempo.Time) {
   case to_local(datetime) {
-    tempo.Precise(datetime) -> datetime.naive.time |> tempo.Precise
-    tempo.Imprecise(datetime) -> datetime.naive.time |> tempo.Imprecise
+    tempo.Precise(datetime) ->
+      datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_time
+      |> tempo.Precise
+    tempo.Imprecise(datetime) ->
+      datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_time
+      |> tempo.Imprecise
   }
 }
 
@@ -818,8 +833,16 @@ pub fn to_local_date(
   datetime: tempo.DateTime,
 ) -> tempo.UncertainConversion(tempo.Date) {
   case to_local(datetime) {
-    tempo.Precise(datetime) -> datetime.naive.date |> tempo.Precise
-    tempo.Imprecise(datetime) -> datetime.naive.date |> tempo.Imprecise
+    tempo.Precise(datetime) ->
+      datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_date
+      |> tempo.Precise
+    tempo.Imprecise(datetime) ->
+      datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_date
+      |> tempo.Imprecise
   }
 }
 
@@ -836,9 +859,12 @@ pub fn to_local_date(
 /// ```
 pub fn to_second_precision(datetime: tempo.DateTime) -> tempo.DateTime {
   new(
-    datetime.naive.date,
-    datetime.naive.time |> time.to_second_precision,
-    datetime.offset,
+    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+    datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_time
+      |> time.to_second_precision,
+    datetime |> tempo.datetime_get_offset,
   )
 }
 
@@ -855,9 +881,12 @@ pub fn to_second_precision(datetime: tempo.DateTime) -> tempo.DateTime {
 /// ```
 pub fn to_milli_precision(datetime: tempo.DateTime) -> tempo.DateTime {
   new(
-    datetime.naive.date,
-    datetime.naive.time |> time.to_milli_precision,
-    datetime.offset,
+    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+    datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_time
+      |> time.to_milli_precision,
+    datetime |> tempo.datetime_get_offset,
   )
 }
 
@@ -874,9 +903,12 @@ pub fn to_milli_precision(datetime: tempo.DateTime) -> tempo.DateTime {
 /// ```
 pub fn to_micro_precision(datetime: tempo.DateTime) -> tempo.DateTime {
   new(
-    datetime.naive.date,
-    datetime.naive.time |> time.to_micro_precision,
-    datetime.offset,
+    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+    datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_time
+      |> time.to_micro_precision,
+    datetime |> tempo.datetime_get_offset,
   )
 }
 
@@ -893,9 +925,12 @@ pub fn to_micro_precision(datetime: tempo.DateTime) -> tempo.DateTime {
 /// ```
 pub fn to_nano_precision(datetime: tempo.DateTime) -> tempo.DateTime {
   new(
-    datetime.naive.date,
-    datetime.naive.time |> time.to_nano_precision,
-    datetime.offset,
+    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
+    datetime
+      |> tempo.datetime_get_naive
+      |> tempo.naive_datetime_get_time
+      |> time.to_nano_precision,
+    datetime |> tempo.datetime_get_offset,
   )
 }
 
@@ -1102,7 +1137,7 @@ pub fn as_period(
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-12T23:17:00Z")
-/// |> datetime.add(duration.minutes(3))
+/// |> datetime.add(duration |> tempo.offset_get_minutes(3))
 /// // -> datetime.literal("2024-06-12T23:20:00Z")
 /// ```
 pub fn add(
@@ -1112,7 +1147,7 @@ pub fn add(
   datetime
   |> drop_offset
   |> naive_datetime.add(duration: duration_to_add)
-  |> naive_datetime.set_offset(datetime.offset)
+  |> naive_datetime.set_offset(datetime |> tempo.datetime_get_offset)
 }
 
 /// Subtracts a duration from a datetime.
@@ -1131,7 +1166,7 @@ pub fn subtract(
   datetime
   |> drop_offset
   |> naive_datetime.subtract(duration: duration_to_subtract)
-  |> naive_datetime.set_offset(datetime.offset)
+  |> naive_datetime.set_offset(datetime |> tempo.datetime_get_offset)
 }
 
 /// Gets the time left in the day.
@@ -1152,5 +1187,8 @@ pub fn subtract(
 /// // -> time.literal("15:54:40")
 /// ```
 pub fn time_left_in_day(datetime: tempo.DateTime) -> tempo.Time {
-  datetime.naive.time |> time.left_in_day
+  datetime
+  |> tempo.datetime_get_naive
+  |> tempo.naive_datetime_get_time
+  |> time.left_in_day
 }

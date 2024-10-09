@@ -4,11 +4,8 @@ import tempo
 
 @internal
 pub fn local() -> tempo.Offset {
-  local_minutes() |> tempo.Offset
+  local_minutes() |> tempo.offset
 }
-
-/// The Tempo representation of the UTC offset.
-pub const utc = tempo.Offset(0)
 
 /// Creates a new offset from a number of minutes.
 /// 
@@ -60,12 +57,12 @@ pub fn literal(offset: String) -> tempo.Offset {
 /// // -> "-00:00"
 /// ```
 pub fn to_string(offset: tempo.Offset) -> String {
-  let #(is_negative, hours) = case offset.minutes / 60 {
+  let #(is_negative, hours) = case tempo.offset_get_minutes(offset) / 60 {
     h if h <= 0 -> #(True, -h)
     h -> #(False, h)
   }
 
-  let mins = case offset.minutes % 60 {
+  let mins = case tempo.offset_get_minutes(offset) % 60 {
     m if m < 0 -> -m
     m -> m
   }
@@ -105,7 +102,7 @@ pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
 
 @internal
 pub fn to_duration(offset: tempo.Offset) -> tempo.Duration {
-  -offset.minutes * 60_000_000_000 |> tempo.Duration
+  -tempo.offset_get_minutes(offset) * 60_000_000_000 |> tempo.duration
 }
 
 @external(erlang, "tempo_ffi", "local_offset")

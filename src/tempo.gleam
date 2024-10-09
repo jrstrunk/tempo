@@ -30,30 +30,75 @@ pub type Error {
   ParseMissingOffset
 }
 
-/// A datetime value that does not have a timezone offset associated with it. 
-/// It cannot be compared to datetimes with a timezone offset accurately, but
-/// can be compared to dates, times, and other naive datetimes.
-pub type NaiveDateTime {
-  NaiveDateTime(date: Date, time: Time)
-}
-
 /// A datetime value with a timezone offset associated with it. It has the 
 /// most amount of information about a point in time, and can be compared to 
 /// all other types in this package.
-pub type DateTime {
+pub opaque type DateTime {
   DateTime(naive: NaiveDateTime, offset: Offset)
+}
+
+@internal
+pub fn datetime(naive naive, offset offset) {
+  DateTime(naive, offset)
+}
+
+@internal
+pub fn datetime_get_naive(datetime: DateTime) {
+  datetime.naive
+}
+
+@internal
+pub fn datetime_get_offset(datetime: DateTime) {
+  datetime.offset
+}
+
+/// A datetime value that does not have a timezone offset associated with it. 
+/// It cannot be compared to datetimes with a timezone offset accurately, but
+/// can be compared to dates, times, and other naive datetimes.
+pub opaque type NaiveDateTime {
+  NaiveDateTime(date: Date, time: Time)
+}
+
+@internal
+pub fn naive_datetime(date date: Date, time time: Time) -> NaiveDateTime {
+  NaiveDateTime(date: date, time: time)
+}
+
+@internal
+pub fn naive_datetime_get_date(naive_datetime: NaiveDateTime) -> Date {
+  naive_datetime.date
+}
+
+@internal
+pub fn naive_datetime_get_time(naive_datetime: NaiveDateTime) -> Time {
+  naive_datetime.time
 }
 
 /// A timezone offset value. It represents the difference between UTC and the
 /// datetime value it is associated with.
-pub type Offset {
+pub opaque type Offset {
   Offset(minutes: Int)
 }
 
+@internal
+pub fn offset(minutes minutes) {
+  Offset(minutes)
+}
+
+@internal
+pub fn offset_get_minutes(offset: Offset) {
+  offset.minutes
+}
+
+/// The Tempo representation of the UTC offset.
+pub const utc = Offset(0)
+
+@internal
 pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Error) {
   Offset(minutes) |> validate_offset
 }
 
+@internal
 pub fn offset_from_string(offset: String) -> Result(Offset, Error) {
   case offset {
     // Parse Z format
@@ -113,6 +158,7 @@ pub fn offset_from_string(offset: String) -> Result(Offset, Error) {
   |> result.try(validate_offset)
 }
 
+@internal
 pub fn validate_offset(offset: Offset) -> Result(Offset, Error) {
   // Valid time offsets are between -12:00 and +14:00
   case offset.minutes >= -720 && offset.minutes <= 840 {
@@ -123,8 +169,28 @@ pub fn validate_offset(offset: Offset) -> Result(Offset, Error) {
 
 /// A date value. It represents a specific day on the civil calendar with no
 /// time of day associated with it.
-pub type Date {
+pub opaque type Date {
   Date(year: Int, month: Month, day: Int)
+}
+
+@internal
+pub fn date(year year, month month, day day) {
+  Date(year: year, month: month, day: day)
+}
+
+@internal
+pub fn date_get_year(date: Date) {
+  date.year
+}
+
+@internal
+pub fn date_get_month(date: Date) {
+  date.month
+}
+
+@internal
+pub fn date_get_day(date: Date) {
+  date.day
 }
 
 @internal
@@ -163,6 +229,14 @@ pub type Period {
   Period(start: DateTime, end: DateTime)
 }
 
+@internal
+pub type TimePrecision {
+  Sec
+  Milli
+  Micro
+  Nano
+}
+
 /// A time of day value. It represents a specific time on an unspecified date.
 /// It cannot be greater than 24 hours or less than 0 hours. It can have 
 /// different precisions between second and nanosecond, depending on what 
@@ -170,16 +244,49 @@ pub type Period {
 /// 
 /// Do not use the `==` operator to check for time equality (it will not
 /// handle time precision correctly)! Use the compare functions instead.
-pub type Time {
-  Time(hour: Int, minute: Int, second: Int, nanosecond: Int)
-  TimeMilli(hour: Int, minute: Int, second: Int, nanosecond: Int)
-  TimeMicro(hour: Int, minute: Int, second: Int, nanosecond: Int)
-  TimeNano(hour: Int, minute: Int, second: Int, nanosecond: Int)
+pub opaque type Time {
+  Time(
+    hour: Int,
+    minute: Int,
+    second: Int,
+    nanosecond: Int,
+    precision: TimePrecision,
+  )
+}
+
+@internal
+pub fn time(hour hour, minute minute, second second, nano nano, prec prec) {
+  Time(hour, minute, second, nano, prec)
+}
+
+@internal
+pub fn time_get_hour(time: Time) {
+  time.hour
+}
+
+@internal
+pub fn time_get_minute(time: Time) {
+  time.minute
+}
+
+@internal
+pub fn time_get_second(time: Time) {
+  time.second
+}
+
+@internal
+pub fn time_get_nano(time: Time) {
+  time.nanosecond
+}
+
+@internal
+pub fn time_get_prec(time: Time) {
+  time.precision
 }
 
 @internal
 pub fn new_time(hour: Int, minute: Int, second: Int) -> Result(Time, Error) {
-  Time(hour, minute, second, 0) |> validate_time
+  Time(hour, minute, second, 0, Sec) |> validate_time
 }
 
 @internal
@@ -189,7 +296,7 @@ pub fn new_time_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(Time, Error) {
-  TimeMilli(hour, minute, second, millisecond * 1_000_000)
+  Time(hour, minute, second, millisecond * 1_000_000, Milli)
   |> validate_time
 }
 
@@ -200,7 +307,7 @@ pub fn new_time_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(Time, Error) {
-  TimeMicro(hour, minute, second, microsecond * 1000) |> validate_time
+  Time(hour, minute, second, microsecond * 1000, Micro) |> validate_time
 }
 
 @internal
@@ -210,7 +317,7 @@ pub fn new_time_nano(
   second: Int,
   nanosecond: Int,
 ) -> Result(Time, Error) {
-  TimeNano(hour, minute, second, nanosecond) |> validate_time
+  Time(hour, minute, second, nanosecond, Nano) |> validate_time
 }
 
 @internal
@@ -238,10 +345,10 @@ pub fn validate_time(time: Time) -> Result(Time, Error) {
   {
     True ->
       case time {
-        Time(_, _, _, _) -> Ok(time)
-        TimeMilli(_, _, _, millis) if millis <= 999_000_000 -> Ok(time)
-        TimeMicro(_, _, _, micros) if micros <= 999_999_000 -> Ok(time)
-        TimeNano(_, _, _, nanos) if nanos <= 999_999_999 -> Ok(time)
+        Time(_, _, _, _, Sec) -> Ok(time)
+        Time(_, _, _, millis, Milli) if millis <= 999_000_000 -> Ok(time)
+        Time(_, _, _, micros, Micro) if micros <= 999_999_000 -> Ok(time)
+        Time(_, _, _, nanos, Nano) if nanos <= 999_999_999 -> Ok(time)
         _ -> Error(TimeOutOfBounds)
       }
     False -> Error(TimeOutOfBounds)
@@ -265,8 +372,18 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
 /// 
 /// It is also used as the basis for specifying how to increase or decrease
 /// a datetime or time value.
-pub type Duration {
+pub opaque type Duration {
   Duration(nanoseconds: Int)
+}
+
+@internal
+pub fn duration(nanoseconds nanoseconds) {
+  Duration(nanoseconds)
+}
+
+@internal
+pub fn duration_get_ns(duration: Duration) {
+  duration.nanoseconds
 }
 
 /// A month in a specific year.
@@ -331,6 +448,7 @@ pub fn month_from_short_string(month: String) -> Result(Month, Error) {
   }
 }
 
+@internal
 pub fn month_from_long_string(month: String) -> Result(Month, Error) {
   case month {
     "January" -> Ok(Jan)

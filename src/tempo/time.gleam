@@ -194,7 +194,8 @@ pub fn now_local() {
 /// updated and these functions removed.
 @internal
 pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
-  let assert Ok(time) = tempo.Time(hour, minute, second, 0) |> validate
+  let assert Ok(time) =
+    tempo.time(hour, minute, second, 0, tempo.Sec) |> validate
   time
 }
 
@@ -206,7 +207,7 @@ pub fn test_literal_milli(
   millisecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.TimeMilli(hour, minute, second, millisecond * 1_000_000)
+    tempo.time(hour, minute, second, millisecond * 1_000_000, tempo.Milli)
     |> validate
   time
 }
@@ -219,7 +220,8 @@ pub fn test_literal_micro(
   microsecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.TimeMicro(hour, minute, second, microsecond * 1000) |> validate
+    tempo.time(hour, minute, second, microsecond * 1000, tempo.Micro)
+    |> validate
   time
 }
 
@@ -231,7 +233,7 @@ pub fn test_literal_nano(
   nanosecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.TimeNano(hour, minute, second, nanosecond) |> validate
+    tempo.time(hour, minute, second, nanosecond, tempo.Nano) |> validate
   time
 }
 
@@ -243,11 +245,30 @@ fn validate(time: tempo.Time) -> Result(tempo.Time, tempo.Error) {
 /// to anti-patterns.
 @internal
 pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, tempo.Error) {
-  case time {
-    tempo.Time(_, m, s, _) -> new(hour, m, s)
-    tempo.TimeMilli(_, m, s, n) -> new_milli(hour, m, s, n)
-    tempo.TimeMicro(_, m, s, n) -> new_micro(hour, m, s, n)
-    tempo.TimeNano(_, m, s, n) -> new_nano(hour, m, s, n)
+  case time |> tempo.time_get_prec {
+    tempo.Sec ->
+      new(hour, time |> tempo.time_get_minute, time |> tempo.time_get_second)
+    tempo.Milli ->
+      new_milli(
+        hour,
+        time |> tempo.time_get_minute,
+        time |> tempo.time_get_second,
+        time |> tempo.time_get_nano,
+      )
+    tempo.Micro ->
+      new_micro(
+        hour,
+        time |> tempo.time_get_minute,
+        time |> tempo.time_get_second,
+        time |> tempo.time_get_nano,
+      )
+    tempo.Nano ->
+      new_nano(
+        hour,
+        time |> tempo.time_get_minute,
+        time |> tempo.time_get_second,
+        time |> tempo.time_get_nano,
+      )
   }
 }
 
@@ -258,11 +279,30 @@ pub fn set_minute(
   time: tempo.Time,
   minute: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  case time {
-    tempo.Time(h, _, s, _) -> new(h, minute, s)
-    tempo.TimeMilli(h, _, s, n) -> new_milli(h, minute, s, n)
-    tempo.TimeMicro(h, _, s, n) -> new_micro(h, minute, s, n)
-    tempo.TimeNano(h, _, s, n) -> new_nano(h, minute, s, n)
+  case time |> tempo.time_get_prec {
+    tempo.Sec ->
+      new(time |> tempo.time_get_hour, minute, time |> tempo.time_get_second)
+    tempo.Milli ->
+      new_milli(
+        time |> tempo.time_get_hour,
+        minute,
+        time |> tempo.time_get_second,
+        time |> tempo.time_get_nano,
+      )
+    tempo.Micro ->
+      new_micro(
+        time |> tempo.time_get_hour,
+        minute,
+        time |> tempo.time_get_second,
+        time |> tempo.time_get_nano,
+      )
+    tempo.Nano ->
+      new_nano(
+        time |> tempo.time_get_hour,
+        minute,
+        time |> tempo.time_get_second,
+        time |> tempo.time_get_nano,
+      )
   }
 }
 
@@ -273,11 +313,30 @@ pub fn set_second(
   time: tempo.Time,
   second: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  case time {
-    tempo.Time(h, m, _, _) -> new(h, m, second)
-    tempo.TimeMilli(h, m, _, n) -> new_milli(h, m, second, n)
-    tempo.TimeMicro(h, m, _, n) -> new_micro(h, m, second, n)
-    tempo.TimeNano(h, m, _, n) -> new_nano(h, m, second, n)
+  case time |> tempo.time_get_prec {
+    tempo.Sec ->
+      new(time |> tempo.time_get_hour, time |> tempo.time_get_minute, second)
+    tempo.Milli ->
+      new_milli(
+        time |> tempo.time_get_hour,
+        time |> tempo.time_get_minute,
+        second,
+        time |> tempo.time_get_nano,
+      )
+    tempo.Micro ->
+      new_micro(
+        time |> tempo.time_get_hour,
+        time |> tempo.time_get_minute,
+        second,
+        time |> tempo.time_get_nano,
+      )
+    tempo.Nano ->
+      new_nano(
+        time |> tempo.time_get_hour,
+        time |> tempo.time_get_minute,
+        second,
+        time |> tempo.time_get_nano,
+      )
   }
 }
 
@@ -288,7 +347,12 @@ pub fn set_milli(
   time: tempo.Time,
   millisecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  new_milli(time.hour, time.minute, time.second, millisecond)
+  new_milli(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
+    millisecond,
+  )
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
@@ -298,7 +362,12 @@ pub fn set_micro(
   time: tempo.Time,
   microsecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  new_micro(time.hour, time.minute, time.second, microsecond)
+  new_micro(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
+    microsecond,
+  )
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
@@ -308,7 +377,12 @@ pub fn set_nano(
   time: tempo.Time,
   nanosecond: Int,
 ) -> Result(tempo.Time, tempo.Error) {
-  new_nano(time.hour, time.minute, time.second, nanosecond)
+  new_nano(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
+    nanosecond,
+  )
 }
 
 /// Gets the hour value of a time.
@@ -321,7 +395,7 @@ pub fn set_nano(
 /// // -> 13
 /// ```
 pub fn get_hour(time: tempo.Time) -> Int {
-  time.hour
+  time |> tempo.time_get_hour
 }
 
 /// Gets the minute value of a time.
@@ -334,7 +408,7 @@ pub fn get_hour(time: tempo.Time) -> Int {
 /// // -> 42
 /// ```
 pub fn get_minute(time: tempo.Time) -> Int {
-  time.minute
+  time |> tempo.time_get_minute
 }
 
 /// Gets the second value of a time.
@@ -347,7 +421,7 @@ pub fn get_minute(time: tempo.Time) -> Int {
 /// // -> 11
 /// ```
 pub fn get_second(time: tempo.Time) -> Int {
-  time.second
+  time |> tempo.time_get_second
 }
 
 /// Gets the nanosecond value of a time.
@@ -360,7 +434,7 @@ pub fn get_second(time: tempo.Time) -> Int {
 /// // -> 123000000
 /// ```
 pub fn get_nanosecond(time: tempo.Time) -> Int {
-  time.nanosecond
+  time |> tempo.time_get_nano
 }
 
 /// Sets the time to a second precision. Drops any milliseconds from the
@@ -376,7 +450,13 @@ pub fn get_nanosecond(time: tempo.Time) -> Int {
 /// ```
 pub fn to_second_precision(time: tempo.Time) -> tempo.Time {
   // Drop any milliseconds
-  tempo.Time(time.hour, time.minute, time.second, 0)
+  tempo.time(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
+    0,
+    tempo.Sec,
+  )
 }
 
 /// Sets the time to a millisecond precision. Drops any microseconds from the
@@ -391,12 +471,13 @@ pub fn to_second_precision(time: tempo.Time) -> tempo.Time {
 /// // -> "21:53:03.530"
 /// ```
 pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeMilli(
-    time.hour,
-    time.minute,
-    time.second,
+  tempo.time(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
     // Drop any microseconds
-    { time.nanosecond / 1_000_000 } * 1_000_000,
+    { tempo.time_get_nano(time) / 1_000_000 } * 1_000_000,
+    tempo.Milli,
   )
 }
 
@@ -412,12 +493,13 @@ pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
 /// // -> "21:53:03.534670"
 /// ```
 pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeMicro(
-    time.hour,
-    time.minute,
-    time.second,
+  tempo.time(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
     // Drop any nanoseconds
-    { time.nanosecond / 1000 } * 1000,
+    { tempo.time_get_nano(time) / 1000 } * 1000,
+    tempo.Micro,
   )
 }
 
@@ -433,7 +515,13 @@ pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
 /// // -> "21:53:03.534000000"
 /// ```
 pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
-  tempo.TimeNano(time.hour, time.minute, time.second, time.nanosecond)
+  tempo.time(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
+    time |> tempo.time_get_nano,
+    tempo.Nano,
+  )
 }
 
 /// Converts a time value to a string in the format `hh:mm:ss.s`
@@ -446,34 +534,47 @@ pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
 /// // -> "21:53:03.534"
 /// ```
 pub fn to_string(time: tempo.Time) -> String {
-  string_builder.from_strings([
-    time.hour |> int.to_string |> string.pad_left(2, with: "0"),
-    ":",
-    time.minute |> int.to_string |> string.pad_left(2, with: "0"),
-    ":",
-    time.second |> int.to_string |> string.pad_left(2, with: "0"),
-  ])
-  |> fn(sb) {
-    case time {
-      tempo.Time(_, _, _, _) -> sb
-      tempo.TimeMilli(_, _, _, nanos) ->
-        string_builder.append(sb, ".")
-        |> string_builder.append(
-          { nanos / 1_000_000 }
-          |> int.to_string
-          |> string.pad_left(3, with: "0"),
-        )
-      tempo.TimeMicro(_, _, _, nanos) ->
-        string_builder.append(sb, ".")
-        |> string_builder.append(
-          { nanos / 1000 } |> int.to_string |> string.pad_left(6, with: "0"),
-        )
-      tempo.TimeNano(_, _, _, nanos) ->
-        string_builder.append(sb, ".")
-        |> string_builder.append(
-          nanos |> int.to_string |> string.pad_left(9, with: "0"),
-        )
-    }
+  let sb =
+    string_builder.from_strings([
+      time
+        |> tempo.time_get_hour
+        |> int.to_string
+        |> string.pad_left(2, with: "0"),
+      ":",
+      time
+        |> tempo.time_get_minute
+        |> int.to_string
+        |> string.pad_left(2, with: "0"),
+      ":",
+      time
+        |> tempo.time_get_second
+        |> int.to_string
+        |> string.pad_left(2, with: "0"),
+    ])
+
+  case time |> tempo.time_get_prec {
+    tempo.Sec -> sb
+    tempo.Milli ->
+      string_builder.append(sb, ".")
+      |> string_builder.append(
+        { tempo.time_get_nano(time) / 1_000_000 }
+        |> int.to_string
+        |> string.pad_left(3, with: "0"),
+      )
+    tempo.Micro ->
+      string_builder.append(sb, ".")
+      |> string_builder.append(
+        { tempo.time_get_nano(time) / 1000 }
+        |> int.to_string
+        |> string.pad_left(6, with: "0"),
+      )
+    tempo.Nano ->
+      string_builder.append(sb, ".")
+      |> string_builder.append(
+        tempo.time_get_nano(time)
+        |> int.to_string
+        |> string.pad_left(9, with: "0"),
+      )
   }
   |> string_builder.to_string
 }
@@ -536,7 +637,13 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
             int.parse(second_fraction |> string.pad_right(3, with: "0"))
           {
             Ok(second), Ok(milli) ->
-              Ok(tempo.TimeMilli(hour, minute, second, milli * 1_000_000))
+              Ok(tempo.time(
+                hour,
+                minute,
+                second,
+                milli * 1_000_000,
+                tempo.Milli,
+              ))
             _, _ -> Error(tempo.TimeInvalidFormat)
           }
         len if len <= 6 ->
@@ -545,7 +652,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
             int.parse(second_fraction |> string.pad_right(6, with: "0"))
           {
             Ok(second), Ok(micro) ->
-              Ok(tempo.TimeMicro(hour, minute, second, micro * 1000))
+              Ok(tempo.time(hour, minute, second, micro * 1000, tempo.Micro))
             _, _ -> Error(tempo.TimeInvalidFormat)
           }
         len if len <= 9 ->
@@ -554,7 +661,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
             int.parse(second_fraction |> string.pad_right(9, with: "0"))
           {
             Ok(second), Ok(nano) ->
-              Ok(tempo.TimeNano(hour, minute, second, nano))
+              Ok(tempo.time(hour, minute, second, nano, tempo.Nano))
             _, _ -> Error(tempo.TimeInvalidFormat)
           }
         _ -> Error(tempo.TimeInvalidFormat)
@@ -563,7 +670,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
 
     Ok(hour), Ok(minute), _ ->
       case int.parse(second) {
-        Ok(second) -> Ok(tempo.Time(hour, minute, second, 0))
+        Ok(second) -> Ok(tempo.time(hour, minute, second, 0, tempo.Sec))
         _ -> Error(tempo.TimeInvalidFormat)
       }
 
@@ -866,7 +973,11 @@ pub fn from_unix_nano_utc(unix_ts: Int) -> tempo.Time {
 /// // -> #(13, 42, 11)
 /// ```
 pub fn to_tuple(time: tempo.Time) -> #(Int, Int, Int) {
-  #(time.hour, time.minute, time.second)
+  #(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
+  )
 }
 
 /// Converts a tuple of hours, minutes, and seconds to a time value. Useful 
@@ -894,7 +1005,12 @@ pub fn from_tuple(time: #(Int, Int, Int)) -> Result(tempo.Time, tempo.Error) {
 /// // -> #(13, 42, 11, 872000000)
 /// ```
 pub fn to_tuple_nanosecond(time: tempo.Time) -> #(Int, Int, Int, Int) {
-  #(time.hour, time.minute, time.second, time.nanosecond)
+  #(
+    time |> tempo.time_get_hour,
+    time |> tempo.time_get_minute,
+    time |> tempo.time_get_second,
+    time |> tempo.time_get_nano,
+  )
 }
 
 /// Converts a tuple of hours, minutes, seconds, and nanoseconds to a time 
@@ -932,7 +1048,7 @@ pub fn from_tuple_nanosecond(
 /// // -> 186_000
 /// ```
 pub fn to_duration(time: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(time) |> tempo.Duration
+  to_nanoseconds(time) |> tempo.duration
 }
 
 /// Converts a duration to the equivalent time of day, assuming the 
@@ -970,7 +1086,7 @@ pub fn to_duration(time: tempo.Time) -> tempo.Duration {
 /// // -> "23:59:57.000000000"
 /// ```
 pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
-  from_nanoseconds(duration.nanoseconds)
+  duration |> tempo.duration_get_ns |> from_nanoseconds
 }
 
 /// Compares two time values.
@@ -995,34 +1111,34 @@ pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
 /// // -> order.Lt
 /// ```
 pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
-  case a.hour == b.hour {
+  case a |> tempo.time_get_hour == b |> tempo.time_get_hour {
     True ->
-      case a.minute == b.minute {
+      case a |> tempo.time_get_minute == b |> tempo.time_get_minute {
         True ->
-          case a.second == b.second {
+          case a |> tempo.time_get_second == b |> tempo.time_get_second {
             True ->
-              case a.nanosecond == b.nanosecond {
+              case a |> tempo.time_get_nano == b |> tempo.time_get_nano {
                 True -> order.Eq
                 False ->
-                  case a.nanosecond < b.nanosecond {
+                  case a |> tempo.time_get_nano < b |> tempo.time_get_nano {
                     True -> order.Lt
                     False -> order.Gt
                   }
               }
             False ->
-              case a.second < b.second {
+              case a |> tempo.time_get_second < b |> tempo.time_get_second {
                 True -> order.Lt
                 False -> order.Gt
               }
           }
         False ->
-          case a.minute < b.minute {
+          case a |> tempo.time_get_minute < b |> tempo.time_get_minute {
             True -> order.Lt
             False -> order.Gt
           }
       }
     False ->
-      case a.hour < b.hour {
+      case a |> tempo.time_get_hour < b |> tempo.time_get_hour {
         True -> order.Lt
         False -> order.Gt
       }
@@ -1214,7 +1330,7 @@ pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
 /// // -> -25
 /// ```
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(a) - to_nanoseconds(b) |> tempo.Duration
+  to_nanoseconds(a) - to_nanoseconds(b) |> tempo.duration
 }
 
 /// Gets the absolute difference between two times as a duration.
@@ -1236,17 +1352,17 @@ pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
 /// ```
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
   case to_nanoseconds(a) - to_nanoseconds(b) {
-    diff if diff < 0 -> -diff |> tempo.Duration
-    diff -> diff |> tempo.Duration
+    diff if diff < 0 -> -diff |> tempo.duration
+    diff -> diff |> tempo.duration
   }
 }
 
 @internal
 pub fn to_nanoseconds(time: tempo.Time) -> Int {
-  { time.hour * unit.hour_nanoseconds }
-  + { time.minute * unit.minute_nanoseconds }
-  + { time.second * unit.second_nanoseconds }
-  + time.nanosecond
+  { tempo.time_get_hour(time) * unit.hour_nanoseconds }
+  + { tempo.time_get_minute(time) * unit.minute_nanoseconds }
+  + { tempo.time_get_second(time) * unit.second_nanoseconds }
+  + tempo.time_get_nano(time)
 }
 
 @internal
@@ -1275,7 +1391,7 @@ pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
     - seconds
     * 1_000_000_000
 
-  tempo.TimeNano(hours, minutes, seconds, nanoseconds)
+  tempo.time(hours, minutes, seconds, nanoseconds, tempo.Nano)
 }
 
 /// Adds a duration to a time.
@@ -1288,12 +1404,13 @@ pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
 /// // -> time.literal("09:18:53")
 /// ```
 pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
-  let new_time = to_nanoseconds(a) + b.nanoseconds |> from_nanoseconds
-  case a {
-    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
-    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
-    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
-    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
+  let new_time =
+    to_nanoseconds(a) + tempo.duration_get_ns(b) |> from_nanoseconds
+  case a |> tempo.time_get_prec {
+    tempo.Sec -> to_second_precision(new_time)
+    tempo.Milli -> to_milli_precision(new_time)
+    tempo.Micro -> to_micro_precision(new_time)
+    tempo.Nano -> to_nano_precision(new_time)
   }
 }
 
@@ -1307,13 +1424,14 @@ pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 /// // -> time.literal("11:42:02")
 /// ```
 pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
-  let new_time = to_nanoseconds(a) - b.nanoseconds |> from_nanoseconds
+  let new_time =
+    to_nanoseconds(a) - tempo.duration_get_ns(b) |> from_nanoseconds
   // Restore original time precision
-  case a {
-    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
-    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
-    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
-    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
+  case a |> tempo.time_get_prec {
+    tempo.Sec -> to_second_precision(new_time)
+    tempo.Milli -> to_milli_precision(new_time)
+    tempo.Micro -> to_micro_precision(new_time)
+    tempo.Nano -> to_nano_precision(new_time)
   }
 }
 
@@ -1336,11 +1454,11 @@ pub fn left_in_day(time: tempo.Time) -> tempo.Time {
     |> from_nanoseconds
 
   // Restore original time precision
-  case time {
-    tempo.Time(_, _, _, _) -> to_second_precision(new_time)
-    tempo.TimeMilli(_, _, _, _) -> to_milli_precision(new_time)
-    tempo.TimeMicro(_, _, _, _) -> to_micro_precision(new_time)
-    tempo.TimeNano(_, _, _, _) -> to_nano_precision(new_time)
+  case time |> tempo.time_get_prec {
+    tempo.Sec -> to_second_precision(new_time)
+    tempo.Milli -> to_milli_precision(new_time)
+    tempo.Micro -> to_micro_precision(new_time)
+    tempo.Nano -> to_nano_precision(new_time)
   }
 }
 
