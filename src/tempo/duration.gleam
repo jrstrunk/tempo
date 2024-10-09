@@ -18,7 +18,7 @@ pub opaque type MonotonicClock {
 /// |> duration.stop
 /// // -> duration.mintues(15)
 /// ```
-pub fn start() -> MonotonicClock {
+pub fn start_monotonic() -> MonotonicClock {
   tempo.now_monotonic() |> MonotonicClock
 }
 
@@ -32,7 +32,7 @@ pub fn start() -> MonotonicClock {
 /// |> duration.stop
 /// // -> duration.mintues(15)
 /// ```
-pub fn stop(start: MonotonicClock) -> tempo.Duration {
+pub fn stop_monotonic(start: MonotonicClock) -> tempo.Duration {
   tempo.now_monotonic() - start.nanoseconds |> tempo.duration
 }
 
@@ -51,7 +51,7 @@ pub fn stop(start: MonotonicClock) -> tempo.Duration {
 /// // -> "This operation took 263 nanoseconds!"
 /// ```
 pub fn since(start: MonotonicClock) -> String {
-  stop(start) |> format
+  stop_monotonic(start) |> format
 }
 
 /// Formats the duration as the specified unit with the specified number 

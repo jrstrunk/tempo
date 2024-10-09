@@ -8,8 +8,8 @@ pub fn main() {
 }
 
 pub fn monotonic_time_start_stop_test() {
-  duration.start()
-  |> duration.stop
+  duration.start_monotonic()
+  |> duration.stop_monotonic
   |> fn(d: tempo.Duration) { d |> tempo.duration_get_ns >= 0 }
   |> should.be_true
 }
