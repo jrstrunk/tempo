@@ -843,6 +843,7 @@ pub fn now_utc() -> Int
 
 @external(erlang, "tempo_ffi", "now_monotonic")
 @external(javascript, "./tempo_ffi.mjs", "now")
+@internal
 pub fn now_monotonic() -> Int
 
 @internal
