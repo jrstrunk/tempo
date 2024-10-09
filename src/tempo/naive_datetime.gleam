@@ -9,6 +9,7 @@ import gtempo/internal as unit
 import tempo
 import tempo/date
 import tempo/duration
+import tempo/month
 import tempo/offset
 import tempo/time
 
@@ -149,6 +150,34 @@ pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
   <> datetime
   |> get_time
   |> time.to_string
+}
+
+/// Returns a tuple of the date and time values in the format used in Erlang.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-21T23:17:07")
+/// |> naive_datetime.to_tuple
+/// // -> #(#(2024, 6, 21), #(23, 17, 7))
+/// ```
+pub fn to_tuple(
+  naive_datetime: tempo.NaiveDateTime,
+) -> #(#(Int, Int, Int), #(Int, Int, Int)) {
+  #(
+    #(
+      naive_datetime |> tempo.naive_datetime_get_date |> tempo.date_get_year,
+      month.to_int(
+        naive_datetime |> tempo.naive_datetime_get_date |> tempo.date_get_month,
+      ),
+      naive_datetime |> tempo.naive_datetime_get_date |> tempo.date_get_day,
+    ),
+    #(
+      naive_datetime |> tempo.naive_datetime_get_time |> tempo.time_get_hour,
+      naive_datetime |> tempo.naive_datetime_get_time |> tempo.time_get_minute,
+      naive_datetime |> tempo.naive_datetime_get_time |> tempo.time_get_second,
+    ),
+  )
 }
 
 /// Parses a naive datetime string in the provided format. Always prefer using

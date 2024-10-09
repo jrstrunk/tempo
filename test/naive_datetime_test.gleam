@@ -45,6 +45,12 @@ pub fn to_string_test() {
   |> should.equal("2024-06-13T13:42:11")
 }
 
+pub fn to_tuple_test() {
+  naive_datetime.literal("2024-06-21T23:17:07")
+  |> naive_datetime.to_tuple
+  |> should.equal(#(#(2024, 6, 21), #(23, 17, 7)))
+}
+
 pub fn format_test() {
   naive_datetime.literal("2024-06-21T13:42:11")
   |> naive_datetime.format("ddd @ h:mm A")
