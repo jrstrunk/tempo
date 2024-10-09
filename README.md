@@ -73,7 +73,7 @@ pub fn main() {
   let target_time = time.literal("07:50:00")
 
   // This is monotonic time
-  let timer = duration.start()
+  let timer = duration.start_monotonic()
 
   case time.now_local() |> time.is_later(than: target_time) {
     True -> {

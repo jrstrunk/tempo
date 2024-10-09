@@ -9,3 +9,9 @@ export function local_offset() {
 export function current_year() {
   new Date().getFullYear();
 }
+
+var unique = 1;
+
+export function now_unique() {
+  return unique++;
+}

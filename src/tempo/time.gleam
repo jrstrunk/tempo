@@ -23,6 +23,19 @@
 ////   // -> "The hour is: 13, wow! And even better the minute is: 42!"
 //// }
 //// ```
+//// 
+//// ```gleam
+//// import tempo/time
+//// 
+//// pub fn run_task() {
+////   let resuult = do_long_task()
+//// 
+////   let end_time = time.now_unique()
+//// 
+////   #(end_time, resuult)
+//// }
+//// // -> These tasks are now sortable by end time
+//// ```
 
 import gleam/int
 import gleam/list
@@ -217,16 +230,38 @@ pub fn now_local() {
 
 /// Gets the monotonic time of the host on the Erlang target. Returns the
 /// current UTC wall time in nanoseconds on the JavaScript target becuase 
-/// monotonic time in JavaScript is dependent on the runtime.
+/// monotonic time in JavaScript is dependent on the runtime. Monotonic time
+///  is useful for timing events; `now_utc` and `now_local` should not be
+/// used for timing events. The `duration` module has nicer functions to use
+/// for timing events and should be preferred over this function.
 /// 
 /// ## Example
 /// 
 /// ```gleam
 /// time.now_monotonic()
-/// // -> 576_460_750_802_442_634
+/// // -> -576_460_750_802_442_634
 /// ```
 pub fn now_monotonic() {
   tempo.now_monotonic()
+}
+
+/// Gets a positive unique integer based on the monotonic time of the 
+/// Erlang VM on the Erlang target. Returns the a value that starts at 1 and
+/// increments by 1 with each call on the JavaScript target. This is useful
+/// for tagging and then ordering events by time, but should not be assumed
+/// to represent wall time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.now_unique()
+/// // -> 1
+/// 
+/// time.now_unique()
+/// // -> 2
+/// ```
+pub fn now_unique() {
+  tempo.now_unique()
 }
 
 /// Early on these were part of the public API and used in a lot of tests, 

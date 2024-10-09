@@ -843,6 +843,11 @@ pub fn now_utc() -> Int
 @internal
 pub fn now_monotonic() -> Int
 
+@external(erlang, "tempo_ffi", "now_unique")
+@external(javascript, "./tempo_ffi.mjs", "now_unique")
+@internal
+pub fn now_unique() -> Int
+
 @internal
 pub type DatetimePart {
   Year(Int)
