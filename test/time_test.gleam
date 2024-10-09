@@ -24,6 +24,11 @@ pub fn time_now_test() {
   |> should.be_true
 }
 
+pub fn now_monotonic_test() {
+  { time.now_monotonic() < time.now_monotonic() }
+  |> should.be_true
+}
+
 pub fn new_time_test() {
   time.new(0, 0, 0)
   |> should.equal(time.from_string("00:00:00"))

@@ -7,7 +7,7 @@ pub fn main() {
   gleeunit.main()
 }
 
-pub fn monotomic_time_test() {
+pub fn monotonic_time_start_stop_test() {
   duration.start()
   |> duration.stop
   |> fn(d: tempo.Duration) { d |> tempo.duration_get_ns >= 0 }

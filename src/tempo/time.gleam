@@ -141,7 +141,7 @@ pub fn literal(time: String) -> tempo.Time {
   }
 }
 
-/// Gets the UTC time of the host.
+/// Gets the UTC wall time of the host.
 ///
 /// ## Example
 /// 
@@ -165,7 +165,7 @@ pub fn now_utc() {
   from_nanoseconds(now_ts_nano - date_ts_nano)
 }
 
-/// Gets the local time of the host.
+/// Gets the local wall time of the host.
 /// 
 /// ## Example
 /// 
@@ -187,6 +187,20 @@ pub fn now_local() {
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
   from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
+}
+
+/// Gets the monotonic time of the host on the Erlang target. Returns the
+/// current UTC wall time in nanoseconds on the JavaScript target becuase 
+/// monotonic time in JavaScript is dependent on the runtime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.now_monotonic()
+/// // -> 576_460_750_802_442_634
+/// ```
+pub fn now_monotonic() {
+  tempo.now_monotonic()
 }
 
 /// Early on these were part of the public API and used in a lot of tests, 

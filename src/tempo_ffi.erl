@@ -2,11 +2,14 @@
 
 -export([
     now/0,
+    now_monotonic/0,
     local_offset/0,
     current_year/0
 ]).
 
 now() -> os:system_time(nanosecond).
+
+now_monotonic() -> erlang:monotonic_time(nanosecond).
 
 local_offset() ->
     {Date, Time} = calendar:local_time(),

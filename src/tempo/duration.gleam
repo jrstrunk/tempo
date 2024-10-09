@@ -19,7 +19,7 @@ pub opaque type MonotonicClock {
 /// // -> duration.mintues(15)
 /// ```
 pub fn start() -> MonotonicClock {
-  tempo.now_utc() |> MonotonicClock
+  tempo.now_monotonic() |> MonotonicClock
 }
 
 /// Returns the duration between the monotonic clock start and the current time.
@@ -33,7 +33,7 @@ pub fn start() -> MonotonicClock {
 /// // -> duration.mintues(15)
 /// ```
 pub fn stop(start: MonotonicClock) -> tempo.Duration {
-  tempo.now_utc() - start.nanoseconds |> tempo.duration
+  tempo.now_monotonic() - start.nanoseconds |> tempo.duration
 }
 
 /// Returns the formatted duration between the monotonic clock start and 
