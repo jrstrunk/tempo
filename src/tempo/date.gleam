@@ -1,3 +1,38 @@
+//// Functions to use with the `Date` type in Tempo.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import tempo/date
+//// 
+//// pub fn main() {
+////   date.literal("2024-06-21")
+////   |> date.to_string
+////   // -> "2024-06-21"
+//// 
+////   date.parse("06/21/2024", "MM/DD/YYYY")
+////   |> date.to_string
+////   // -> "2024-06-21"
+//// 
+////   date.now_local()
+////   |> date.to_string
+////   // -> "2024-10-09"
+//// }
+//// ```
+//// 
+//// ```gleam
+//// import tempo/date
+//// 
+//// pub fn is_older_than_a_week(date_str: String) {
+////   let date = date.from_string(date_str)
+//// 
+////   date
+////   |> date.is_earlier(
+////      than: date |> date.subtract(days: 7)
+////   )
+//// }
+//// ```
+
 import gleam/bool
 import gleam/dynamic
 import gleam/int

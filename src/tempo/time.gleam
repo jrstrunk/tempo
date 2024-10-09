@@ -1,3 +1,29 @@
+//// Functions to use with the `Time` type in Tempo. The time values are wall
+//// time values unless explicitly stated otherwise.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import tempo/time
+//// 
+//// pub fn is_past_5pm() {
+////   time.now_utc()
+////   |> time.is_later(than: time.literal("17:00"))
+//// }
+//// ```
+//// 
+//// ```gleam
+//// import tempo/time
+//// 
+//// pub fn get_enthusiastic_time() {
+////   time.now_local()
+////   |> time.format(
+////     "[The hour is:] HH, [wow! And even better the minute is:] mm!"
+////   )
+////   // -> "The hour is: 13, wow! And even better the minute is: 42!"
+//// }
+//// ```
+
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}

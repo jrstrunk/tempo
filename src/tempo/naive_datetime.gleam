@@ -1,3 +1,19 @@
+//// Functions to use with the `NaiveDateTime` type in Tempo. Naive datetimes
+//// are datetime values without an offset or timezone value.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import tempo/naive_datetime
+//// import tempo/date
+//// import tempo/time
+//// 
+//// pub fn get_date_and_time() {
+////   naive_datetime.now_local()
+////   |> naive_datetime.to_string
+////   // -> "2024-06-21T13:42:11"
+//// }
+
 import gleam/bool
 import gleam/list
 import gleam/option.{None, Some}

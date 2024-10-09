@@ -1,3 +1,35 @@
+//// Functions to use with the `Period` type in Tempo. Periods are a way to 
+//// represent a range of dates or datetimes.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import tempo/period
+//// import tempo/date
+//// 
+//// pub fn get_days_between(date1, date2) {
+////   date1
+////   |> date.difference(from: date2)
+////   |> period.as_days
+////   // -> 11
+//// }
+//// ```
+//// 
+//// ```gleam
+//// import tempo/period
+//// import tempo/date
+//// 
+//// pub fn get_every_friday_between(date1, date2) {
+////   period.new(date1, date2)
+////   |> period.comprising_dates
+////   |> iterator.filter(fn(date) { 
+////     date |> date.to_day_of_week == date.Fri
+////   })
+////   |> iterator.to_list
+////   // -> ["2024-06-21", "2024-06-28", "2024-07-05"]
+//// }
+//// ```
+
 import gleam/bool
 import gleam/int
 import gleam/iterator

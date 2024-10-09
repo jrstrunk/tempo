@@ -1,3 +1,29 @@
+//// Functions to use with the `Duration` type in Tempo.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import gleam/io
+//// import tempo/duration
+//// import tempo/time
+//// 
+//// pub fn main() {
+////   time.literal("01:42:11")
+////   |> duration.format
+////   // -> "1 hour, 42 minutes, 11 seconds"
+//// }
+//// ```
+//// 
+//// ```gleam
+//// import tempo/duration
+//// 
+//// pub fn timed(func) {
+////   let start = duration.start_monotonic()
+////   func() 
+////   io.println("This took " <> duration.since(start) <> " to run!")
+//// }
+//// ```
+
 import gleam/int
 import gleam/list
 import gleam/order

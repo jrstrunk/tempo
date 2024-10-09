@@ -1,3 +1,53 @@
+//// Functions to use with the `DateTime` type in Tempo.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import tempo/datetime
+//// 
+//// pub fn main() {
+//// datetime.literal("2024-12-25T06:00:00+05:00")
+////   |> datetime.format("ddd @ h:mm A, Z")
+////   // -> "Fri @ 6:00 AM, +05:00"
+//// 
+////   datetime.parse("06:21:2024 23:17:07.123Z", "MM:DD:YYYY HH:mm:ss.SSSZ")
+////   |> datetime.to_string
+////   // -> "2024-06-21T23:17:07.123Z"
+//// 
+////   datetime.now_local()
+////   |> datetime.to_string
+////   // -> "2024-10-09T13:42:11.195Z"
+//// }
+//// ```
+//// 
+//// ```gleam
+//// import tempo/datetime
+//// 
+//// pub fn is_30_mins_old(datetime_str: String) {
+////   let my_dt = datetime.from_string(datetime_str)
+//// 
+////   my_dt
+////   |> datetime.is_equal(
+////      to: my_dt |> datetime.subtract(duration.minutes(30))
+////   )
+//// }
+//// ```
+//// 
+//// ```gleam
+//// import tempo/datetime
+//// import tempo/period
+//// 
+//// pub fn get_every_friday_between(datetime1, datetime2) {
+////   period.new(datetime1, datetime2)
+////   |> period.comprising_dates
+////   |> iterator.filter(fn(date) { 
+////     date |> date.to_day_of_week == date.Fri
+////   })
+////   |> iterator.to_list
+////   // -> ["2024-06-21", "2024-06-28", "2024-07-05"]
+//// }
+//// ```
+
 import gleam/bool
 import gleam/dynamic
 import gleam/list

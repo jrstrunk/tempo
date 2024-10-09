@@ -1,8 +1,5 @@
-//// The types defined here will become opaque in a later version once the 
-//// package is more mature and if Gleam allows for types to be opaque only to 
-//// the public interface. Try not to construct these types directly. If you
-//// find the need to, consider contributing to the package so your needs can
-//// be met and handled properly by the package itself. 
+//// The main module of this package. Contains most types and only a couple 
+//// general purpose functions. Look in specific modules for more functionality!
 
 import gleam/bool
 import gleam/int

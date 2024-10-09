@@ -1,3 +1,18 @@
+//// Functions to use with the `Offset` type in Tempo. The offset values 
+//// represents the time difference between the current time and UTC time.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import tempo/offset
+//// 
+//// pub fn get_system_offset() {
+////   offset.local()
+////   |> offset.to_string
+////   // -> "+05:00"
+//// }
+//// ```
+
 import gleam/int
 import gleam/string
 import tempo

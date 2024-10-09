@@ -1,3 +1,20 @@
+//// Functions to use with the `Month` type in Tempo.
+//// 
+//// ## Example
+//// 
+//// ```gleam
+//// import tempo/month
+//// import tempo/date
+//// 
+//// pub fn get_next_month_name() {
+////   date.now_local()
+////   |> date.get_month
+////   |> month.next
+////   |> month.to_long_string
+////   // -> "November"
+//// }
+//// ```
+
 import gleam/result
 import tempo
 

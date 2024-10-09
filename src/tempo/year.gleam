@@ -1,3 +1,5 @@
+//// Functions to use with the `Year` type in Tempo. Years are pretty simple
+//// thankfully.
 import tempo
 
 /// Checks if a year is a leap year.
