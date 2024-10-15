@@ -864,11 +864,11 @@ pub fn difference(of a: tempo.Date, from b: tempo.Date) -> tempo.Period {
   tempo.NaivePeriod(
     start: tempo.naive_datetime(
       date: start,
-      time: tempo.time(0, 0, 0, 0, tempo.Sec, None),
+      time: tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
     ),
     end: tempo.naive_datetime(
       date: end,
-      time: tempo.time(0, 0, 0, 0, tempo.Sec, None),
+      time: tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
     ),
   )
 }
@@ -900,11 +900,11 @@ pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
   tempo.NaivePeriod(
     start: tempo.naive_datetime(
       date: start,
-      time: tempo.time(0, 0, 0, 0, tempo.Sec, None),
+      time: tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
     ),
     end: tempo.naive_datetime(
       date: end,
-      time: tempo.time(24, 0, 0, 0, tempo.Sec, None),
+      time: tempo.time(24, 0, 0, 0, tempo.Sec, None, None),
     ),
   )
 }

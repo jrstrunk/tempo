@@ -343,12 +343,9 @@ pub opaque type Time {
     second: Int,
     nanosecond: Int,
     precision: TimePrecision,
-    monotonic: option.Option(MonotonicTime),
+    monotonic: option.Option(Int),
+    unique: option.Option(Int),
   )
-}
-
-pub type MonotonicTime {
-  MonotonicTime(nanoseconds: Int, unique: Int)
 }
 
 @internal
@@ -359,8 +356,9 @@ pub fn time(
   nano nanosecond,
   prec precision,
   mono monotonic,
+  unique unique,
 ) {
-  Time(hour:, minute:, second:, nanosecond:, precision:, monotonic:)
+  Time(hour:, minute:, second:, nanosecond:, precision:, monotonic:, unique:)
 }
 
 @internal
@@ -394,20 +392,30 @@ pub fn time_get_mono(time: Time) {
 }
 
 @internal
-pub fn time_set_mono(time: Time, monotonic) {
+pub fn time_get_unique(time: Time) {
+  time.unique
+}
+
+@internal
+pub fn time_set_mono(
+  time: Time,
+  monotonic: option.Option(Int),
+  unique: option.Option(Int),
+) {
   Time(
     time.hour,
     time.minute,
     time.second,
     time.nanosecond,
     time.precision,
-    monotonic: Some(monotonic),
+    monotonic:,
+    unique:,
   )
 }
 
 @internal
 pub fn new_time(hour: Int, minute: Int, second: Int) -> Result(Time, Error) {
-  Time(hour, minute, second, 0, Sec, None) |> validate_time
+  Time(hour, minute, second, 0, Sec, None, None) |> validate_time
 }
 
 @internal
@@ -417,7 +425,7 @@ pub fn new_time_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(Time, Error) {
-  Time(hour, minute, second, millisecond * 1_000_000, Milli, None)
+  Time(hour, minute, second, millisecond * 1_000_000, Milli, None, None)
   |> validate_time
 }
 
@@ -428,7 +436,8 @@ pub fn new_time_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(Time, Error) {
-  Time(hour, minute, second, microsecond * 1000, Micro, None) |> validate_time
+  Time(hour, minute, second, microsecond * 1000, Micro, None, None)
+  |> validate_time
 }
 
 @internal
@@ -438,7 +447,7 @@ pub fn new_time_nano(
   second: Int,
   nanosecond: Int,
 ) -> Result(Time, Error) {
-  Time(hour, minute, second, nanosecond, Nano, None) |> validate_time
+  Time(hour, minute, second, nanosecond, Nano, None, None) |> validate_time
 }
 
 @internal
@@ -466,10 +475,10 @@ pub fn validate_time(time: Time) -> Result(Time, Error) {
   {
     True ->
       case time {
-        Time(_, _, _, _, Sec, _) -> Ok(time)
-        Time(_, _, _, millis, Milli, _) if millis <= 999_000_000 -> Ok(time)
-        Time(_, _, _, micros, Micro, _) if micros <= 999_999_000 -> Ok(time)
-        Time(_, _, _, nanos, Nano, _) if nanos <= 999_999_999 -> Ok(time)
+        Time(_, _, _, _, Sec, _, _) -> Ok(time)
+        Time(_, _, _, millis, Milli, _, _) if millis <= 999_000_000 -> Ok(time)
+        Time(_, _, _, micros, Micro, _, _) if micros <= 999_999_000 -> Ok(time)
+        Time(_, _, _, nanos, Nano, _, _) if nanos <= 999_999_999 -> Ok(time)
         _ -> Error(TimeOutOfBounds)
       }
     False -> Error(TimeOutOfBounds)
@@ -1037,8 +1046,8 @@ pub fn now_monotonic() -> Int
 pub fn now_unique() -> Int
 
 @internal
-pub fn now_monounique() -> MonotonicTime {
-  MonotonicTime(now_monotonic(), now_unique())
+pub fn now_monounique() -> #(Int, Int) {
+  #(now_monotonic(), now_unique())
 }
 
 @internal

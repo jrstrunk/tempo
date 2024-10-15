@@ -109,7 +109,9 @@ pub fn literal(datetime: String) -> tempo.DateTime {
   }
 }
 
-/// Gets the current local datetime of the host.
+/// Gets the current local datetime of the host. Always prefer using 
+/// `duration.start_monotonic` to record time passing and `time.now_unique`
+/// to sort events by time.
 /// 
 /// ## Examples
 /// 
@@ -126,7 +128,9 @@ pub fn now_local() -> tempo.DateTime {
   }
 }
 
-/// Gets the current UTC datetime of the host.
+/// Gets the current UTC datetime of the host.Always prefer using 
+/// `duration.start_monotonic` to record time passing and `time.now_unique`
+/// to sort events by time.
 /// 
 /// ## Examples
 /// 
@@ -136,12 +140,14 @@ pub fn now_local() -> tempo.DateTime {
 /// // -> "2024-06-14T08:19:20.006809349Z"
 /// ```
 pub fn now_utc() -> tempo.DateTime {
-  let now_monotonic = tempo.now_monounique()
+  let #(now_monotonic, now_unique) = tempo.now_monounique()
+
   let now_ts_nano = tempo.now_utc()
 
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano) |> tempo.time_set_mono(now_monotonic),
+    time.from_unix_nano_utc(now_ts_nano)
+      |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique)),
     tempo.utc,
   )
 }
@@ -198,7 +204,11 @@ pub fn from_string(datetime: String) -> Result(tempo.DateTime, tempo.Error) {
 
     [date] ->
       date.from_string(date)
-      |> result.map(new(_, tempo.time(0, 0, 0, 0, tempo.Sec, None), tempo.utc))
+      |> result.map(new(
+        _,
+        tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
+        tempo.utc,
+      ))
 
     _ -> Error(tempo.DateTimeInvalidFormat)
   }
@@ -719,9 +729,24 @@ pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
 /// // -> naive_datetime.literal("2024-06-21T09:36:11.195")
 /// ```
 pub fn apply_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
-  datetime
-  |> add(offset.to_duration(datetime |> tempo.datetime_get_offset))
-  |> drop_offset
+  let original_time =
+    tempo.datetime_get_naive(datetime) |> tempo.naive_datetime_get_time
+
+  let applied =
+    datetime
+    |> add(offset.to_duration(datetime |> tempo.datetime_get_offset))
+    |> drop_offset
+
+  // Applying an offset does not change the abosolute time value, so we need
+  // to preserve the monotonic and unique values.
+  tempo.naive_datetime(
+    date: naive_datetime.get_date(applied),
+    time: naive_datetime.get_time(applied)
+      |> tempo.time_set_mono(
+        tempo.time_get_mono(original_time),
+        tempo.time_get_unique(original_time),
+      ),
+  )
 }
 
 /// Converts a datetime to the equivalent UTC time.
@@ -735,8 +760,7 @@ pub fn apply_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
 /// ```
 pub fn to_utc(datetime: tempo.DateTime) -> tempo.DateTime {
   datetime
-  |> add(offset.to_duration(datetime |> tempo.datetime_get_offset))
-  |> drop_offset
+  |> apply_offset
   |> naive_datetime.set_offset(tempo.utc)
 }
 

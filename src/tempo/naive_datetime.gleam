@@ -75,7 +75,9 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
   }
 }
 
-/// Gets the current local naive datetime of the host.
+/// Gets the current local naive datetime of the host. Always prefer using 
+/// `duration.start_monotonic` to record time passing and `time.now_unique`
+/// to sort events by time.
 /// 
 /// ## Examples
 /// 
@@ -88,7 +90,9 @@ pub fn now_local() -> tempo.NaiveDateTime {
   now_utc() |> subtract(offset.to_duration(offset.local()))
 }
 
-/// Gets the current UTC naive datetime of the host.
+/// Gets the current UTC naive datetime of the host. Always prefer using 
+/// `duration.start_monotonic` to record time passing and `time.now_unique`
+/// to sort events by time. 
 /// 
 /// ## Examples
 /// 
@@ -98,12 +102,14 @@ pub fn now_local() -> tempo.NaiveDateTime {
 /// // -> "2024-06-21T16:23:23.380413364"
 /// ```
 pub fn now_utc() -> tempo.NaiveDateTime {
-  let now_monotonic = tempo.now_monounique()
+  let #(now_monotonic, now_unique) = tempo.now_monounique()
+
   let now_ts_nano = tempo.now_utc()
 
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano) |> tempo.time_set_mono(now_monotonic),
+    time.from_unix_nano_utc(now_ts_nano)
+      |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique)),
   )
 }
 
@@ -141,7 +147,7 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error)
     }
     [date] -> {
       use date: tempo.Date <- result.map(date.from_string(date))
-      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, tempo.Sec, None))
+      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, tempo.Sec, None, None))
       |> to_second_precision
     }
     _ -> Error(tempo.NaiveDateTimeInvalidFormat)
@@ -382,7 +388,7 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 /// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
   tempo.naive_datetime_get_date(datetime)
-  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, tempo.Sec, None))
+  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, tempo.Sec, None, None))
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and
