@@ -110,13 +110,7 @@ pub type Unit {
 /// // -> 20
 /// ```
 pub fn as_seconds(period: tempo.Period) -> Int {
-  let #(start_date, end_date, start_time, end_time) =
-    get_start_and_end_date_and_time(period)
-
-  days_apart(start_date, end_date)
-  |> duration.days
-  |> duration.decrease(by: start_time |> time.to_duration)
-  |> duration.increase(by: end_time |> time.to_duration)
+  as_duration(period)
   |> duration.as_seconds
 }
 
@@ -245,7 +239,12 @@ fn get_start_and_end_date_and_time(
 /// // -> 1
 /// ```
 pub fn as_duration(period: tempo.Period) -> tempo.Duration {
-  period |> as_seconds |> duration.seconds
+  let #(start_date, end_date, start_time, end_time) =
+    get_start_and_end_date_and_time(period)
+
+  days_apart(start_date, end_date)
+  |> duration.days
+  |> duration.increase(by: time.difference(end_time, from: start_time))
 }
 
 /// Creates a period of the specified month, starting at 00:00:00 on the
