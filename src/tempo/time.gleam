@@ -194,6 +194,8 @@ pub fn literal(time: String) -> tempo.Time {
 /// }
 /// ```
 pub fn now_utc() {
+  let now_monotonic = tempo.now_monounique()
+
   let now_ts_nano = tempo.now_utc()
   let date_ts_nano =
     { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
@@ -202,6 +204,7 @@ pub fn now_utc() {
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
   from_nanoseconds(now_ts_nano - date_ts_nano)
+  |> tempo.time_set_mono(now_monotonic)
 }
 
 /// Gets the local wall time of the host.
@@ -218,6 +221,8 @@ pub fn now_utc() {
 /// }
 /// ```
 pub fn now_local() {
+  let now_monotonic = tempo.now_monounique()
+
   let now_ts_nano = tempo.now_utc()
   let date_ts_nano =
     { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
@@ -226,6 +231,7 @@ pub fn now_local() {
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
   from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
+  |> tempo.time_set_mono(now_monotonic)
 }
 
 /// Gets the monotonic time of the host on the Erlang target. Returns the
@@ -241,7 +247,7 @@ pub fn now_local() {
 /// time.now_monotonic()
 /// // -> -576_460_750_802_442_634
 /// ```
-pub fn now_monotonic() {
+pub fn now_monotonic() -> Int {
   tempo.now_monotonic()
 }
 
@@ -256,7 +262,6 @@ pub fn now_monotonic() {
 /// ```gleam
 /// time.now_unique()
 /// // -> 1
-/// 
 /// time.now_unique()
 /// // -> 2
 /// ```
@@ -270,7 +275,7 @@ pub fn now_unique() {
 @internal
 pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, 0, tempo.Sec) |> validate
+    tempo.time(hour, minute, second, 0, tempo.Sec, None) |> validate
   time
 }
 
@@ -282,7 +287,7 @@ pub fn test_literal_milli(
   millisecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, millisecond * 1_000_000, tempo.Milli)
+    tempo.time(hour, minute, second, millisecond * 1_000_000, tempo.Milli, None)
     |> validate
   time
 }
@@ -295,7 +300,7 @@ pub fn test_literal_micro(
   microsecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, microsecond * 1000, tempo.Micro)
+    tempo.time(hour, minute, second, microsecond * 1000, tempo.Micro, None)
     |> validate
   time
 }
@@ -308,7 +313,7 @@ pub fn test_literal_nano(
   nanosecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, nanosecond, tempo.Nano) |> validate
+    tempo.time(hour, minute, second, nanosecond, tempo.Nano, None) |> validate
   time
 }
 
@@ -531,6 +536,7 @@ pub fn to_second_precision(time: tempo.Time) -> tempo.Time {
     time |> tempo.time_get_second,
     0,
     tempo.Sec,
+    time |> tempo.time_get_mono,
   )
 }
 
@@ -553,6 +559,7 @@ pub fn to_milli_precision(time: tempo.Time) -> tempo.Time {
     // Drop any microseconds
     { tempo.time_get_nano(time) / 1_000_000 } * 1_000_000,
     tempo.Milli,
+    time |> tempo.time_get_mono,
   )
 }
 
@@ -575,6 +582,7 @@ pub fn to_micro_precision(time: tempo.Time) -> tempo.Time {
     // Drop any nanoseconds
     { tempo.time_get_nano(time) / 1000 } * 1000,
     tempo.Micro,
+    time |> tempo.time_get_mono,
   )
 }
 
@@ -596,6 +604,7 @@ pub fn to_nano_precision(time: tempo.Time) -> tempo.Time {
     time |> tempo.time_get_second,
     time |> tempo.time_get_nano,
     tempo.Nano,
+    time |> tempo.time_get_mono,
   )
 }
 
@@ -718,6 +727,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
                 second,
                 milli * 1_000_000,
                 tempo.Milli,
+                None,
               ))
             _, _ -> Error(tempo.TimeInvalidFormat)
           }
@@ -727,7 +737,14 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
             int.parse(second_fraction |> string.pad_right(6, with: "0"))
           {
             Ok(second), Ok(micro) ->
-              Ok(tempo.time(hour, minute, second, micro * 1000, tempo.Micro))
+              Ok(tempo.time(
+                hour,
+                minute,
+                second,
+                micro * 1000,
+                tempo.Micro,
+                None,
+              ))
             _, _ -> Error(tempo.TimeInvalidFormat)
           }
         len if len <= 9 ->
@@ -736,7 +753,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
             int.parse(second_fraction |> string.pad_right(9, with: "0"))
           {
             Ok(second), Ok(nano) ->
-              Ok(tempo.time(hour, minute, second, nano, tempo.Nano))
+              Ok(tempo.time(hour, minute, second, nano, tempo.Nano, None))
             _, _ -> Error(tempo.TimeInvalidFormat)
           }
         _ -> Error(tempo.TimeInvalidFormat)
@@ -745,7 +762,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
 
     Ok(hour), Ok(minute), _ ->
       case int.parse(second) {
-        Ok(second) -> Ok(tempo.time(hour, minute, second, 0, tempo.Sec))
+        Ok(second) -> Ok(tempo.time(hour, minute, second, 0, tempo.Sec, None))
         _ -> Error(tempo.TimeInvalidFormat)
       }
 
@@ -1186,36 +1203,40 @@ pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
 /// // -> order.Lt
 /// ```
 pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
-  case a |> tempo.time_get_hour == b |> tempo.time_get_hour {
-    True ->
-      case a |> tempo.time_get_minute == b |> tempo.time_get_minute {
+  case tempo.time_get_mono(a), tempo.time_get_mono(b) {
+    Some(a_mu), Some(b_mu) -> int.compare(a_mu.unique, b_mu.unique)
+    _, _ ->
+      case a |> tempo.time_get_hour == b |> tempo.time_get_hour {
         True ->
-          case a |> tempo.time_get_second == b |> tempo.time_get_second {
+          case a |> tempo.time_get_minute == b |> tempo.time_get_minute {
             True ->
-              case a |> tempo.time_get_nano == b |> tempo.time_get_nano {
-                True -> order.Eq
+              case a |> tempo.time_get_second == b |> tempo.time_get_second {
+                True ->
+                  case a |> tempo.time_get_nano == b |> tempo.time_get_nano {
+                    True -> order.Eq
+                    False ->
+                      case a |> tempo.time_get_nano < b |> tempo.time_get_nano {
+                        True -> order.Lt
+                        False -> order.Gt
+                      }
+                  }
                 False ->
-                  case a |> tempo.time_get_nano < b |> tempo.time_get_nano {
+                  case a |> tempo.time_get_second < b |> tempo.time_get_second {
                     True -> order.Lt
                     False -> order.Gt
                   }
               }
             False ->
-              case a |> tempo.time_get_second < b |> tempo.time_get_second {
+              case a |> tempo.time_get_minute < b |> tempo.time_get_minute {
                 True -> order.Lt
                 False -> order.Gt
               }
           }
         False ->
-          case a |> tempo.time_get_minute < b |> tempo.time_get_minute {
+          case a |> tempo.time_get_hour < b |> tempo.time_get_hour {
             True -> order.Lt
             False -> order.Gt
           }
-      }
-    False ->
-      case a |> tempo.time_get_hour < b |> tempo.time_get_hour {
-        True -> order.Lt
-        False -> order.Gt
       }
   }
 }
@@ -1387,7 +1408,9 @@ pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
   }
 }
 
-/// Gets the difference between two times as a duration.
+/// Gets the difference between two times as a duration. Always prefer using
+/// `duration.start_monotonic` and `duration.stop_monotonic` to record live 
+/// time passing, as it is more precise.
 /// 
 /// ## Example
 /// 
@@ -1405,7 +1428,11 @@ pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
 /// // -> -25
 /// ```
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(a) - to_nanoseconds(b) |> tempo.duration
+  case tempo.time_get_mono(a), tempo.time_get_mono(b) {
+    Some(a_mu), Some(b_mu) ->
+      { a_mu.nanoseconds - b_mu.nanoseconds } |> tempo.duration
+    _, _ -> to_nanoseconds(a) - to_nanoseconds(b) |> tempo.duration
+  }
 }
 
 /// Gets the absolute difference between two times as a duration.
@@ -1426,9 +1453,16 @@ pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
 /// // -> 25
 /// ```
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  case to_nanoseconds(a) - to_nanoseconds(b) {
-    diff if diff < 0 -> -diff |> tempo.duration
-    diff -> diff |> tempo.duration
+  let diff = case tempo.time_get_mono(a), tempo.time_get_mono(b) {
+    Some(a_mu), Some(b_mu) -> {
+      a_mu.nanoseconds - b_mu.nanoseconds
+    }
+    _, _ -> to_nanoseconds(a) - to_nanoseconds(b)
+  }
+
+  case diff {
+    _ if diff < 0 -> -diff |> tempo.duration
+    _ -> diff |> tempo.duration
   }
 }
 
@@ -1466,7 +1500,7 @@ pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
     - seconds
     * 1_000_000_000
 
-  tempo.time(hours, minutes, seconds, nanoseconds, tempo.Nano)
+  tempo.time(hours, minutes, seconds, nanoseconds, tempo.Nano, None)
 }
 
 /// Adds a duration to a time.
@@ -1481,11 +1515,23 @@ pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
 pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
   let new_time =
     to_nanoseconds(a) + tempo.duration_get_ns(b) |> from_nanoseconds
-  case a |> tempo.time_get_prec {
+  let adj_time = case a |> tempo.time_get_prec {
     tempo.Sec -> to_second_precision(new_time)
     tempo.Milli -> to_milli_precision(new_time)
     tempo.Micro -> to_micro_precision(new_time)
     tempo.Nano -> to_nano_precision(new_time)
+  }
+
+  case tempo.time_get_mono(a) {
+    None -> adj_time
+    Some(mu) ->
+      adj_time
+      |> tempo.time_set_mono(
+        tempo.MonotonicTime(
+          ..mu,
+          nanoseconds: mu.nanoseconds + tempo.duration_get_ns(b),
+        ),
+      )
   }
 }
 
@@ -1502,11 +1548,23 @@ pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
   let new_time =
     to_nanoseconds(a) - tempo.duration_get_ns(b) |> from_nanoseconds
   // Restore original time precision
-  case a |> tempo.time_get_prec {
+  let adj_time = case a |> tempo.time_get_prec {
     tempo.Sec -> to_second_precision(new_time)
     tempo.Milli -> to_milli_precision(new_time)
     tempo.Micro -> to_micro_precision(new_time)
     tempo.Nano -> to_nano_precision(new_time)
+  }
+
+  case tempo.time_get_mono(a) {
+    None -> adj_time
+    Some(mu) ->
+      adj_time
+      |> tempo.time_set_mono(
+        tempo.MonotonicTime(
+          ..mu,
+          nanoseconds: mu.nanoseconds - tempo.duration_get_ns(b),
+        ),
+      )
   }
 }
 

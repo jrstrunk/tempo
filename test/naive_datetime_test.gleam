@@ -1,9 +1,12 @@
+import gleam/option.{None, Some}
 import gleam/order
 import gleeunit
 import gleeunit/should
+import tempo
 import tempo/date
 import tempo/duration
 import tempo/naive_datetime
+import tempo/period
 import tempo/time
 
 pub fn main() {
@@ -192,4 +195,179 @@ pub fn large_time_left_in_day_test() {
   naive_datetime.literal("2024-06-18T08:05:20")
   |> naive_datetime.time_left_in_day
   |> should.equal(time.literal("15:54:40"))
+}
+
+pub fn monotonic_difference_override_test() {
+  let start =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        9,
+        30,
+        12,
+        300,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(600, 0)),
+      ),
+    )
+  let warped =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        8,
+        30,
+        12,
+        600,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(1000, 0)),
+      ),
+    )
+
+  naive_datetime.as_period(start:, end: warped)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.equal(400)
+}
+
+pub fn monotonic_difference_no_override_test() {
+  let start =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        9,
+        30,
+        12,
+        300,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(600, 0)),
+      ),
+    )
+  let warped =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(8, 30, 12, 600, tempo.Nano, None),
+    )
+
+  naive_datetime.as_period(end: warped, start:)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.not_equal(-600)
+}
+
+pub fn monotonic_survives_add_test() {
+  let start =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        9,
+        30,
+        12,
+        300,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(600, 0)),
+      ),
+    )
+  let warped =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        8,
+        30,
+        12,
+        600,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(1000, 0)),
+      ),
+    )
+
+  naive_datetime.add(start, duration: duration.nanoseconds(500))
+  |> naive_datetime.as_period(start: warped)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.equal(100)
+}
+
+pub fn monotonic_survives_subtract_test() {
+  let start =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        9,
+        30,
+        12,
+        300,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(600, 0)),
+      ),
+    )
+  let warped =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        8,
+        30,
+        12,
+        600,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(1000, 0)),
+      ),
+    )
+
+  naive_datetime.subtract(warped, duration: duration.nanoseconds(200))
+  |> naive_datetime.as_period(start:)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.equal(200)
+}
+
+pub fn monotonic_compare_override_test() {
+  let start =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        9,
+        30,
+        12,
+        300,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(10_000, 1)),
+      ),
+    )
+  let warped =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        8,
+        30,
+        12,
+        600,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(1000, 2)),
+      ),
+    )
+
+  naive_datetime.compare(start, to: warped)
+  |> should.equal(order.Lt)
+}
+
+pub fn monotonic_compare_no_override_test() {
+  let start =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(
+        9,
+        30,
+        12,
+        300,
+        tempo.Nano,
+        Some(tempo.MonotonicTime(10_000, 1)),
+      ),
+    )
+  let warped = tempo.naive_datetime(
+    date: date.literal("2024-06-21"),
+    time: tempo.time(8, 30, 12, 600, tempo.Nano, None),
+  )
+
+  naive_datetime.compare(start, to: warped)
+  |> should.equal(order.Gt)
 }

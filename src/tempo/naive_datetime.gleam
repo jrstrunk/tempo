@@ -85,8 +85,7 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
 /// // -> "2024-06-21T12:23:23.380956212"
 /// ```
 pub fn now_local() -> tempo.NaiveDateTime {
-  now_utc()
-  |> subtract(offset.to_duration(offset.local()))
+  now_utc() |> subtract(offset.to_duration(offset.local()))
 }
 
 /// Gets the current UTC naive datetime of the host.
@@ -99,11 +98,12 @@ pub fn now_local() -> tempo.NaiveDateTime {
 /// // -> "2024-06-21T16:23:23.380413364"
 /// ```
 pub fn now_utc() -> tempo.NaiveDateTime {
+  let now_monotonic = tempo.now_monounique()
   let now_ts_nano = tempo.now_utc()
 
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano),
+    time.from_unix_nano_utc(now_ts_nano) |> tempo.time_set_mono(now_monotonic),
   )
 }
 
@@ -141,7 +141,7 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error)
     }
     [date] -> {
       use date: tempo.Date <- result.map(date.from_string(date))
-      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, tempo.Sec))
+      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, tempo.Sec, None))
       |> to_second_precision
     }
     _ -> Error(tempo.NaiveDateTimeInvalidFormat)
@@ -382,7 +382,7 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 /// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
   tempo.naive_datetime_get_date(datetime)
-  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, tempo.Sec))
+  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, tempo.Sec, None))
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and
@@ -634,27 +634,36 @@ pub fn is_later_or_equal(
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
+@internal
+pub fn difference_from(a: tempo.NaiveDateTime, from b: tempo.NaiveDateTime) {
+  // Sadly the `difference` function is messed up because it is the same name
+  // as the `time.difference` function with one of the same labels, but with
+  // opposite logic.
+  as_period(b, a)
+}
+
 /// Returns the difference between two naive datetimes as a period between them.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
-/// |> naive_datetime.difference(
-///   from: naive_datetime.literal("2024-06-16T01:16:12"),
+/// naive_datetime.literal("2024-06-16T01:16:12")
+/// |> naive_datetime.difference_from(
+///   naive_datetime.literal("2024-06-12T23:17:00"),
 /// )
 /// |> period.as_days
 /// // -> 3
 /// ```
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-12T23:17:00")
-/// |> naive_datetime.difference(
-///   from: naive_datetime.literal("2024-06-16T01:18:12"),
+/// naive_datetime.literal("2024-06-16T01:18:12")
+/// |> naive_datetime.difference_from(
+///   naive_datetime.literal("2024-06-12T23:17:00"),
 /// )
 /// |> period.format
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
+@deprecated("Use `as_period` instead, this function is an alias for it. This function has the same name and one label as the `time.difference` and `date.difference` functions, but with different logic, making it too confusting.")
 pub fn difference(
   from a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
@@ -662,7 +671,9 @@ pub fn difference(
   as_period(a, b)
 }
 
-/// Creates a period between two naive datetimes.
+/// Creates a period between two naive datetimes. The specified start and end
+/// datetimes will be swapped if the start datetime is later than the end
+/// datetime.
 /// 
 /// ## Examples
 /// 

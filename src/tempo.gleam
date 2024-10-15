@@ -248,12 +248,24 @@ pub opaque type Time {
     second: Int,
     nanosecond: Int,
     precision: TimePrecision,
+    monotonic: option.Option(MonotonicTime),
   )
 }
 
+pub type MonotonicTime {
+  MonotonicTime(nanoseconds: Int, unique: Int)
+}
+
 @internal
-pub fn time(hour hour, minute minute, second second, nano nano, prec prec) {
-  Time(hour, minute, second, nano, prec)
+pub fn time(
+  hour hour,
+  minute minute,
+  second second,
+  nano nanosecond,
+  prec precision,
+  mono monotonic,
+) {
+  Time(hour:, minute:, second:, nanosecond:, precision:, monotonic:)
 }
 
 @internal
@@ -282,8 +294,25 @@ pub fn time_get_prec(time: Time) {
 }
 
 @internal
+pub fn time_get_mono(time: Time) {
+  time.monotonic
+}
+
+@internal
+pub fn time_set_mono(time: Time, monotonic) {
+  Time(
+    time.hour,
+    time.minute,
+    time.second,
+    time.nanosecond,
+    time.precision,
+    monotonic: Some(monotonic),
+  )
+}
+
+@internal
 pub fn new_time(hour: Int, minute: Int, second: Int) -> Result(Time, Error) {
-  Time(hour, minute, second, 0, Sec) |> validate_time
+  Time(hour, minute, second, 0, Sec, None) |> validate_time
 }
 
 @internal
@@ -293,7 +322,7 @@ pub fn new_time_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(Time, Error) {
-  Time(hour, minute, second, millisecond * 1_000_000, Milli)
+  Time(hour, minute, second, millisecond * 1_000_000, Milli, None)
   |> validate_time
 }
 
@@ -304,7 +333,7 @@ pub fn new_time_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(Time, Error) {
-  Time(hour, minute, second, microsecond * 1000, Micro) |> validate_time
+  Time(hour, minute, second, microsecond * 1000, Micro, None) |> validate_time
 }
 
 @internal
@@ -314,7 +343,7 @@ pub fn new_time_nano(
   second: Int,
   nanosecond: Int,
 ) -> Result(Time, Error) {
-  Time(hour, minute, second, nanosecond, Nano) |> validate_time
+  Time(hour, minute, second, nanosecond, Nano, None) |> validate_time
 }
 
 @internal
@@ -342,10 +371,10 @@ pub fn validate_time(time: Time) -> Result(Time, Error) {
   {
     True ->
       case time {
-        Time(_, _, _, _, Sec) -> Ok(time)
-        Time(_, _, _, millis, Milli) if millis <= 999_000_000 -> Ok(time)
-        Time(_, _, _, micros, Micro) if micros <= 999_999_000 -> Ok(time)
-        Time(_, _, _, nanos, Nano) if nanos <= 999_999_999 -> Ok(time)
+        Time(_, _, _, _, Sec, _) -> Ok(time)
+        Time(_, _, _, millis, Milli, _) if millis <= 999_000_000 -> Ok(time)
+        Time(_, _, _, micros, Micro, _) if micros <= 999_999_000 -> Ok(time)
+        Time(_, _, _, nanos, Nano, _) if nanos <= 999_999_999 -> Ok(time)
         _ -> Error(TimeOutOfBounds)
       }
     False -> Error(TimeOutOfBounds)
@@ -867,6 +896,11 @@ pub fn now_monotonic() -> Int
 @external(javascript, "./tempo_ffi.mjs", "now_unique")
 @internal
 pub fn now_unique() -> Int
+
+@internal
+pub fn now_monounique() -> MonotonicTime {
+  MonotonicTime(now_monotonic(), now_unique())
+}
 
 @internal
 pub type DatetimePart {

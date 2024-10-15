@@ -333,7 +333,8 @@ pub fn nanoseconds(nanoseconds: Int) {
   nanoseconds |> tempo.duration
 }
 
-/// Increases a duration by the specified duration.
+/// Increases a duration by the specified duration. If a negative value is 
+/// passed, the duration will be decreased.
 /// 
 /// ## Example
 /// 
@@ -347,7 +348,8 @@ pub fn increase(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
   tempo.duration(tempo.duration_get_ns(a) + tempo.duration_get_ns(b))
 }
 
-/// Decreases a duration by the specified duration.
+/// Decreases a duration by the specified duration. If a negative value is 
+/// passed, the duration will be increased.
 /// 
 /// ## Example
 /// 

@@ -136,11 +136,12 @@ pub fn now_local() -> tempo.DateTime {
 /// // -> "2024-06-14T08:19:20.006809349Z"
 /// ```
 pub fn now_utc() -> tempo.DateTime {
+  let now_monotonic = tempo.now_monounique()
   let now_ts_nano = tempo.now_utc()
 
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano),
+    time.from_unix_nano_utc(now_ts_nano) |> tempo.time_set_mono(now_monotonic),
     tempo.utc,
   )
 }
@@ -197,7 +198,7 @@ pub fn from_string(datetime: String) -> Result(tempo.DateTime, tempo.Error) {
 
     [date] ->
       date.from_string(date)
-      |> result.map(new(_, tempo.time(0, 0, 0, 0, tempo.Sec), tempo.utc))
+      |> result.map(new(_, tempo.time(0, 0, 0, 0, tempo.Sec, None), tempo.utc))
 
     _ -> Error(tempo.DateTimeInvalidFormat)
   }
@@ -1121,6 +1122,14 @@ pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
+@internal
+pub fn difference_from(a: tempo.DateTime, from b: tempo.DateTime) {
+  // Sadly the `difference` function is messed up because it is the same name
+  // as the `time.difference` and `date.difference` function with one of the 
+  // same labels, but with opposite logic.
+  as_period(b, a)
+}
+
 /// Returns the difference between two datetimes as a period between their
 /// equivalent UTC times.
 /// 
@@ -1143,12 +1152,15 @@ pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// |> period.format
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
+@deprecated("Use `as_period` instead, this function is an alias for it. This function has the same name and one label as the `time.difference` and `date.difference` functions, but with different logic, making it too confusting.")
 pub fn difference(from a: tempo.DateTime, to b: tempo.DateTime) -> tempo.Period {
   as_period(a, b)
 }
 
 /// Creates a period between two datetimes, where the start and end times are
-/// the equivalent UTC times of the provided datetimes.
+/// the equivalent UTC times of the provided datetimes. The specified start 
+/// and end datetimes will be swapped if the start datetime is later than the 
+/// end datetime.
 /// 
 /// ## Examples
 /// 

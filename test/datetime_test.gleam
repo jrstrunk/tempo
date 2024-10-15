@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/option.{None, Some}
 import gleam/order
 import gleeunit
 import gleeunit/should
@@ -8,6 +9,7 @@ import tempo/datetime
 import tempo/duration
 import tempo/naive_datetime
 import tempo/offset
+import tempo/period
 import tempo/time
 
 pub fn main() {
@@ -603,4 +605,223 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
   dynamic.from("hello")
   |> datetime.from_dynamic_unix_micro_utc
   |> should.be_error
+}
+
+pub fn monotonic_difference_override_test() {
+  let start =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          9,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(600, 0)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+  let warped =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          8,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(1000, 0)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+
+  datetime.as_period(start:, end: warped)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.equal(400)
+}
+
+pub fn monotonic_difference_no_override_test() {
+  let start =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          9,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(600, 0)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+  let warped =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(8, 30, 12, 300, tempo.Nano, None),
+      ),
+      offset: tempo.utc,
+    )
+
+  datetime.as_period(end: warped, start:)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.not_equal(-600)
+}
+
+pub fn monotonic_survives_add_test() {
+  let start =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          9,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(600, 0)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+  let warped =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          8,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(1000, 0)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+
+  datetime.add(start, duration: duration.nanoseconds(500))
+  |> datetime.as_period(start: warped)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.equal(100)
+}
+
+pub fn monotonic_survives_subtract_test() {
+  let start =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          9,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(600, 0)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+  let warped =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          8,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(1000, 0)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+
+  datetime.subtract(warped, duration: duration.nanoseconds(200))
+  |> datetime.as_period(start:)
+  |> period.as_duration
+  |> duration.as_nanoseconds
+  |> should.equal(200)
+}
+
+pub fn monotonic_compare_override_test() {
+  let start =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          9,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(10_000, 1)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+  let warped =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          8,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(1000, 2)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+
+  datetime.compare(start, to: warped)
+  |> should.equal(order.Lt)
+}
+
+pub fn monotonic_compare_no_override_test() {
+  let start =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          9,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          Some(tempo.MonotonicTime(10_000, 1)),
+        ),
+      ),
+      offset: tempo.utc,
+    )
+  let warped =
+    tempo.datetime(
+      naive: tempo.naive_datetime(
+        date: date.literal("2024-06-21"),
+        time: tempo.time(
+          8,
+          30,
+          12,
+          300,
+          tempo.Nano,
+          None,
+        ),
+      ),
+      offset: tempo.utc,
+    )
+
+  datetime.compare(start, to: warped)
+  |> should.equal(order.Gt)
 }
