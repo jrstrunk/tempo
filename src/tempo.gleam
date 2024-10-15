@@ -783,30 +783,6 @@ pub fn parse_any(
     }
 
     case scan_results {
-      [regex.Match(content, [Some(h), Some(m), None, None, ..]), ..] ->
-        case int.parse(h), int.parse(m) {
-          Ok(hour), Ok(minute) ->
-            case adj_hour(hour) |> new_time(minute, 0) {
-              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
-
-              _ -> #(None, unconsumed)
-            }
-
-          _, _ -> #(None, unconsumed)
-        }
-
-      [regex.Match(content, [Some(h), Some(m), Some(s), None, ..]), ..] ->
-        case int.parse(h), int.parse(m), int.parse(s) {
-          Ok(hour), Ok(minute), Ok(second) ->
-            case adj_hour(hour) |> new_time(minute, second) {
-              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
-
-              _ -> #(None, unconsumed)
-            }
-
-          _, _, _ -> #(None, unconsumed)
-        }
-
       [regex.Match(content, [Some(h), Some(m), Some(s), Some(d), ..]), ..] ->
         case int.parse(h), int.parse(m), int.parse(s) {
           Ok(hour), Ok(minute), Ok(second) ->
@@ -844,6 +820,30 @@ pub fn parse_any(
             }
 
           _, _, _ -> #(None, unconsumed)
+        }
+
+      [regex.Match(content, [Some(h), Some(m), Some(s), ..]), ..] ->
+        case int.parse(h), int.parse(m), int.parse(s) {
+          Ok(hour), Ok(minute), Ok(second) ->
+            case adj_hour(hour) |> new_time(minute, second) {
+              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
+
+              _ -> #(None, unconsumed)
+            }
+
+          _, _, _ -> #(None, unconsumed)
+        }
+
+      [regex.Match(content, [Some(h), Some(m), ..]), ..] ->
+        case int.parse(h), int.parse(m) {
+          Ok(hour), Ok(minute) ->
+            case adj_hour(hour) |> new_time(minute, 0) {
+              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
+
+              _ -> #(None, unconsumed)
+            }
+
+          _, _ -> #(None, unconsumed)
         }
 
       _ -> #(None, unconsumed)
@@ -890,7 +890,7 @@ pub type DatetimePart {
 pub fn consume_format(str: String, in fmt: String) {
   let assert Ok(re) =
     regex.from_string(
-      "\\[([^\\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS{3,5}|.",
+      "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS{3,5}|.",
     )
 
   regex.scan(re, fmt)
@@ -1390,4 +1390,4 @@ pub fn find_offset(in parts) {
 fn current_year() -> Int
 
 @internal
-pub const format_regex = "\\[([^\\]]+)]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
+pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
