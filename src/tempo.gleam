@@ -662,6 +662,11 @@ pub fn parse_any(
     |> result.replace_error(InvalidInputShape),
   )
 
+  use offset_char_re <- result.try(
+    regex.from_string("(?<![a-zA-Z])[Zz](?![a-zA-Z])")
+    |> result.replace_error(InvalidInputShape),
+  )
+
   let unconsumed = str
 
   let #(date, unconsumed): #(option.Option(Date), String) = {
@@ -736,6 +741,21 @@ pub fn parse_any(
         }
 
       _ -> #(None, unconsumed)
+    }
+  }
+
+  let #(offset, unconsumed): #(option.Option(Offset), String) = {
+    case offset {
+      Some(o) -> #(Some(o), unconsumed)
+      None ->
+        case regex.scan(offset_char_re, unconsumed) {
+          [regex.Match(content, _), ..] -> #(
+            Some(utc),
+            string.replace(unconsumed, content, ""),
+          )
+
+          _ -> #(None, unconsumed)
+        }
     }
   }
 

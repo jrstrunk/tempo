@@ -32,6 +32,39 @@ pub fn parse_any_american_test() {
   )
 }
 
+pub fn parse_any_z_upper_offset_test() {
+  tempo.parse_any("12-10-2024T00:00:00Z")
+  |> should.equal(
+    Ok(#(
+      Some(date.literal("2024-12-10")),
+      Some(time.literal("00:00:00")),
+      Some(offset.literal("+00:00")),
+    )),
+  )
+}
+
+pub fn parse_any_z_lower_offset_test() {
+  tempo.parse_any("12/10/2024 00:00:00 z")
+  |> should.equal(
+    Ok(#(
+      Some(date.literal("2024-12-10")),
+      Some(time.literal("00:00:00")),
+      Some(offset.literal("+00:00")),
+    )),
+  )
+}
+
+pub fn parse_any_zeros_test() {
+  tempo.parse_any("12-10-2024T00:00:00+00:00")
+  |> should.equal(
+    Ok(#(
+      Some(date.literal("2024-12-10")),
+      Some(time.literal("00:00:00")),
+      Some(offset.literal("+00:00")),
+    )),
+  )
+}
+
 pub fn parse_any_date_test() {
   tempo.parse_any("2024/06/22")
   |> should.equal(Ok(#(Some(date.literal("2024-06-22")), None, None)))
