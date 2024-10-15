@@ -227,6 +227,101 @@ pub type Period {
 }
 
 @internal
+pub fn days_apart(from start_date: Date, to end_date: Date) {
+  // Caclulate the number of days in the years that are between (exclusive)
+  // the start and end dates.
+  let days_in_the_years_between = case
+    calendar_years_apart(end_date, start_date)
+  {
+    years_apart if years_apart >= 2 ->
+      list.range(1, years_apart - 1)
+      |> list.map(fn(i) { date_get_year(end_date) + i |> year_days })
+      |> int.sum
+    _ -> 0
+  }
+
+  // Now that we have the number of days in the years between, we can ignore 
+  // the fact that the start and end dates (may) be in different years and 
+  // calculate the number of days in the months between (exclusive).
+  let days_in_the_months_between =
+    exclusive_months_between_days(start_date, end_date)
+
+  // Now that we have the number of days in both the years and months between
+  // the start and end dates, we can calculate the difference between the two 
+  // dates and can ignore the fact that they may be in different years or 
+  // months.
+  let days_apart = case
+    date_get_year(end_date) == date_get_year(start_date)
+    && {
+      date_get_month(end_date) |> month_to_int
+      <= date_get_month(start_date) |> month_to_int
+    }
+  {
+    True -> date_get_day(end_date) - date_get_day(start_date)
+    False ->
+      date_get_day(end_date)
+      + {
+        days_of_month(date_get_month(start_date), date_get_year(start_date))
+        - date_get_day(start_date)
+      }
+  }
+
+  // Now add the days from each section back up together.
+  days_in_the_years_between + days_in_the_months_between + days_apart
+}
+
+fn exclusive_months_between_days(from: Date, to: Date) {
+  use <- bool.guard(
+    when: to |> date_get_year == from |> date_get_year
+      && {
+      to |> date_get_month |> month_prior |> month_to_int
+      < from |> date_get_month |> month_next |> month_to_int
+    },
+    return: 0,
+  )
+
+  case to |> date_get_year == from |> date_get_year {
+    True ->
+      list.range(
+        month_to_int(from |> date_get_month |> month_next),
+        month_to_int(to |> date_get_month |> month_prior),
+      )
+      |> list.map(fn(m) {
+        let assert Ok(m) = month_from_int(m)
+        m
+      })
+    False -> {
+      case to |> date_get_month == Jan {
+        True -> []
+        False ->
+          list.range(1, month_to_int(to |> date_get_month |> month_prior))
+      }
+      |> list.map(fn(m) {
+        let assert Ok(m) = month_from_int(m)
+        m
+      })
+      |> list.append(
+        case from |> date_get_month == Dec {
+          True -> []
+          False ->
+            list.range(month_to_int(from |> date_get_month |> month_next), 12)
+        }
+        |> list.map(fn(m) {
+          let assert Ok(m) = month_from_int(m)
+          m
+        }),
+      )
+    }
+  }
+  |> list.map(fn(m) { days_of_month(m, in: to |> date_get_year) })
+  |> int.sum
+}
+
+fn calendar_years_apart(later: Date, from earlier: Date) -> Int {
+  later.year - earlier.year
+}
+
+@internal
 pub type TimePrecision {
   Sec
   Milli
@@ -537,6 +632,42 @@ pub fn days_of_month(month: Month, in year: Int) -> Int {
 }
 
 @internal
+pub fn month_next(month: Month) -> Month {
+  case month {
+    Jan -> Feb
+    Feb -> Mar
+    Mar -> Apr
+    Apr -> May
+    May -> Jun
+    Jun -> Jul
+    Jul -> Aug
+    Aug -> Sep
+    Sep -> Oct
+    Oct -> Nov
+    Nov -> Dec
+    Dec -> Jan
+  }
+}
+
+@internal
+pub fn month_prior(month: Month) -> Month {
+  case month {
+    Jan -> Dec
+    Feb -> Jan
+    Mar -> Feb
+    Apr -> Mar
+    May -> Apr
+    Jun -> May
+    Jul -> Jun
+    Aug -> Jul
+    Sep -> Aug
+    Oct -> Sep
+    Nov -> Oct
+    Dec -> Nov
+  }
+}
+
+@internal
 pub fn is_leap_year(year: Int) -> Bool {
   case year % 4 == 0 {
     True ->
@@ -549,6 +680,14 @@ pub fn is_leap_year(year: Int) -> Bool {
         False -> True
       }
     False -> False
+  }
+}
+
+@internal
+pub fn year_days(of year: Int) -> Int {
+  case is_leap_year(year) {
+    True -> 366
+    False -> 365
   }
 }
 

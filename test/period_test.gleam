@@ -115,13 +115,13 @@ pub fn calendar_months_apart_negative_months_test() {
 
 pub fn days_apart_zero_test() {
   date.literal("2024-06-13")
-  |> period.days_apart(from: date.literal("2024-06-13"))
+  |> tempo.days_apart(from: date.literal("2024-06-13"))
   |> should.equal(0)
 }
 
 pub fn days_apart_one_day_test() {
   date.literal("2024-06-13")
-  |> period.days_apart(from: date.literal("2024-06-12"))
+  |> tempo.days_apart(from: date.literal("2024-06-12"))
   |> should.equal(1)
 }
 
@@ -136,63 +136,63 @@ pub fn days_apart_one_same_day_test() {
 
 pub fn days_apart_multiple_days_test() {
   date.literal("2024-06-24")
-  |> period.days_apart(from: date.literal("2024-06-12"))
+  |> tempo.days_apart(from: date.literal("2024-06-12"))
   |> should.equal(12)
 }
 
 pub fn days_apart_one_day_month_boundary_test() {
   date.literal("2024-07-01")
-  |> period.days_apart(from: date.literal("2024-06-30"))
+  |> tempo.days_apart(from: date.literal("2024-06-30"))
   |> should.equal(1)
 }
 
 pub fn days_apart_multiple_month_boundary_test() {
   date.literal("2024-08-04")
-  |> period.days_apart(from: date.literal("2024-06-30"))
+  |> tempo.days_apart(from: date.literal("2024-06-30"))
   |> should.equal(35)
 }
 
 pub fn days_apart_one_leap_year_test() {
   date.literal("2024-06-12")
-  |> period.days_apart(from: date.literal("2023-06-12"))
+  |> tempo.days_apart(from: date.literal("2023-06-12"))
   |> should.equal(366)
 }
 
 pub fn days_apart_one_year_test() {
   date.literal("2022-06-12")
-  |> period.days_apart(from: date.literal("2021-06-12"))
+  |> tempo.days_apart(from: date.literal("2021-06-12"))
   |> should.equal(365)
 }
 
 pub fn days_apart_almost_one_year_test() {
   date.literal("2023-05-28")
-  |> period.days_apart(from: date.literal("2022-06-12"))
+  |> tempo.days_apart(from: date.literal("2022-06-12"))
   |> should.equal(350)
 }
 
 pub fn days_apart_over_one_year_test() {
   date.literal("2024-06-13")
-  |> period.days_apart(from: date.literal("2023-06-12"))
+  |> tempo.days_apart(from: date.literal("2023-06-12"))
   |> should.equal(367)
 
   date.literal("2024-07-01")
-  |> period.days_apart(from: date.literal("2023-06-30"))
+  |> tempo.days_apart(from: date.literal("2023-06-30"))
   |> should.equal(367)
 
   date.literal("2024-08-01")
-  |> period.days_apart(from: date.literal("2023-06-30"))
+  |> tempo.days_apart(from: date.literal("2023-06-30"))
   |> should.equal(398)
 }
 
 pub fn days_apart_multiple_years_test() {
   date.literal("2024-06-12")
-  |> period.days_apart(from: date.literal("2016-06-12"))
+  |> tempo.days_apart(from: date.literal("2016-06-12"))
   |> should.equal(6 * 365 + 366 * 2)
 }
 
 pub fn days_apart_multiple_years_and_some_days_test() {
   date.literal("2024-09-12")
-  |> period.days_apart(from: date.literal("2016-06-12"))
+  |> tempo.days_apart(from: date.literal("2016-06-12"))
   |> should.equal(6 * 365 + 366 * 2 + 92)
 }
 
@@ -253,18 +253,14 @@ pub fn date_difference_fractional_one_day_diff_test() {
 
 pub fn datetime_period_to_seconds_adding_test() {
   naive_datetime.literal("2024-08-03T11:30:00")
-  |> naive_datetime.as_period(end: naive_datetime.literal(
-    "2024-08-16T11:30:02",
-  ))
+  |> naive_datetime.as_period(end: naive_datetime.literal("2024-08-16T11:30:02"))
   |> period.as_seconds
   |> should.equal({ 86_400 * 13 } + 2)
 }
 
 pub fn datetime_period_to_seconds_subtracting_test() {
   naive_datetime.literal("2024-08-03T11:30:00")
-  |> naive_datetime.as_period(end: naive_datetime.literal(
-    "2024-08-16T11:29:58",
-  ))
+  |> naive_datetime.as_period(end: naive_datetime.literal("2024-08-16T11:29:58"))
   |> period.as_seconds
   |> should.equal({ 86_400 * 13 } - 2)
 }
@@ -468,9 +464,7 @@ pub fn diff_period_contains_out_of_bounds_naive_datetime_test() {
   |> should.be_false
 
   naive_datetime.literal("2024-06-13T13:50:00")
-  |> naive_datetime.as_period(end: naive_datetime.literal(
-    "2024-06-21T14:50:00",
-  ))
+  |> naive_datetime.as_period(end: naive_datetime.literal("2024-06-21T14:50:00"))
   |> period.contains_naive_datetime(naive_datetime.literal(
     "2024-06-21T15:50:00",
   ))

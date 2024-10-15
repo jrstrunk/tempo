@@ -663,7 +663,7 @@ pub fn difference_from(a: tempo.NaiveDateTime, from b: tempo.NaiveDateTime) {
 /// |> period.format
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
-@deprecated("Use `as_period` instead, this function is an alias for it. This function has the same name and one label as the `time.difference` and `date.difference` functions, but with different logic, making it too confusting.")
+@deprecated("Use `as_period` instead, this function is an alias for it. This function has the same name and one label as the `time.difference` and `date.difference` functions, but with different logic, making it too confusing.")
 pub fn difference(
   from a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,

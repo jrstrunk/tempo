@@ -34,8 +34,5 @@ pub fn is_leap_year(year: Int) -> Bool {
 /// // -> 365
 /// ```
 pub fn days(of year: Int) -> Int {
-  case is_leap_year(year) {
-    True -> 366
-    False -> 365
-  }
+  tempo.year_days(of: year)
 }

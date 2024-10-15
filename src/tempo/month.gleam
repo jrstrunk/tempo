@@ -200,20 +200,7 @@ pub fn days(of month: tempo.Month, in year: Int) -> Int {
 /// // -> tempo.Jan
 /// ```
 pub fn next(month: tempo.Month) -> tempo.Month {
-  case month {
-    tempo.Jan -> tempo.Feb
-    tempo.Feb -> tempo.Mar
-    tempo.Mar -> tempo.Apr
-    tempo.Apr -> tempo.May
-    tempo.May -> tempo.Jun
-    tempo.Jun -> tempo.Jul
-    tempo.Jul -> tempo.Aug
-    tempo.Aug -> tempo.Sep
-    tempo.Sep -> tempo.Oct
-    tempo.Oct -> tempo.Nov
-    tempo.Nov -> tempo.Dec
-    tempo.Dec -> tempo.Jan
-  }
+  tempo.month_next(month)
 }
 
 /// Returns the previous month in the civil calendar.
@@ -234,18 +221,5 @@ pub fn next(month: tempo.Month) -> tempo.Month {
 /// // -> tempo.Dec
 /// ```
 pub fn prior(month: tempo.Month) -> tempo.Month {
-  case month {
-    tempo.Jan -> tempo.Dec
-    tempo.Feb -> tempo.Jan
-    tempo.Mar -> tempo.Feb
-    tempo.Apr -> tempo.Mar
-    tempo.May -> tempo.Apr
-    tempo.Jun -> tempo.May
-    tempo.Jul -> tempo.Jun
-    tempo.Aug -> tempo.Jul
-    tempo.Sep -> tempo.Aug
-    tempo.Oct -> tempo.Sep
-    tempo.Nov -> tempo.Oct
-    tempo.Dec -> tempo.Nov
-  }
+  tempo.month_prior(month)
 }

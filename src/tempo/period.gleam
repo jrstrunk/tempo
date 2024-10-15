@@ -30,10 +30,8 @@
 //// }
 //// ```
 
-import gleam/bool
 import gleam/int
 import gleam/iterator
-import gleam/list
 import gleam/option.{None}
 import gtempo/internal as unit
 import tempo
@@ -43,7 +41,6 @@ import tempo/duration
 import tempo/month
 import tempo/naive_datetime
 import tempo/time
-import tempo/year
 
 /// Creates a new period from the start and end datetimes.
 /// 
@@ -131,7 +128,7 @@ pub fn as_days(period: tempo.Period) -> Int {
   let #(start_date, end_date, start_time, end_time) =
     get_start_and_end_date_and_time(period)
 
-  days_apart(start_date, end_date)
+  tempo.days_apart(start_date, end_date)
   // If a full day has not elapsed since the start time (based on the time), 
   // then 1 needs to be taken off the days count.
   + case start_time |> time.is_later(than: end_time) {
@@ -245,7 +242,7 @@ pub fn as_duration(period: tempo.Period) -> tempo.Duration {
   let #(start_date, end_date, start_time, end_time) =
     get_start_and_end_date_and_time(period)
 
-  days_apart(start_date, end_date)
+  tempo.days_apart(start_date, end_date)
   |> duration.days
   |> duration.increase(by: time.difference(end_time, from: start_time))
 }
@@ -514,107 +511,6 @@ pub fn comprising_months(
       }
     },
   )
-}
-
-@internal
-pub fn days_apart(from start_date: tempo.Date, to end_date: tempo.Date) {
-  // Caclulate the number of days in the years that are between (exclusive)
-  // the start and end dates.
-  let days_in_the_years_between = case
-    calendar_years_apart(end_date, start_date)
-  {
-    years_apart if years_apart >= 2 ->
-      list.range(1, years_apart - 1)
-      |> list.map(fn(i) { tempo.date_get_year(end_date) + i |> year.days })
-      |> int.sum
-    _ -> 0
-  }
-
-  // Now that we have the number of days in the years between, we can ignore 
-  // the fact that the start and end dates (may) be in different years and 
-  // calculate the number of days in the months between (exclusive).
-  let days_in_the_months_between =
-    exclusive_months_between_days(start_date, end_date)
-
-  // Now that we have the number of days in both the years and months between
-  // the start and end dates, we can calculate the difference between the two 
-  // dates and can ignore the fact that they may be in different years or 
-  // months.
-  let days_apart = case
-    tempo.date_get_year(end_date) == tempo.date_get_year(start_date)
-    && {
-      tempo.date_get_month(end_date) |> month.to_int
-      <= tempo.date_get_month(start_date) |> month.to_int
-    }
-  {
-    True -> tempo.date_get_day(end_date) - tempo.date_get_day(start_date)
-    False ->
-      tempo.date_get_day(end_date)
-      + {
-        month.days(
-          tempo.date_get_month(start_date),
-          tempo.date_get_year(start_date),
-        )
-        - tempo.date_get_day(start_date)
-      }
-  }
-
-  // Now add the days from each section back up together.
-  days_in_the_years_between + days_in_the_months_between + days_apart
-}
-
-fn exclusive_months_between_days(from: tempo.Date, to: tempo.Date) {
-  use <- bool.guard(
-    when: to |> tempo.date_get_year == from |> tempo.date_get_year
-      && {
-      to |> tempo.date_get_month |> month.prior |> month.to_int
-      < from |> tempo.date_get_month |> month.next |> month.to_int
-    },
-    return: 0,
-  )
-
-  case to |> tempo.date_get_year == from |> tempo.date_get_year {
-    True ->
-      list.range(
-        month.to_int(from |> tempo.date_get_month |> month.next),
-        month.to_int(to |> tempo.date_get_month |> month.prior),
-      )
-      |> list.map(fn(m) {
-        let assert Ok(m) = month.from_int(m)
-        m
-      })
-    False -> {
-      case to |> tempo.date_get_month == tempo.Jan {
-        True -> []
-        False ->
-          list.range(1, month.to_int(to |> tempo.date_get_month |> month.prior))
-      }
-      |> list.map(fn(m) {
-        let assert Ok(m) = month.from_int(m)
-        m
-      })
-      |> list.append(
-        case from |> tempo.date_get_month == tempo.Dec {
-          True -> []
-          False ->
-            list.range(
-              month.to_int(from |> tempo.date_get_month |> month.next),
-              12,
-            )
-        }
-        |> list.map(fn(m) {
-          let assert Ok(m) = month.from_int(m)
-          m
-        }),
-      )
-    }
-  }
-  |> list.map(fn(m) { month.days(of: m, in: to |> tempo.date_get_year) })
-  |> int.sum
-}
-
-fn calendar_years_apart(later: tempo.Date, from earlier: tempo.Date) -> Int {
-  { later |> tempo.date_get_year } - { earlier |> tempo.date_get_year }
 }
 
 @internal
