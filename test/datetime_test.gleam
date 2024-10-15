@@ -810,14 +810,7 @@ pub fn monotonic_compare_no_override_test() {
     tempo.datetime(
       naive: tempo.naive_datetime(
         date: date.literal("2024-06-21"),
-        time: tempo.time(
-          8,
-          30,
-          12,
-          300,
-          tempo.Nano,
-          None,
-        ),
+        time: tempo.time(8, 30, 12, 300, tempo.Nano, None),
       ),
       offset: tempo.utc,
     )

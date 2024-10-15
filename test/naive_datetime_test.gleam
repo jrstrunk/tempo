@@ -363,10 +363,11 @@ pub fn monotonic_compare_no_override_test() {
         Some(tempo.MonotonicTime(10_000, 1)),
       ),
     )
-  let warped = tempo.naive_datetime(
-    date: date.literal("2024-06-21"),
-    time: tempo.time(8, 30, 12, 600, tempo.Nano, None),
-  )
+  let warped =
+    tempo.naive_datetime(
+      date: date.literal("2024-06-21"),
+      time: tempo.time(8, 30, 12, 600, tempo.Nano, None),
+    )
 
   naive_datetime.compare(start, to: warped)
   |> should.equal(order.Gt)
