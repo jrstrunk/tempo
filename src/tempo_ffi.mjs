@@ -3,11 +3,15 @@ export function now() {
 }
 
 export function local_offset() {
-  return -(new Date()).getTimezoneOffset();
+  return -new Date().getTimezoneOffset();
 }
 
 export function current_year() {
   new Date().getFullYear();
+}
+
+export function now_monotonic() {
+  return Math.trunc(performance.now() * 1000000);
 }
 
 var unique = 1;

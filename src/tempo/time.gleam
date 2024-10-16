@@ -244,9 +244,7 @@ pub fn now_local() {
   |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique))
 }
 
-/// Gets the monotonic time of the host on the Erlang target. Returns the
-/// current UTC wall time in nanoseconds on the JavaScript target becuase 
-/// monotonic time in JavaScript is dependent on the runtime. Monotonic time
+/// Gets the monotonic time of the host. Monotonic time
 /// is useful for timing events; `now_utc` and `now_local` should not be
 /// used for timing events. The `duration` module has nicer functions to use
 /// for timing events and should be preferred over this function.

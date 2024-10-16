@@ -1,6 +1,7 @@
 //// The main module of this package. Contains most types and only a couple 
 //// general purpose functions. Look in specific modules for more functionality!
 
+import gleam/io
 import gleam/bool
 import gleam/int
 import gleam/iterator
@@ -1675,26 +1676,6 @@ pub fn parse_any(
   #(date, time, offset)
 }
 
-@external(erlang, "tempo_ffi", "now")
-@external(javascript, "./tempo_ffi.mjs", "now")
-@internal
-pub fn now_utc() -> Int
-
-@external(erlang, "tempo_ffi", "now_monotonic")
-@external(javascript, "./tempo_ffi.mjs", "now")
-@internal
-pub fn now_monotonic() -> Int
-
-@external(erlang, "tempo_ffi", "now_unique")
-@external(javascript, "./tempo_ffi.mjs", "now_unique")
-@internal
-pub fn now_unique() -> Int
-
-@internal
-pub fn now_monounique() -> #(Int, Int) {
-  #(now_monotonic(), now_unique())
-}
-
 @internal
 pub type DatetimePart {
   Year(Int)
@@ -2131,6 +2112,27 @@ fn result_guard(when_error e, return v, or run) {
 // -------------------------------------------------------------------------- //
 //                              FFI Logic                                     //
 // -------------------------------------------------------------------------- //
+
+
+@external(erlang, "tempo_ffi", "now")
+@external(javascript, "./tempo_ffi.mjs", "now")
+@internal
+pub fn now_utc() -> Int
+
+@external(erlang, "tempo_ffi", "now_monotonic")
+@external(javascript, "./tempo_ffi.mjs", "now_monotonic")
+@internal
+pub fn now_monotonic() -> Int
+
+@external(erlang, "tempo_ffi", "now_unique")
+@external(javascript, "./tempo_ffi.mjs", "now_unique")
+@internal
+pub fn now_unique() -> Int
+
+@internal
+pub fn now_monounique() -> #(Int, Int) {
+  #(now_monotonic(), now_unique())
+}
 
 @external(erlang, "tempo_ffi", "current_year")
 @external(javascript, "./tempo_ffi.mjs", "current_year")
