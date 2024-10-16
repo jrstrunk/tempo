@@ -248,7 +248,7 @@ pub fn weeks(weeks: Int) -> tempo.Duration {
 /// // -> "36 hours"
 /// ```
 pub fn days(days: Int) -> tempo.Duration {
-  days |> unit.imprecise_days |> tempo.duration
+  tempo.duration_days(days)
 }
 
 /// Creates a new duration value of the specified number of whole hours.
@@ -345,7 +345,7 @@ pub fn nanoseconds(nanoseconds: Int) {
 /// // -> "7 days"
 /// ```
 pub fn increase(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
-  tempo.duration(tempo.duration_get_ns(a) + tempo.duration_get_ns(b))
+  tempo.duration_increase(a, b)
 }
 
 /// Decreases a duration by the specified duration. If a negative value is 
@@ -368,7 +368,7 @@ pub fn increase(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
 /// // -> "5 days"
 /// ```
 pub fn decrease(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
-  tempo.duration(tempo.duration_get_ns(a) - tempo.duration_get_ns(b))
+  tempo.duration_decrease(a, by: b)
 }
 
 /// Converts a duration to the specified whole units.
@@ -438,7 +438,7 @@ pub fn as_weeks_fractional(duration: tempo.Duration) -> Float {
 
 /// Converts a duration to the equivalent number of whole days.
 pub fn as_days(duration: tempo.Duration) -> Int {
-  duration |> tempo.duration_get_ns |> unit.as_days_imprecise
+  tempo.duration_as_days(duration)
 }
 
 /// Converts a duration to the equivalent number of fractional days.
@@ -498,13 +498,13 @@ pub fn as_microseconds_fractional(duration: tempo.Duration) -> Float {
 
 /// Converts a duration to the equivalent number of whole nanoseconds.
 pub fn as_nanoseconds(duration: tempo.Duration) -> Int {
-  duration |> tempo.duration_get_ns |> unit.as_nanoseconds
+  tempo.duration_as_nanoseconds(duration)
 }
 
 /// Converts a duration to a floating point representation of nanoseconds.
 /// Nanoseconds are the smallest unit of time that are used in this package.
 pub fn as_nanoseconds_fractional(duration: tempo.Duration) -> Float {
-  int.to_float(duration |> tempo.duration_get_ns)
+  tempo.duration_as_nanoseconds(duration) |> int.to_float
 }
 
 /// Compares two durations.
@@ -633,10 +633,7 @@ pub fn is_greater_or_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
 /// // -> "5 days"
 /// ```
 pub fn absolute(duration: tempo.Duration) -> tempo.Duration {
-  case duration |> tempo.duration_get_ns < 0 {
-    True -> -{ duration |> tempo.duration_get_ns } |> tempo.duration
-    False -> duration
-  }
+  tempo.duration_absolute(duration)
 }
 
 /// Returns the inverse of a duration.

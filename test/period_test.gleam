@@ -115,13 +115,13 @@ pub fn calendar_months_apart_negative_months_test() {
 
 pub fn days_apart_zero_test() {
   date.literal("2024-06-13")
-  |> tempo.days_apart(from: date.literal("2024-06-13"))
+  |> tempo.date_days_apart(from: date.literal("2024-06-13"))
   |> should.equal(0)
 }
 
 pub fn days_apart_one_day_test() {
   date.literal("2024-06-13")
-  |> tempo.days_apart(from: date.literal("2024-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2024-06-12"))
   |> should.equal(1)
 }
 
@@ -136,92 +136,92 @@ pub fn days_apart_one_same_day_test() {
 
 pub fn days_apart_multiple_days_test() {
   date.literal("2024-06-24")
-  |> tempo.days_apart(from: date.literal("2024-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2024-06-12"))
   |> should.equal(12)
 }
 
 pub fn days_apart_one_day_month_boundary_test() {
   date.literal("2024-07-01")
-  |> tempo.days_apart(from: date.literal("2024-06-30"))
+  |> tempo.date_days_apart(from: date.literal("2024-06-30"))
   |> should.equal(1)
 }
 
 pub fn days_apart_multiple_month_boundary_test() {
   date.literal("2024-08-04")
-  |> tempo.days_apart(from: date.literal("2024-06-30"))
+  |> tempo.date_days_apart(from: date.literal("2024-06-30"))
   |> should.equal(35)
 }
 
 pub fn days_apart_one_leap_year_test() {
   date.literal("2024-06-12")
-  |> tempo.days_apart(from: date.literal("2023-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2023-06-12"))
   |> should.equal(366)
 }
 
 pub fn days_apart_one_year_test() {
   date.literal("2022-06-12")
-  |> tempo.days_apart(from: date.literal("2021-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2021-06-12"))
   |> should.equal(365)
 }
 
 pub fn days_apart_almost_one_year_test() {
   date.literal("2023-05-28")
-  |> tempo.days_apart(from: date.literal("2022-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2022-06-12"))
   |> should.equal(350)
 }
 
 pub fn days_apart_over_one_year_test() {
   date.literal("2024-06-13")
-  |> tempo.days_apart(from: date.literal("2023-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2023-06-12"))
   |> should.equal(367)
 
   date.literal("2024-07-01")
-  |> tempo.days_apart(from: date.literal("2023-06-30"))
+  |> tempo.date_days_apart(from: date.literal("2023-06-30"))
   |> should.equal(367)
 
   date.literal("2024-08-01")
-  |> tempo.days_apart(from: date.literal("2023-06-30"))
+  |> tempo.date_days_apart(from: date.literal("2023-06-30"))
   |> should.equal(398)
 }
 
 pub fn days_apart_multiple_years_test() {
   date.literal("2024-06-12")
-  |> tempo.days_apart(from: date.literal("2016-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2016-06-12"))
   |> should.equal(6 * 365 + 366 * 2)
 }
 
 pub fn days_apart_multiple_years_and_some_days_test() {
   date.literal("2024-09-12")
-  |> tempo.days_apart(from: date.literal("2016-06-12"))
+  |> tempo.date_days_apart(from: date.literal("2016-06-12"))
   |> should.equal(6 * 365 + 366 * 2 + 92)
 }
 
 pub fn date_period_to_seconds_test() {
   date.literal("2024-08-03")
-  |> date.difference(from: date.literal("2024-08-16"))
+  |> date.as_period(date.literal("2024-08-16"))
   |> period.as_seconds
-  |> should.equal(86_400 * 13)
+  |> should.equal(86_400 * 14)
 }
 
 pub fn date_difference_one_day_test() {
-  date.literal("2024-06-15")
-  |> date.difference(from: date.literal("2024-06-14"))
+  date.literal("2024-06-14")
+  |> date.as_period(date.literal("2024-06-15"))
   |> period.as_days
-  |> should.equal(1)
+  |> should.equal(2)
 }
 
 pub fn date_difference_multiple_days_test() {
   date.literal("2024-06-27")
-  |> date.difference(from: date.literal("2024-06-10"))
+  |> date.as_period(date.literal("2024-06-10"))
   |> period.as_days
-  |> should.equal(17)
+  |> should.equal(18)
 }
 
 pub fn date_difference_one_day_month_boundary_test() {
   date.literal("2024-07-01")
-  |> date.difference(from: date.literal("2024-06-30"))
+  |> date.as_period(date.literal("2024-06-30"))
   |> period.as_days
-  |> should.equal(1)
+  |> should.equal(2)
 }
 
 pub fn date_difference_fractional_neagative_diff_test() {
@@ -434,21 +434,21 @@ pub fn month_period_contains_date_different_year_test() {
 
 pub fn diff_period_contains_date_test() {
   date.literal("2024-06-13")
-  |> date.difference(from: date.literal("2024-06-21"))
+  |> date.as_period(date.literal("2024-06-21"))
   |> period.contains_date(date.literal("2024-06-21"))
   |> should.be_true
 }
 
 pub fn diff_period_contains_out_of_bounds_date_test() {
   date.literal("2024-06-13")
-  |> date.difference(from: date.literal("2024-06-21"))
+  |> date.as_period(date.literal("2024-06-21"))
   |> period.contains_date(date.literal("2022-06-21"))
   |> should.be_false
 }
 
 pub fn diff_period_contains_naive_datetime_test() {
   date.literal("2024-06-13")
-  |> date.difference(from: date.literal("2024-06-21"))
+  |> date.as_period(date.literal("2024-06-21"))
   |> period.contains_naive_datetime(naive_datetime.literal(
     "2024-06-13T15:50:00",
   ))
@@ -456,13 +456,6 @@ pub fn diff_period_contains_naive_datetime_test() {
 }
 
 pub fn diff_period_contains_out_of_bounds_naive_datetime_test() {
-  date.literal("2024-06-13")
-  |> date.difference(from: date.literal("2024-06-21"))
-  |> period.contains_naive_datetime(naive_datetime.literal(
-    "2024-06-21T13:50:00",
-  ))
-  |> should.be_false
-
   naive_datetime.literal("2024-06-13T13:50:00")
   |> naive_datetime.as_period(end: naive_datetime.literal("2024-06-21T14:50:00"))
   |> period.contains_naive_datetime(naive_datetime.literal(
@@ -473,7 +466,7 @@ pub fn diff_period_contains_out_of_bounds_naive_datetime_test() {
 
 pub fn diff_period_contains_datetime_test() {
   date.literal("2024-06-13")
-  |> date.difference(from: date.literal("2024-06-21"))
+  |> date.as_period(date.literal("2024-06-21"))
   |> period.contains_datetime(datetime.literal("2024-06-13T15:50:00Z"))
   |> should.be_true
 }

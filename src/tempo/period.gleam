@@ -36,10 +36,8 @@ import gleam/option.{None}
 import gtempo/internal as unit
 import tempo
 import tempo/date
-import tempo/datetime
 import tempo/duration
 import tempo/month
-import tempo/naive_datetime
 import tempo/time
 
 /// Creates a new period from the start and end datetimes.
@@ -55,7 +53,7 @@ import tempo/time
 /// // -> 7
 /// ```
 pub fn new(start start: tempo.DateTime, end end: tempo.DateTime) -> tempo.Period {
-  tempo.Period(start: start, end: end)
+  tempo.period_new(start:, end:)
 }
 
 /// Creates a new period from the start and end naive datetimes.
@@ -74,11 +72,12 @@ pub fn new_naive(
   start start: tempo.NaiveDateTime,
   end end: tempo.NaiveDateTime,
 ) -> tempo.Period {
-  tempo.NaivePeriod(start: start, end: end)
+  tempo.period_new_naive(start: start, end: end)
 }
 
 // The period API is very similar to the duration API, mostly just with a 
-// focus on calendar dates and different adding / subtracting rules.
+// focus on calendar dates, different adding / subtracting rules, and being 
+// only positive.
 
 pub type Unit {
   Year
@@ -126,9 +125,9 @@ pub fn as_seconds(period: tempo.Period) -> Int {
 /// ```
 pub fn as_days(period: tempo.Period) -> Int {
   let #(start_date, end_date, start_time, end_time) =
-    get_start_and_end_date_and_time(period)
+    tempo.period_get_start_and_end_date_and_time(period)
 
-  tempo.days_apart(start_date, end_date)
+  tempo.date_days_apart(start_date, end_date)
   // If a full day has not elapsed since the start time (based on the time), 
   // then 1 needs to be taken off the days count.
   + case start_time |> time.is_later(than: end_time) {
@@ -137,7 +136,7 @@ pub fn as_days(period: tempo.Period) -> Int {
   }
   // If a full day is in the period as designated by the end time being
   // the last moment of the day and the start time being the first second
-  // of the day, then 1 needs to be atted to the days count.
+  // of the day, then 1 needs to be added to the days count.
   + case
     start_time
     |> time.is_equal(to: tempo.time(0, 0, 0, 0, tempo.Sec, None, None))
@@ -164,7 +163,8 @@ pub fn as_days(period: tempo.Period) -> Int {
 /// // -> 7.645277777777778
 /// ```
 pub fn as_days_fractional(period: tempo.Period) -> Float {
-  let #(_, _, start_time, end_time) = get_start_and_end_date_and_time(period)
+  let #(_, _, start_time, end_time) =
+    tempo.period_get_start_and_end_date_and_time(period)
 
   { as_days(period) |> int.to_float }
   +. case start_time |> time.is_later(than: end_time) {
@@ -209,25 +209,6 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
   }
 }
 
-fn get_start_and_end_date_and_time(
-  period,
-) -> #(tempo.Date, tempo.Date, tempo.Time, tempo.Time) {
-  case period {
-    tempo.NaivePeriod(start, end) -> #(
-      start |> tempo.naive_datetime_get_date,
-      end |> tempo.naive_datetime_get_date,
-      start |> tempo.naive_datetime_get_time,
-      end |> tempo.naive_datetime_get_time,
-    )
-    tempo.Period(start, end) -> #(
-      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_time,
-      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_time,
-    )
-  }
-}
-
 /// Returns a period as a duration, losing the context of the start and end 
 /// datetimes.
 /// 
@@ -243,12 +224,7 @@ fn get_start_and_end_date_and_time(
 /// // -> 1
 /// ```
 pub fn as_duration(period: tempo.Period) -> tempo.Duration {
-  let #(start_date, end_date, start_time, end_time) =
-    get_start_and_end_date_and_time(period)
-
-  tempo.days_apart(start_date, end_date)
-  |> duration.days
-  |> duration.increase(by: time.difference(end_time, from: start_time))
+  tempo.period_as_duration(period)
 }
 
 /// Creates a period of the specified month, starting at 00:00:00 on the
@@ -309,7 +285,8 @@ pub fn from_month(month: tempo.Month, year: Int) -> tempo.Period {
 /// // -> False
 /// ```
 pub fn contains_date(period: tempo.Period, date: tempo.Date) -> Bool {
-  let #(start_date, end_date, _, _) = get_start_and_end_date_and_time(period)
+  let #(start_date, end_date, _, _) =
+    tempo.period_get_start_and_end_date_and_time(period)
 
   date |> date.is_later_or_equal(to: start_date)
   && date
@@ -360,16 +337,7 @@ pub fn contains_naive_datetime(
   period: tempo.Period,
   naive_datetime: tempo.NaiveDateTime,
 ) -> Bool {
-  let #(start_date, end_date, start_time, end_time) =
-    get_start_and_end_date_and_time(period)
-
-  naive_datetime
-  |> naive_datetime.is_later_or_equal(tempo.naive_datetime(
-    start_date,
-    start_time,
-  ))
-  && naive_datetime
-  |> naive_datetime.is_earlier_or_equal(tempo.naive_datetime(end_date, end_time))
+  tempo.period_contains_naive_datetime(period, naive_datetime)
 }
 
 /// Checks if a datetime is contained within a period, inclusive of the
@@ -396,15 +364,7 @@ pub fn contains_naive_datetime(
 /// // -> True
 /// ```
 pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool {
-  case period {
-    tempo.Period(start, end) ->
-      datetime
-      |> datetime.is_later_or_equal(to: start)
-      && datetime
-      |> datetime.is_earlier_or_equal(to: end)
-
-    _ -> contains_naive_datetime(period, datetime |> tempo.datetime_get_naive)
-  }
+  tempo.period_contains_datetime(period, datetime)
 }
 
 /// Returns an iterator over all the dates in the period, inclusive of the 
@@ -436,23 +396,7 @@ pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool
 /// //   date.literal("2024-02-29"),
 /// // ]
 pub fn comprising_dates(period: tempo.Period) -> iterator.Iterator(tempo.Date) {
-  let #(start_date, end_date): #(tempo.Date, tempo.Date) = case period {
-    tempo.NaivePeriod(start, end) -> #(
-      start |> tempo.naive_datetime_get_date,
-      end |> tempo.naive_datetime_get_date,
-    )
-    tempo.Period(start, end) -> #(
-      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-    )
-  }
-
-  iterator.unfold(from: start_date, with: fn(date) {
-    case date |> date.is_earlier_or_equal(to: end_date) {
-      True -> iterator.Next(date, date |> date.add(days: 1))
-      False -> iterator.Done
-    }
-  })
+  tempo.period_comprising_dates(period)
 }
 
 /// Returns an iterator over all the months in the period, inclusive of the
@@ -480,41 +424,7 @@ pub fn comprising_dates(period: tempo.Period) -> iterator.Iterator(tempo.Date) {
 pub fn comprising_months(
   period: tempo.Period,
 ) -> iterator.Iterator(tempo.MonthYear) {
-  let #(start_date, end_date) = case period {
-    tempo.NaivePeriod(start, end) -> #(
-      start |> tempo.naive_datetime_get_date,
-      end |> tempo.naive_datetime_get_date,
-    )
-    tempo.Period(start, end) -> #(
-      start |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-      end |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-    )
-  }
-
-  iterator.unfold(
-    from: tempo.MonthYear(
-      start_date |> date.get_month,
-      start_date |> date.get_year,
-    ),
-    with: fn(miy: tempo.MonthYear) {
-      case
-        tempo.date(miy.year, miy.month, 1)
-        |> date.is_earlier_or_equal(to: end_date)
-      {
-        True ->
-          iterator.Next(
-            miy,
-            tempo.MonthYear(miy.month |> month.next, case
-              miy.month == tempo.Dec
-            {
-              True -> miy.year + 1
-              False -> miy.year
-            }),
-          )
-        False -> iterator.Done
-      }
-    },
-  )
+  tempo.period_comprising_months(period)
 }
 
 @internal

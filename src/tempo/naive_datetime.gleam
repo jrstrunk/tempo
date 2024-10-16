@@ -14,17 +14,14 @@
 ////   // -> "2024-06-21T13:42:11"
 //// }
 
-import gleam/bool
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
 import gleam/regex
 import gleam/result
 import gleam/string
-import gtempo/internal as unit
 import tempo
 import tempo/date
-import tempo/duration
 import tempo/month
 import tempo/offset
 import tempo/time
@@ -405,7 +402,7 @@ pub fn set_offset(
   datetime: tempo.NaiveDateTime,
   offset: tempo.Offset,
 ) -> tempo.DateTime {
-  tempo.datetime(naive: datetime, offset: offset)
+  tempo.naive_datetime_set_offset(datetime, offset)
 }
 
 /// Sets a naive datetime's time value to a second precision. Drops any 
@@ -504,16 +501,7 @@ pub fn to_nano_precision(
 /// // -> order.Lt
 /// ```
 pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
-  let a_date = a |> tempo.naive_datetime_get_date
-  let b_date = b |> tempo.naive_datetime_get_date
-
-  let a_time = a |> tempo.naive_datetime_get_time
-  let b_time = b |> tempo.naive_datetime_get_time
-
-  case date.compare(a_date, b_date) {
-    order.Eq -> time.compare(a_time, b_time)
-    od -> od
-  }
+  tempo.naive_datetime_compare(a, b)
 }
 
 /// Checks if the first naive datetime is earlier than the second naive 
@@ -537,7 +525,7 @@ pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
 /// // -> True
 /// ```
 pub fn is_earlier(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
-  compare(a, b) == order.Lt
+  tempo.naive_datetime_is_earlier(a, b)
 }
 
 /// Checks if the first naive datetime is earlier or equal to the second naive 
@@ -564,7 +552,7 @@ pub fn is_earlier_or_equal(
   a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
 ) -> Bool {
-  compare(a, b) == order.Lt || compare(a, b) == order.Eq
+  tempo.naive_datetime_is_earlier_or_equal(a, b)
 }
 
 /// Checks if the first naive datetime is equal to the second naive datetime.
@@ -637,7 +625,7 @@ pub fn is_later_or_equal(
   a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
 ) -> Bool {
-  compare(a, b) == order.Gt || compare(a, b) == order.Eq
+  tempo.naive_datetime_is_later_or_equal(a, b)
 }
 
 @internal
@@ -704,12 +692,7 @@ pub fn as_period(
   start start: tempo.NaiveDateTime,
   end end: tempo.NaiveDateTime,
 ) -> tempo.Period {
-  let #(start, end) = case start |> is_earlier_or_equal(to: end) {
-    True -> #(start, end)
-    False -> #(end, start)
-  }
-
-  tempo.NaivePeriod(start, end)
+  tempo.period_new_naive(start:, end:)
 }
 
 /// Adds a duration to a naive datetime.
@@ -725,46 +708,7 @@ pub fn add(
   datetime: tempo.NaiveDateTime,
   duration duration_to_add: tempo.Duration,
 ) -> tempo.NaiveDateTime {
-  // Positive date overflows are only handled in this function, while negative
-  // date overflows are only handled in the subtract function -- so if the 
-  // duration is negative, we can just subtract the absolute value of it.
-  use <- bool.lazy_guard(
-    when: tempo.duration_get_ns(duration_to_add) < 0,
-    return: fn() { datetime |> subtract(duration.absolute(duration_to_add)) },
-  )
-
-  let days_to_add: Int = duration.as_days(duration_to_add)
-  let time_to_add: tempo.Duration =
-    duration.decrease(duration_to_add, by: duration.days(days_to_add))
-
-  let new_time_as_ns =
-    datetime
-    |> tempo.naive_datetime_get_time
-    |> time.to_duration
-    |> duration.increase(by: time_to_add)
-    |> duration.as_nanoseconds
-
-  // If the time to add crossed a day boundary, add an extra day to the 
-  // number of days to add and adjust the time to add.
-  let #(new_time_as_ns, days_to_add): #(Int, Int) = case
-    new_time_as_ns >= unit.imprecise_day_nanoseconds
-  {
-    True -> #(new_time_as_ns - unit.imprecise_day_nanoseconds, days_to_add + 1)
-    False -> #(new_time_as_ns, days_to_add)
-  }
-
-  let time_to_add =
-    duration.nanoseconds(
-      new_time_as_ns
-      - time.to_nanoseconds(datetime |> tempo.naive_datetime_get_time),
-    )
-
-  let new_date =
-    datetime |> tempo.naive_datetime_get_date |> date.add(days: days_to_add)
-  let new_time =
-    datetime |> tempo.naive_datetime_get_time |> time.add(duration: time_to_add)
-
-  tempo.naive_datetime(new_date, new_time)
+  tempo.naive_datetime_add(datetime, duration_to_add)
 }
 
 /// Subtracts a duration from a naive datetime.
@@ -780,51 +724,7 @@ pub fn subtract(
   datetime: tempo.NaiveDateTime,
   duration duration_to_subtract: tempo.Duration,
 ) -> tempo.NaiveDateTime {
-  // Negative date overflows are only handled in this function, while positive
-  // date overflows are only handled in the add function -- so if the 
-  // duration is negative, we can just add the absolute value of it.
-  use <- bool.lazy_guard(
-    when: tempo.duration_get_ns(duration_to_subtract) < 0,
-    return: fn() { datetime |> add(duration.absolute(duration_to_subtract)) },
-  )
-
-  let days_to_sub: Int = duration.as_days(duration_to_subtract)
-  let time_to_sub: tempo.Duration =
-    duration.decrease(duration_to_subtract, by: duration.days(days_to_sub))
-
-  let new_time_as_ns =
-    datetime
-    |> tempo.naive_datetime_get_time
-    |> time.to_duration
-    |> duration.decrease(by: time_to_sub)
-    |> duration.as_nanoseconds
-
-  // If the time to subtract crossed a day boundary, add an extra day to the 
-  // number of days to subtract and adjust the time to subtract.
-  let #(new_time_as_ns, days_to_sub) = case new_time_as_ns < 0 {
-    True -> #(new_time_as_ns + unit.imprecise_day_nanoseconds, days_to_sub + 1)
-    False -> #(new_time_as_ns, days_to_sub)
-  }
-
-  let time_to_sub =
-    duration.nanoseconds(
-      time.to_nanoseconds(datetime |> tempo.naive_datetime_get_time)
-      - new_time_as_ns,
-    )
-
-  // Using the proper subtract functions here to modify the date and time
-  // values instead of declaring a new date is important for perserving date 
-  // correctness and time precision.
-  let new_date =
-    datetime
-    |> tempo.naive_datetime_get_date
-    |> date.subtract(days: days_to_sub)
-  let new_time =
-    datetime
-    |> tempo.naive_datetime_get_time
-    |> time.subtract(duration: time_to_sub)
-
-  tempo.naive_datetime(new_date, new_time)
+  tempo.naive_datetime_subtract(datetime, duration_to_subtract)
 }
 
 /// Gets the time left in the day.

@@ -205,7 +205,7 @@ pub fn now_utc() {
 
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
-  from_nanoseconds(now_ts_nano - date_ts_nano)
+  tempo.time_from_nanoseconds(now_ts_nano - date_ts_nano)
   |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique))
 }
 
@@ -234,7 +234,7 @@ pub fn now_local() {
 
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
-  from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
+  tempo.time_from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
   |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique))
 }
 
@@ -1007,7 +1007,7 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Time {
   // Subtract the nanoseconds that are responsible for the date.
   { unix_ts - { date.to_unix_utc(date.from_unix_utc(unix_ts)) } }
   * 1_000_000_000
-  |> from_nanoseconds
+  |> tempo.time_from_nanoseconds
   |> to_second_precision
 }
 
@@ -1030,7 +1030,7 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Time {
   // Subtract the nanoseconds that are responsible for the date.
   { unix_ts - { date.to_unix_milli_utc(date.from_unix_milli_utc(unix_ts)) } }
   * 1_000_000
-  |> from_nanoseconds
+  |> tempo.time_from_nanoseconds
   |> to_milli_precision
 }
 
@@ -1053,7 +1053,7 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Time {
   // Subtract the nanoseconds that are responsible for the date.
   { unix_ts - { date.to_unix_micro_utc(date.from_unix_micro_utc(unix_ts)) } }
   * 1000
-  |> from_nanoseconds
+  |> tempo.time_from_nanoseconds
   |> to_micro_precision
 }
 
@@ -1079,7 +1079,7 @@ pub fn from_unix_nano_utc(unix_ts: Int) -> tempo.Time {
     - { date.to_unix_micro_utc(date.from_unix_micro_utc(unix_ts / 1000)) }
     * 1000
   }
-  |> from_nanoseconds
+  |> tempo.time_from_nanoseconds
 }
 
 /// Returns a time value as a tuple of hours, minutes, and seconds. Useful 
@@ -1168,7 +1168,7 @@ pub fn from_tuple_nanosecond(
 /// // -> 186_000
 /// ```
 pub fn to_duration(time: tempo.Time) -> tempo.Duration {
-  to_nanoseconds(time) |> tempo.duration
+  tempo.time_to_duration(time)
 }
 
 /// Converts a duration to the equivalent time of day, assuming the 
@@ -1206,7 +1206,7 @@ pub fn to_duration(time: tempo.Time) -> tempo.Duration {
 /// // -> "23:59:57.000000000"
 /// ```
 pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
-  duration |> tempo.duration_get_ns |> from_nanoseconds
+  duration |> tempo.duration_get_ns |> tempo.time_from_nanoseconds
 }
 
 /// Compares two time values.
@@ -1468,10 +1468,7 @@ pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
 /// // -> -25
 /// ```
 pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  case tempo.time_get_mono(a), tempo.time_get_mono(b) {
-    Some(amns), Some(bmns) -> amns - bmns |> tempo.duration
-    _, _ -> to_nanoseconds(a) - to_nanoseconds(b) |> tempo.duration
-  }
+  tempo.time_difference(a, b)
 }
 
 /// Gets the absolute difference between two times as a duration.
@@ -1494,50 +1491,13 @@ pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
   let diff = case tempo.time_get_mono(a), tempo.time_get_mono(b) {
     Some(a_mns), Some(b_mns) -> a_mns - b_mns
-    _, _ -> to_nanoseconds(a) - to_nanoseconds(b)
+    _, _ -> tempo.time_to_nanoseconds(a) - tempo.time_to_nanoseconds(b)
   }
 
   case diff {
     _ if diff < 0 -> -diff |> tempo.duration
     _ -> diff |> tempo.duration
   }
-}
-
-@internal
-pub fn to_nanoseconds(time: tempo.Time) -> Int {
-  { tempo.time_get_hour(time) * unit.hour_nanoseconds }
-  + { tempo.time_get_minute(time) * unit.minute_nanoseconds }
-  + { tempo.time_get_second(time) * unit.second_nanoseconds }
-  + tempo.time_get_nano(time)
-}
-
-@internal
-pub fn from_nanoseconds(nanoseconds: Int) -> tempo.Time {
-  let in_range_ns = nanoseconds % unit.imprecise_day_nanoseconds
-
-  let adj_ns = case in_range_ns < 0 {
-    True -> in_range_ns + unit.imprecise_day_nanoseconds
-    False -> in_range_ns
-  }
-
-  let hours = adj_ns / 3_600_000_000_000
-
-  let minutes = { adj_ns - hours * 3_600_000_000_000 } / 60_000_000_000
-
-  let seconds =
-    { adj_ns - hours * 3_600_000_000_000 - minutes * 60_000_000_000 }
-    / 1_000_000_000
-
-  let nanoseconds =
-    adj_ns
-    - hours
-    * 3_600_000_000_000
-    - minutes
-    * 60_000_000_000
-    - seconds
-    * 1_000_000_000
-
-  tempo.time(hours, minutes, seconds, nanoseconds, tempo.Nano, None, None)
 }
 
 /// Adjusts the time by a duration, reversing any side effects (dropping the
@@ -1563,21 +1523,7 @@ pub fn adj(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 /// // -> time.literal("09:18:53")
 /// ```
 pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
-  let new_time =
-    to_nanoseconds(a) + tempo.duration_get_ns(b) |> from_nanoseconds
-  let adj_time = case a |> tempo.time_get_prec {
-    tempo.Sec -> to_second_precision(new_time)
-    tempo.Milli -> to_milli_precision(new_time)
-    tempo.Micro -> to_micro_precision(new_time)
-    tempo.Nano -> to_nano_precision(new_time)
-  }
-
-  case tempo.time_get_mono(a) {
-    None -> adj_time
-    Some(mns) ->
-      adj_time
-      |> tempo.time_set_mono(Some(mns + tempo.duration_get_ns(b)), None)
-  }
+  tempo.time_add(a, duration: b)
 }
 
 /// Subtracts a duration from a time.
@@ -1590,22 +1536,7 @@ pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 /// // -> time.literal("11:42:02")
 /// ```
 pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
-  let new_time =
-    to_nanoseconds(a) - tempo.duration_get_ns(b) |> from_nanoseconds
-  // Restore original time precision
-  let adj_time = case a |> tempo.time_get_prec {
-    tempo.Sec -> to_second_precision(new_time)
-    tempo.Milli -> to_milli_precision(new_time)
-    tempo.Micro -> to_micro_precision(new_time)
-    tempo.Nano -> to_nano_precision(new_time)
-  }
-
-  case tempo.time_get_mono(a) {
-    None -> adj_time
-    Some(mns) ->
-      adj_time
-      |> tempo.time_set_mono(Some(mns - tempo.duration_get_ns(b)), None)
-  }
+  tempo.time_subtract(a, duration: b)
 }
 
 /// Converts a time to the equivalent time left in the day.
@@ -1623,8 +1554,8 @@ pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 /// ```
 pub fn left_in_day(time: tempo.Time) -> tempo.Time {
   let new_time =
-    unit.imprecise_day_nanoseconds - { time |> to_nanoseconds }
-    |> from_nanoseconds
+    unit.imprecise_day_nanoseconds - { time |> tempo.time_to_nanoseconds }
+    |> tempo.time_from_nanoseconds
 
   // Restore original time precision
   case time |> tempo.time_get_prec {

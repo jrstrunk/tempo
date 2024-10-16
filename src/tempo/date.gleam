@@ -730,23 +730,7 @@ pub fn to_unix_micro_utc(date: tempo.Date) -> Int {
 /// // -> order.Gt
 /// ```
 pub fn compare(a: tempo.Date, to b: tempo.Date) -> order.Order {
-  case a |> tempo.date_get_year == b |> tempo.date_get_year {
-    True ->
-      case a |> tempo.date_get_month == b |> tempo.date_get_month {
-        True ->
-          case a |> tempo.date_get_day == b |> tempo.date_get_day {
-            True -> order.Eq
-            False ->
-              int.compare(a |> tempo.date_get_day, b |> tempo.date_get_day)
-          }
-        False ->
-          int.compare(
-            month.to_int(a |> tempo.date_get_month),
-            month.to_int(b |> tempo.date_get_month),
-          )
-      }
-    False -> int.compare(a |> tempo.date_get_year, b |> tempo.date_get_year)
-  }
+  tempo.date_compare(a, b)
 }
 
 /// Checks of the first date is earlier than the second date.
@@ -783,7 +767,7 @@ pub fn is_earlier(a: tempo.Date, than b: tempo.Date) -> Bool {
 /// // -> False
 /// ```
 pub fn is_earlier_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
-  compare(a, b) == order.Lt || compare(a, b) == order.Eq
+  tempo.date_is_earlier_or_equal(a, b)
 }
 
 /// Checks if two dates are equal.
@@ -845,32 +829,16 @@ pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
 /// ```gleam
 /// date.literal("2024-06-12")
 /// |> date.difference(from: date.literal("2024-06-23"))
-/// |> period.as_days
 /// // -> 11
 /// ```
 /// 
 /// ```gleam
 /// date.literal("2024-06-12")
 /// |> date.difference(from: date.literal("2024-06-03"))
-/// |> period.as_days
 /// // -> 9
 /// ```
-pub fn difference(of a: tempo.Date, from b: tempo.Date) -> tempo.Period {
-  let #(start, end) = case a |> is_earlier_or_equal(to: b) {
-    True -> #(a, b)
-    False -> #(b, a)
-  }
-
-  tempo.NaivePeriod(
-    start: tempo.naive_datetime(
-      date: start,
-      time: tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
-    ),
-    end: tempo.naive_datetime(
-      date: end,
-      time: tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
-    ),
-  )
+pub fn difference(start a: tempo.Date, end b: tempo.Date) -> Int {
+  tempo.date_days_apart(from: a, to: b)
 }
 
 /// Creates a period between the first date at 00:00:00 and the second date at
@@ -892,21 +860,7 @@ pub fn difference(of a: tempo.Date, from b: tempo.Date) -> tempo.Period {
 /// // -> 9
 /// ```
 pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
-  let #(start, end) = case start |> is_earlier_or_equal(to: end) {
-    True -> #(start, end)
-    False -> #(end, start)
-  }
-
-  tempo.NaivePeriod(
-    start: tempo.naive_datetime(
-      date: start,
-      time: tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
-    ),
-    end: tempo.naive_datetime(
-      date: end,
-      time: tempo.time(24, 0, 0, 0, tempo.Sec, None, None),
-    ),
-  )
+  tempo.period_new_date(start:, end:)
 }
 
 /// Adds a number of days to a date.
@@ -925,30 +879,7 @@ pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
 /// // -> date.literal("2024-06-24")
 /// ```
 pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
-  let days_left_this_month =
-    month.days(
-      of: date |> tempo.date_get_month,
-      in: date |> tempo.date_get_year,
-    )
-    - tempo.date_get_day(date)
-
-  case days <= days_left_this_month {
-    True ->
-      tempo.date(
-        date |> tempo.date_get_year,
-        date |> tempo.date_get_month,
-        { date |> tempo.date_get_day } + days,
-      )
-    False -> {
-      let next_month = month.next(date |> tempo.date_get_month)
-      let year = case next_month == tempo.Jan {
-        True -> { date |> tempo.date_get_year } + 1
-        False -> date |> tempo.date_get_year
-      }
-
-      add(tempo.date(year, next_month, 1), days - days_left_this_month - 1)
-    }
-  }
+  tempo.date_add(date, days: days)
 }
 
 /// Subtracts a number of days from a date.
@@ -967,26 +898,7 @@ pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
 /// // -> date.literal("2024-05-31")
 /// ```
 pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
-  case days < date |> tempo.date_get_day {
-    True ->
-      tempo.date(
-        date |> tempo.date_get_year,
-        date |> tempo.date_get_month,
-        { date |> tempo.date_get_day } - days,
-      )
-    False -> {
-      let prior_month = month.prior(date |> tempo.date_get_month)
-      let year = case prior_month == tempo.Dec {
-        True -> { date |> tempo.date_get_year } - 1
-        False -> date |> tempo.date_get_year
-      }
-
-      subtract(
-        tempo.date(year, prior_month, month.days(of: prior_month, in: year)),
-        days - tempo.date_get_day(date),
-      )
-    }
-  }
+  tempo.date_subtract(date, days: days)
 }
 
 /// Returns the number of the day of week a date falls on.

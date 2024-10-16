@@ -439,7 +439,8 @@ pub fn to_unix_utc(datetime: tempo.DateTime) -> Int {
 
   date.to_unix_utc(utc_dt |> tempo.naive_datetime_get_date)
   + {
-    time.to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1_000_000_000
+    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time)
+    / 1_000_000_000
   }
 }
 
@@ -472,7 +473,10 @@ pub fn to_unix_milli_utc(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
   date.to_unix_milli_utc(utc_dt |> tempo.naive_datetime_get_date)
-  + { time.to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1_000_000 }
+  + {
+    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time)
+    / 1_000_000
+  }
 }
 
 /// Returns the UTC datetime of a unix timestamp in microseconds.
@@ -504,7 +508,9 @@ pub fn to_unix_micro_utc(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
   date.to_unix_micro_utc(utc_dt |> tempo.naive_datetime_get_date)
-  + { time.to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000 }
+  + {
+    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000
+  }
 }
 
 /// Checks if a dynamic value is a valid datetime string, and returns the
@@ -698,7 +704,7 @@ pub fn get_offset(datetime: tempo.DateTime) -> tempo.Offset {
 /// // -> naive_datetime.literal("2024-06-13T13:42:11")
 /// ```
 pub fn drop_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
-  datetime |> tempo.datetime_get_naive
+  tempo.datetime_drop_offset(datetime)
 }
 
 /// Drops the time of a datetime, leaving the date value unchanged.
@@ -729,24 +735,7 @@ pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
 /// // -> naive_datetime.literal("2024-06-21T09:36:11.195")
 /// ```
 pub fn apply_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
-  let original_time =
-    tempo.datetime_get_naive(datetime) |> tempo.naive_datetime_get_time
-
-  let applied =
-    datetime
-    |> add(offset.to_duration(datetime |> tempo.datetime_get_offset))
-    |> drop_offset
-
-  // Applying an offset does not change the abosolute time value, so we need
-  // to preserve the monotonic and unique values.
-  tempo.naive_datetime(
-    date: naive_datetime.get_date(applied),
-    time: naive_datetime.get_time(applied)
-      |> tempo.time_set_mono(
-        tempo.time_get_mono(original_time),
-        tempo.time_get_unique(original_time),
-      ),
-  )
+  tempo.datetime_apply_offset(datetime)
 }
 
 /// Converts a datetime to the equivalent UTC time.
@@ -1031,7 +1020,7 @@ pub fn to_nano_precision(datetime: tempo.DateTime) -> tempo.DateTime {
 /// // -> order.Gt
 /// ```
 pub fn compare(a: tempo.DateTime, to b: tempo.DateTime) {
-  apply_offset(a) |> naive_datetime.compare(to: apply_offset(b))
+  tempo.datetime_compare(a, to: b)
 }
 
 /// Checks if the first datetime is earlier than the second datetime.
@@ -1054,7 +1043,7 @@ pub fn compare(a: tempo.DateTime, to b: tempo.DateTime) {
 /// // -> True
 /// ```
 pub fn is_earlier(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
-  compare(a, b) == order.Lt
+  tempo.datetime_is_earlier(a, than: b)
 }
 
 /// Checks if the first datetime is earlier or equal to the second datetime.
@@ -1076,7 +1065,7 @@ pub fn is_earlier(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
 /// // -> False
 /// ```
 pub fn is_earlier_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
-  compare(a, b) == order.Lt || compare(a, b) == order.Eq
+  tempo.datetime_is_earlier_or_equal(a, b)
 }
 
 /// Checks if the first datetime is equal to the second datetime.
@@ -1143,7 +1132,7 @@ pub fn is_later(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
 /// // -> True
 /// ```
 pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
-  compare(a, b) == order.Gt || compare(a, b) == order.Eq
+  tempo.datetime_is_later_or_equal(a, b)
 }
 
 @internal
@@ -1209,12 +1198,7 @@ pub fn as_period(
   start start: tempo.DateTime,
   end end: tempo.DateTime,
 ) -> tempo.Period {
-  let #(start, end) = case start |> is_earlier_or_equal(to: end) {
-    True -> #(start, end)
-    False -> #(end, start)
-  }
-
-  tempo.Period(start: start, end: end)
+  tempo.period_new(start:, end:)
 }
 
 /// Adds a duration to a datetime.
@@ -1230,10 +1214,7 @@ pub fn add(
   datetime: tempo.DateTime,
   duration duration_to_add: tempo.Duration,
 ) -> tempo.DateTime {
-  datetime
-  |> drop_offset
-  |> naive_datetime.add(duration: duration_to_add)
-  |> naive_datetime.set_offset(datetime |> tempo.datetime_get_offset)
+  tempo.datetime_add(datetime, duration_to_add)
 }
 
 /// Subtracts a duration from a datetime.

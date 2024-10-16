@@ -565,23 +565,23 @@ pub fn compare_different_precision_test() {
 
 pub fn nanoseconds_round_trip_test() {
   time.literal("13:42:11")
-  |> time.to_nanoseconds
-  |> time.from_nanoseconds
+  |> tempo.time_to_nanoseconds
+  |> tempo.time_from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 11, 0))
 
   time.literal("13:42:11.002")
-  |> time.to_nanoseconds
-  |> time.from_nanoseconds
+  |> tempo.time_to_nanoseconds
+  |> tempo.time_from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 11, 2_000_000))
 
   time.literal("13:42:10.000300")
-  |> time.to_nanoseconds
-  |> time.from_nanoseconds
+  |> tempo.time_to_nanoseconds
+  |> tempo.time_from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 10, 300_000))
 
   time.literal("13:42:10.000000020")
-  |> time.to_nanoseconds
-  |> time.from_nanoseconds
+  |> tempo.time_to_nanoseconds
+  |> tempo.time_from_nanoseconds
   |> should.equal(time.test_literal_nano(13, 42, 10, 20))
 }
 

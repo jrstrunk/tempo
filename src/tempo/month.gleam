@@ -179,7 +179,7 @@ pub fn from_int(month: Int) -> Result(tempo.Month, tempo.Error) {
 /// // -> 31
 /// ```
 pub fn days(of month: tempo.Month, in year: Int) -> Int {
-  tempo.days_of_month(month, in: year)
+  tempo.month_days_of(month, in: year)
 }
 
 /// Returns the next month in the civil calendar.

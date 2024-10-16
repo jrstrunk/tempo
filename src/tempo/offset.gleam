@@ -117,7 +117,7 @@ pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
 
 @internal
 pub fn to_duration(offset: tempo.Offset) -> tempo.Duration {
-  -tempo.offset_get_minutes(offset) * 60_000_000_000 |> tempo.duration
+  tempo.offset_to_duration(offset)
 }
 
 @external(erlang, "tempo_ffi", "local_offset")

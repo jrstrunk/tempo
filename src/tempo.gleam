@@ -3,29 +3,35 @@
 
 import gleam/bool
 import gleam/int
+import gleam/iterator
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/order
 import gleam/regex
 import gleam/result
 import gleam/string
+import gtempo/internal as unit
 
-pub type Error {
-  TimeInvalidFormat
-  TimeOutOfBounds
-  DateInvalidFormat
-  DateOutOfBounds
-  MonthInvalidFormat
-  MonthOutOfBounds
-  OffsetInvalidFormat
-  OffsetOutOfBounds
-  NaiveDateTimeInvalidFormat
-  DateTimeInvalidFormat
-  InvalidInputShape
-  UnableToParseDirective(String)
-  ParseMissingDate
-  ParseMissingTime
-  ParseMissingOffset
+// This is a big file. The contents are generally ordered by:
+// 1. DateTime logic (funcctions starting with `dt_`)
+// 2. NaiveDateTime logic (functions starting with `ndt_`)
+// 3. Offset logic (functions starting with `offset_`)
+// 4. Date logic (functions starting with `date_`)
+// 5. Month logic (functions starting with `month_`)
+// 6. Year logic (functions starting with `year_`)
+// 7. Time logic (functions starting with `time_`)
+// 8. Duration logic (functions starting with `dur_`)
+// 9. Period logic (functions starting with `period_`)
+// 10. Tempo module logic
+// 11. FFI logic
+
+fn diff() {
+  todo as "Unify diff functions to return durations and as period to return periods"
 }
+
+// -------------------------------------------------------------------------- //
+//                            DateTime Logic                                  //
+// -------------------------------------------------------------------------- //
 
 /// A datetime value with a timezone offset associated with it. It has the 
 /// most amount of information about a point in time, and can be compared to 
@@ -49,6 +55,68 @@ pub fn datetime_get_offset(datetime: DateTime) {
   datetime.offset
 }
 
+@internal
+pub fn datetime_compare(a: DateTime, to b: DateTime) {
+  datetime_apply_offset(a)
+  |> naive_datetime_compare(to: datetime_apply_offset(b))
+}
+
+@internal
+pub fn datetime_is_earlier(a: DateTime, than b: DateTime) -> Bool {
+  datetime_compare(a, b) == order.Lt
+}
+
+@internal
+pub fn datetime_is_earlier_or_equal(a: DateTime, to b: DateTime) -> Bool {
+  datetime_compare(a, b) == order.Lt || datetime_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn datetime_is_later_or_equal(a: DateTime, to b: DateTime) -> Bool {
+  datetime_compare(a, b) == order.Gt || datetime_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn datetime_apply_offset(datetime: DateTime) -> NaiveDateTime {
+  let original_time = datetime.naive.time
+
+  let applied =
+    datetime
+    |> datetime_add(offset_to_duration(datetime.offset))
+    |> datetime_drop_offset
+
+  // Applying an offset does not change the abosolute time value, so we need
+  // to preserve the monotonic and unique values.
+  NaiveDateTime(
+    date: applied.date,
+    time: Time(
+      ..{ applied.time },
+      monotonic: original_time.monotonic,
+      unique: original_time.unique,
+    ),
+  )
+}
+
+@internal
+pub fn datetime_drop_offset(datetime: DateTime) -> NaiveDateTime {
+  datetime.naive
+}
+
+@internal
+pub fn datetime_add(
+  datetime: DateTime,
+  duration duration_to_add: Duration,
+) -> DateTime {
+  datetime
+  |> datetime_drop_offset
+  |> naive_datetime_add(duration: duration_to_add)
+  |> naive_datetime_set_offset(datetime.offset)
+}
+
+// -------------------------------------------------------------------------- //
+//                         Naive DateTime Logic                               //
+// -------------------------------------------------------------------------- //
+
 /// A datetime value that does not have a timezone offset associated with it. 
 /// It cannot be compared to datetimes with a timezone offset accurately, but
 /// can be compared to dates, times, and other naive datetimes.
@@ -70,6 +138,139 @@ pub fn naive_datetime_get_date(naive_datetime: NaiveDateTime) -> Date {
 pub fn naive_datetime_get_time(naive_datetime: NaiveDateTime) -> Time {
   naive_datetime.time
 }
+
+@internal
+pub fn naive_datetime_set_offset(
+  datetime: NaiveDateTime,
+  offset: Offset,
+) -> DateTime {
+  DateTime(naive: datetime, offset: offset)
+}
+
+@internal
+pub fn naive_datetime_compare(a: NaiveDateTime, to b: NaiveDateTime) {
+  case date_compare(a.date, b.date) {
+    order.Eq -> time_compare(a.time, b.time)
+    od -> od
+  }
+}
+
+@internal
+pub fn naive_datetime_is_earlier(
+  a: NaiveDateTime,
+  than b: NaiveDateTime,
+) -> Bool {
+  naive_datetime_compare(a, b) == order.Lt
+}
+
+pub fn naive_datetime_is_earlier_or_equal(
+  a: NaiveDateTime,
+  to b: NaiveDateTime,
+) -> Bool {
+  naive_datetime_compare(a, b) == order.Lt
+  || naive_datetime_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn naive_datetime_is_later_or_equal(
+  a: NaiveDateTime,
+  to b: NaiveDateTime,
+) -> Bool {
+  naive_datetime_compare(a, b) == order.Gt
+  || naive_datetime_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn naive_datetime_add(
+  datetime: NaiveDateTime,
+  duration duration_to_add: Duration,
+) -> NaiveDateTime {
+  // Positive date overflows are only handled in this function, while negative
+  // date overflows are only handled in the subtract function -- so if the 
+  // duration is negative, we can just subtract the absolute value of it.
+  use <- bool.lazy_guard(when: duration_to_add.nanoseconds < 0, return: fn() {
+    datetime |> naive_datetime_subtract(duration_absolute(duration_to_add))
+  })
+
+  let days_to_add: Int = duration_as_days(duration_to_add)
+  let time_to_add: Duration =
+    duration_decrease(duration_to_add, by: duration_days(days_to_add))
+
+  let new_time_as_ns =
+    datetime.time
+    |> time_to_duration
+    |> duration_increase(by: time_to_add)
+    |> duration_as_nanoseconds
+
+  // If the time to add crossed a day boundary, add an extra day to the 
+  // number of days to add and adjust the time to add.
+  let #(new_time_as_ns, days_to_add): #(Int, Int) = case
+    new_time_as_ns >= unit.imprecise_day_nanoseconds
+  {
+    True -> #(new_time_as_ns - unit.imprecise_day_nanoseconds, days_to_add + 1)
+    False -> #(new_time_as_ns, days_to_add)
+  }
+
+  let time_to_add =
+    Duration(new_time_as_ns - time_to_nanoseconds(datetime.time))
+
+  let new_date = datetime.date |> date_add(days: days_to_add)
+  let new_time = datetime.time |> time_add(duration: time_to_add)
+
+  NaiveDateTime(date: new_date, time: new_time)
+}
+
+@internal
+pub fn naive_datetime_subtract(
+  datetime: NaiveDateTime,
+  duration duration_to_subtract: Duration,
+) -> NaiveDateTime {
+  // Negative date overflows are only handled in this function, while positive
+  // date overflows are only handled in the add function -- so if the 
+  // duration is negative, we can just add the absolute value of it.
+  use <- bool.lazy_guard(
+    when: duration_to_subtract.nanoseconds < 0,
+    return: fn() {
+      datetime |> naive_datetime_add(duration_absolute(duration_to_subtract))
+    },
+  )
+
+  let days_to_sub: Int = duration_as_days(duration_to_subtract)
+  let time_to_sub: Duration =
+    duration_decrease(duration_to_subtract, by: duration_days(days_to_sub))
+
+  let new_time_as_ns =
+    datetime.time
+    |> time_to_duration
+    |> duration_decrease(by: time_to_sub)
+    |> duration_as_nanoseconds
+
+  // If the time to subtract crossed a day boundary, add an extra day to the 
+  // number of days to subtract and adjust the time to subtract.
+  let #(new_time_as_ns, days_to_sub) = case new_time_as_ns < 0 {
+    True -> #(new_time_as_ns + unit.imprecise_day_nanoseconds, days_to_sub + 1)
+    False -> #(new_time_as_ns, days_to_sub)
+  }
+
+  let time_to_sub =
+    Duration(time_to_nanoseconds(datetime.time) - new_time_as_ns)
+
+  // Using the proper subtract functions here to modify the date and time
+  // values instead of declaring a new date is important for perserving date 
+  // correctness and time precision.
+  let new_date =
+    datetime.date
+    |> date_subtract(days: days_to_sub)
+  let new_time =
+    datetime.time
+    |> time_subtract(duration: time_to_sub)
+
+  NaiveDateTime(date: new_date, time: new_time)
+}
+
+// -------------------------------------------------------------------------- //
+//                             Offset Logic                                   //
+// -------------------------------------------------------------------------- //
 
 /// A timezone offset value. It represents the difference between UTC and the
 /// datetime value it is associated with.
@@ -164,6 +365,15 @@ pub fn validate_offset(offset: Offset) -> Result(Offset, Error) {
   }
 }
 
+@internal
+pub fn offset_to_duration(offset: Offset) -> Duration {
+  -offset.minutes * 60_000_000_000 |> Duration
+}
+
+// -------------------------------------------------------------------------- //
+//                              Date Logic                                    //
+// -------------------------------------------------------------------------- //
+
 /// A date value. It represents a specific day on the civil calendar with no
 /// time of day associated with it.
 pub opaque type Date {
@@ -209,7 +419,7 @@ pub fn date_from_tuple(date: #(Int, Int, Int)) -> Result(Date, Error) {
 
   case year >= 1000 && year <= 9999 {
     True ->
-      case day >= 1 && day <= days_of_month(month, in: year) {
+      case day >= 1 && day <= month_days_of(month, in: year) {
         True -> Ok(Date(year, month, day))
         False -> Error(DateOutOfBounds)
       }
@@ -217,17 +427,45 @@ pub fn date_from_tuple(date: #(Int, Int, Int)) -> Result(Date, Error) {
   }
 }
 
-/// A period between two calendar datetimes. It represents a range of
-/// datetimes and can be used to calculate the number of days, weeks, months, 
-/// or years between two dates. It can also be interated over and datetime 
-/// values can be checked for inclusion in the period.
-pub type Period {
-  NaivePeriod(start: NaiveDateTime, end: NaiveDateTime)
-  Period(start: DateTime, end: DateTime)
+@internal
+pub fn date_add(date: Date, days days: Int) -> Date {
+  let days_left_this_month = month_days_of(date.month, in: date.year) - date.day
+
+  case days <= days_left_this_month {
+    True -> Date(date.year, date.month, { date.day } + days)
+    False -> {
+      let next_month = month_next(date.month)
+      let year = case next_month == Jan {
+        True -> { date.year } + 1
+        False -> date.year
+      }
+
+      date_add(Date(year, next_month, 1), days - days_left_this_month - 1)
+    }
+  }
 }
 
 @internal
-pub fn days_apart(from start_date: Date, to end_date: Date) {
+pub fn date_subtract(date: Date, days days: Int) -> Date {
+  case days < date.day {
+    True -> Date(date.year, date.month, { date.day } - days)
+    False -> {
+      let prior_month = month_prior(date.month)
+      let year = case prior_month == Dec {
+        True -> { date.year } - 1
+        False -> date.year
+      }
+
+      date_subtract(
+        Date(year, prior_month, month_days_of(prior_month, in: year)),
+        days - date_get_day(date),
+      )
+    }
+  }
+}
+
+@internal
+pub fn date_days_apart(from start_date: Date, to end_date: Date) {
   // Caclulate the number of days in the years that are between (exclusive)
   // the start and end dates.
   let days_in_the_years_between = case
@@ -261,7 +499,7 @@ pub fn days_apart(from start_date: Date, to end_date: Date) {
     False ->
       date_get_day(end_date)
       + {
-        days_of_month(date_get_month(start_date), date_get_year(start_date))
+        month_days_of(date_get_month(start_date), date_get_year(start_date))
         - date_get_day(start_date)
       }
   }
@@ -313,7 +551,7 @@ fn exclusive_months_between_days(from: Date, to: Date) {
       )
     }
   }
-  |> list.map(fn(m) { days_of_month(m, in: to |> date_get_year) })
+  |> list.map(fn(m) { month_days_of(m, in: to |> date_get_year) })
   |> int.sum
 }
 
@@ -322,12 +560,225 @@ fn calendar_years_apart(later: Date, from earlier: Date) -> Int {
 }
 
 @internal
-pub type TimePrecision {
-  Sec
-  Milli
-  Micro
-  Nano
+pub fn date_compare(a: Date, to b: Date) -> order.Order {
+  case a.year == b.year {
+    True ->
+      case a.month == b.month {
+        True ->
+          case a.day == b.day {
+            True -> order.Eq
+            False -> int.compare(a.day, b.day)
+          }
+        False ->
+          int.compare(
+            month_to_int(a |> date_get_month),
+            month_to_int(b |> date_get_month),
+          )
+      }
+    False -> int.compare(a.year, b.year)
+  }
 }
+
+@internal
+pub fn date_is_earlier_or_equal(a: Date, to b: Date) -> Bool {
+  date_compare(a, b) == order.Lt || date_compare(a, b) == order.Eq
+}
+
+// -------------------------------------------------------------------------- //
+//                              Month Logic                                   //
+// -------------------------------------------------------------------------- //
+
+/// A month in a specific year.
+pub type MonthYear {
+  MonthYear(month: Month, year: Int)
+}
+
+/// A specific month on the civil calendar. 
+pub type Month {
+  Jan
+  Feb
+  Mar
+  Apr
+  May
+  Jun
+  Jul
+  Aug
+  Sep
+  Oct
+  Nov
+  Dec
+}
+
+/// An ordered list of all months in the year.
+pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+
+@internal
+pub fn month_from_int(month: Int) -> Result(Month, Error) {
+  case month {
+    1 -> Ok(Jan)
+    2 -> Ok(Feb)
+    3 -> Ok(Mar)
+    4 -> Ok(Apr)
+    5 -> Ok(May)
+    6 -> Ok(Jun)
+    7 -> Ok(Jul)
+    8 -> Ok(Aug)
+    9 -> Ok(Sep)
+    10 -> Ok(Oct)
+    11 -> Ok(Nov)
+    12 -> Ok(Dec)
+    _ -> Error(MonthOutOfBounds)
+  }
+}
+
+@internal
+pub fn month_from_short_string(month: String) -> Result(Month, Error) {
+  case month {
+    "Jan" -> Ok(Jan)
+    "Feb" -> Ok(Feb)
+    "Mar" -> Ok(Mar)
+    "Apr" -> Ok(Apr)
+    "May" -> Ok(May)
+    "Jun" -> Ok(Jun)
+    "Jul" -> Ok(Jul)
+    "Aug" -> Ok(Aug)
+    "Sep" -> Ok(Sep)
+    "Oct" -> Ok(Oct)
+    "Nov" -> Ok(Nov)
+    "Dec" -> Ok(Dec)
+    _ -> Error(MonthInvalidFormat)
+  }
+}
+
+@internal
+pub fn month_from_long_string(month: String) -> Result(Month, Error) {
+  case month {
+    "January" -> Ok(Jan)
+    "February" -> Ok(Feb)
+    "March" -> Ok(Mar)
+    "April" -> Ok(Apr)
+    "May" -> Ok(May)
+    "June" -> Ok(Jun)
+    "July" -> Ok(Jul)
+    "August" -> Ok(Aug)
+    "September" -> Ok(Sep)
+    "October" -> Ok(Oct)
+    "November" -> Ok(Nov)
+    "December" -> Ok(Dec)
+    _ -> Error(MonthInvalidFormat)
+  }
+}
+
+@internal
+pub fn month_to_int(month: Month) -> Int {
+  case month {
+    Jan -> 1
+    Feb -> 2
+    Mar -> 3
+    Apr -> 4
+    May -> 5
+    Jun -> 6
+    Jul -> 7
+    Aug -> 8
+    Sep -> 9
+    Oct -> 10
+    Nov -> 11
+    Dec -> 12
+  }
+}
+
+@internal
+pub fn month_days_of(month: Month, in year: Int) -> Int {
+  case month {
+    Jan -> 31
+    Mar -> 31
+    May -> 31
+    Jul -> 31
+    Aug -> 31
+    Oct -> 31
+    Dec -> 31
+    _ ->
+      case month {
+        Apr -> 30
+        Jun -> 30
+        Sep -> 30
+        Nov -> 30
+        _ ->
+          case is_leap_year(year) {
+            True -> 29
+            False -> 28
+          }
+      }
+  }
+}
+
+@internal
+pub fn month_next(month: Month) -> Month {
+  case month {
+    Jan -> Feb
+    Feb -> Mar
+    Mar -> Apr
+    Apr -> May
+    May -> Jun
+    Jun -> Jul
+    Jul -> Aug
+    Aug -> Sep
+    Sep -> Oct
+    Oct -> Nov
+    Nov -> Dec
+    Dec -> Jan
+  }
+}
+
+@internal
+pub fn month_prior(month: Month) -> Month {
+  case month {
+    Jan -> Dec
+    Feb -> Jan
+    Mar -> Feb
+    Apr -> Mar
+    May -> Apr
+    Jun -> May
+    Jul -> Jun
+    Aug -> Jul
+    Sep -> Aug
+    Oct -> Sep
+    Nov -> Oct
+    Dec -> Nov
+  }
+}
+
+// -------------------------------------------------------------------------- //
+//                              Year Logic                                    //
+// -------------------------------------------------------------------------- //
+
+@internal
+pub fn is_leap_year(year: Int) -> Bool {
+  case year % 4 == 0 {
+    True ->
+      case year % 100 == 0 {
+        True ->
+          case year % 400 == 0 {
+            True -> True
+            False -> False
+          }
+        False -> True
+      }
+    False -> False
+  }
+}
+
+@internal
+pub fn year_days(of year: Int) -> Int {
+  case is_leap_year(year) {
+    True -> 366
+    False -> 365
+  }
+}
+
+// -------------------------------------------------------------------------- //
+//                              Time Logic                                    //
+// -------------------------------------------------------------------------- //
 
 /// A time of day value. It represents a specific time on an unspecified date.
 /// It cannot be greater than 24 hours or less than 0 hours. It can have 
@@ -346,6 +797,14 @@ pub opaque type Time {
     monotonic: option.Option(Int),
     unique: option.Option(Int),
   )
+}
+
+@internal
+pub type TimePrecision {
+  Sec
+  Milli
+  Micro
+  Nano
 }
 
 @internal
@@ -451,6 +910,61 @@ pub fn new_time_nano(
 }
 
 @internal
+pub fn time_to_second_precision(time: Time) -> Time {
+  // Drop any milliseconds
+  Time(
+    time |> time_get_hour,
+    time |> time_get_minute,
+    time |> time_get_second,
+    0,
+    Sec,
+    time |> time_get_mono,
+    time |> time_get_unique,
+  )
+}
+
+@internal
+pub fn time_to_milli_precision(time: Time) -> Time {
+  Time(
+    time |> time_get_hour,
+    time |> time_get_minute,
+    time |> time_get_second,
+    // Drop any microseconds
+    { time_get_nano(time) / 1_000_000 } * 1_000_000,
+    Milli,
+    time |> time_get_mono,
+    time |> time_get_unique,
+  )
+}
+
+@internal
+pub fn time_to_micro_precision(time: Time) -> Time {
+  Time(
+    time |> time_get_hour,
+    time |> time_get_minute,
+    time |> time_get_second,
+    // Drop any nanoseconds
+    { time_get_nano(time) / 1000 } * 1000,
+    Micro,
+    time |> time_get_mono,
+    time |> time_get_unique,
+  )
+}
+
+@internal
+pub fn time_to_nano_precision(time: Time) -> Time {
+  Time(
+    time |> time_get_hour,
+    time |> time_get_minute,
+    time |> time_get_second,
+    time |> time_get_nano,
+    Nano,
+    time |> time_get_mono,
+    time |> time_get_unique,
+  )
+}
+
+@internal
 pub fn validate_time(time: Time) -> Result(Time, Error) {
   case
     {
@@ -495,6 +1009,143 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
   }
 }
 
+@internal
+pub fn time_difference(a: Time, from b: Time) -> Duration {
+  case a.monotonic, b.monotonic {
+    Some(amns), Some(bmns) -> amns - bmns |> Duration
+    _, _ -> time_to_nanoseconds(a) - time_to_nanoseconds(b) |> Duration
+  }
+}
+
+@internal
+pub fn time_to_nanoseconds(time: Time) -> Int {
+  { time.hour * unit.hour_nanoseconds }
+  + { time.minute * unit.minute_nanoseconds }
+  + { time.second * unit.second_nanoseconds }
+  + time.nanosecond
+}
+
+@internal
+pub fn time_from_nanoseconds(nanoseconds: Int) -> Time {
+  let in_range_ns = nanoseconds % unit.imprecise_day_nanoseconds
+
+  let adj_ns = case in_range_ns < 0 {
+    True -> in_range_ns + unit.imprecise_day_nanoseconds
+    False -> in_range_ns
+  }
+
+  let hours = adj_ns / 3_600_000_000_000
+
+  let minutes = { adj_ns - hours * 3_600_000_000_000 } / 60_000_000_000
+
+  let seconds =
+    { adj_ns - hours * 3_600_000_000_000 - minutes * 60_000_000_000 }
+    / 1_000_000_000
+
+  let nanoseconds =
+    adj_ns
+    - hours
+    * 3_600_000_000_000
+    - minutes
+    * 60_000_000_000
+    - seconds
+    * 1_000_000_000
+
+  Time(hours, minutes, seconds, nanoseconds, Nano, None, None)
+}
+
+@internal
+pub fn time_to_duration(time: Time) -> Duration {
+  time_to_nanoseconds(time) |> Duration
+}
+
+@internal
+pub fn time_compare(a: Time, to b: Time) -> order.Order {
+  case a.unique, b.unique {
+    Some(au), Some(bu) -> int.compare(au, bu)
+    _, _ ->
+      case a.monotonic, b.monotonic {
+        Some(amns), Some(bmns) -> int.compare(amns, bmns)
+        _, _ ->
+          case a.hour == b.hour {
+            True ->
+              case a.minute == b.minute {
+                True ->
+                  case a.second == b.second {
+                    True ->
+                      case a.nanosecond == b.nanosecond {
+                        True -> order.Eq
+                        False ->
+                          case a.nanosecond < b.nanosecond {
+                            True -> order.Lt
+                            False -> order.Gt
+                          }
+                      }
+                    False ->
+                      case a.second < b.second {
+                        True -> order.Lt
+                        False -> order.Gt
+                      }
+                  }
+                False ->
+                  case a.minute < b.minute {
+                    True -> order.Lt
+                    False -> order.Gt
+                  }
+              }
+            False ->
+              case a.hour < b.hour {
+                True -> order.Lt
+                False -> order.Gt
+              }
+          }
+      }
+  }
+}
+
+@internal
+pub fn time_add(a: Time, duration b: Duration) -> Time {
+  let new_time =
+    time_to_nanoseconds(a) + duration_get_ns(b) |> time_from_nanoseconds
+  let adj_time = case a |> time_get_prec {
+    Sec -> time_to_second_precision(new_time)
+    Milli -> time_to_milli_precision(new_time)
+    Micro -> time_to_micro_precision(new_time)
+    Nano -> time_to_nano_precision(new_time)
+  }
+
+  case time_get_mono(a) {
+    None -> adj_time
+    Some(mns) ->
+      adj_time
+      |> time_set_mono(Some(mns + duration_get_ns(b)), None)
+  }
+}
+
+@internal
+pub fn time_subtract(a: Time, duration b: Duration) -> Time {
+  let new_time =
+    time_to_nanoseconds(a) - duration_get_ns(b) |> time_from_nanoseconds
+  // Restore original time precision
+  let adj_time = case a |> time_get_prec {
+    Sec -> time_to_second_precision(new_time)
+    Milli -> time_to_milli_precision(new_time)
+    Micro -> time_to_micro_precision(new_time)
+    Nano -> time_to_nano_precision(new_time)
+  }
+
+  case time_get_mono(a) {
+    None -> adj_time
+    Some(mns) ->
+      adj_time
+      |> time_set_mono(Some(mns - duration_get_ns(b)), None)
+  }
+}
+
+// -------------------------------------------------------------------------- //
+//                            Duration Logic                                  //
+// -------------------------------------------------------------------------- //
+
 /// A duration between two times. It represents a range of time values and
 /// can be span more than a day. It can be used to calculate the number of
 /// days, weeks, hours, minutes, or seconds between two times, but cannot
@@ -516,189 +1167,225 @@ pub fn duration_get_ns(duration: Duration) {
   duration.nanoseconds
 }
 
-/// A month in a specific year.
-pub type MonthYear {
-  MonthYear(month: Month, year: Int)
+@internal
+pub fn duration_days(days: Int) -> Duration {
+  days |> unit.imprecise_days |> duration
 }
-
-/// A specific month on the civil calendar. 
-pub type Month {
-  Jan
-  Feb
-  Mar
-  Apr
-  May
-  Jun
-  Jul
-  Aug
-  Sep
-  Oct
-  Nov
-  Dec
-}
-
-/// An ordered list of all months in the year.
-pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
 
 @internal
-pub fn month_from_int(month: Int) -> Result(Month, Error) {
-  case month {
-    1 -> Ok(Jan)
-    2 -> Ok(Feb)
-    3 -> Ok(Mar)
-    4 -> Ok(Apr)
-    5 -> Ok(May)
-    6 -> Ok(Jun)
-    7 -> Ok(Jul)
-    8 -> Ok(Aug)
-    9 -> Ok(Sep)
-    10 -> Ok(Oct)
-    11 -> Ok(Nov)
-    12 -> Ok(Dec)
-    _ -> Error(MonthOutOfBounds)
+pub fn duration_increase(a: Duration, by b: Duration) -> Duration {
+  Duration(a.nanoseconds + b.nanoseconds)
+}
+
+@internal
+pub fn duration_decrease(a: Duration, by b: Duration) -> Duration {
+  Duration(a.nanoseconds - b.nanoseconds)
+}
+
+@internal
+pub fn duration_absolute(duration: Duration) -> Duration {
+  case duration.nanoseconds < 0 {
+    True -> -{ duration.nanoseconds } |> Duration
+    False -> duration
   }
 }
 
 @internal
-pub fn month_from_short_string(month: String) -> Result(Month, Error) {
-  case month {
-    "Jan" -> Ok(Jan)
-    "Feb" -> Ok(Feb)
-    "Mar" -> Ok(Mar)
-    "Apr" -> Ok(Apr)
-    "May" -> Ok(May)
-    "Jun" -> Ok(Jun)
-    "Jul" -> Ok(Jul)
-    "Aug" -> Ok(Aug)
-    "Sep" -> Ok(Sep)
-    "Oct" -> Ok(Oct)
-    "Nov" -> Ok(Nov)
-    "Dec" -> Ok(Dec)
-    _ -> Error(MonthInvalidFormat)
+pub fn duration_as_days(duration: Duration) -> Int {
+  duration.nanoseconds |> unit.as_days_imprecise
+}
+
+@internal
+pub fn duration_as_nanoseconds(duration: Duration) -> Int {
+  duration.nanoseconds
+}
+
+// -------------------------------------------------------------------------- //
+//                             Period Logic                                   //
+// -------------------------------------------------------------------------- //
+
+/// A period between two calendar datetimes. It represents a range of
+/// datetimes and can be used to calculate the number of days, weeks, months, 
+/// or years between two dates. It can also be interated over and datetime 
+/// values can be checked for inclusion in the period.
+pub opaque type Period {
+  DateTimePeriod(start: DateTime, end: DateTime)
+  NaiveDateTimePeriod(start: NaiveDateTime, end: NaiveDateTime)
+  DatePeriod(start: Date, end: Date)
+}
+
+@internal
+pub fn period_new(start start, end end) {
+  let #(start, end) = case start |> datetime_is_earlier_or_equal(to: end) {
+    True -> #(start, end)
+    False -> #(end, start)
+  }
+
+  DateTimePeriod(start:, end:)
+}
+
+@internal
+pub fn period_new_naive(start start, end end) {
+  let #(start, end) = case
+    start |> naive_datetime_is_earlier_or_equal(to: end)
+  {
+    True -> #(start, end)
+    False -> #(end, start)
+  }
+
+  NaiveDateTimePeriod(start:, end:)
+}
+
+@internal
+pub fn period_new_date(start start, end end) {
+  let #(start, end) = case start |> date_is_earlier_or_equal(to: end) {
+    True -> #(start, end)
+    False -> #(end, start)
+  }
+
+  DatePeriod(start:, end:)
+}
+
+@internal
+pub fn period_as_duration(period: Period) -> Duration {
+  let #(start_date, end_date, start_time, end_time) =
+    period_get_start_and_end_date_and_time(period)
+
+  date_days_apart(start_date, end_date)
+  |> duration_days
+  |> duration_increase(by: time_difference(end_time, from: start_time))
+}
+
+@internal
+pub fn period_get_start_and_end_date_and_time(
+  period,
+) -> #(Date, Date, Time, Time) {
+  case period {
+    DatePeriod(start, end) -> #(
+      start,
+      end,
+      Time(0, 0, 0, 0, Sec, None, None),
+      Time(24, 0, 0, 0, Sec, None, None),
+    )
+    NaiveDateTimePeriod(start, end) -> #(
+      start.date,
+      end.date,
+      start.time,
+      end.time,
+    )
+    DateTimePeriod(start, end) -> #(
+      start.naive.date,
+      end.naive.date,
+      start.naive.time,
+      end.naive.time,
+    )
   }
 }
 
 @internal
-pub fn month_from_long_string(month: String) -> Result(Month, Error) {
-  case month {
-    "January" -> Ok(Jan)
-    "February" -> Ok(Feb)
-    "March" -> Ok(Mar)
-    "April" -> Ok(Apr)
-    "May" -> Ok(May)
-    "June" -> Ok(Jun)
-    "July" -> Ok(Jul)
-    "August" -> Ok(Aug)
-    "September" -> Ok(Sep)
-    "October" -> Ok(Oct)
-    "November" -> Ok(Nov)
-    "December" -> Ok(Dec)
-    _ -> Error(MonthInvalidFormat)
+pub fn period_contains_datetime(period: Period, datetime: DateTime) -> Bool {
+  case period {
+    DateTimePeriod(start, end) ->
+      datetime
+      |> datetime_is_later_or_equal(to: start)
+      && datetime
+      |> datetime_is_earlier_or_equal(to: end)
+
+    _ -> period_contains_naive_datetime(period, datetime.naive)
   }
 }
 
 @internal
-pub fn month_to_int(month: Month) -> Int {
-  case month {
-    Jan -> 1
-    Feb -> 2
-    Mar -> 3
-    Apr -> 4
-    May -> 5
-    Jun -> 6
-    Jul -> 7
-    Aug -> 8
-    Sep -> 9
-    Oct -> 10
-    Nov -> 11
-    Dec -> 12
-  }
+pub fn period_contains_naive_datetime(
+  period: Period,
+  naive_datetime: NaiveDateTime,
+) -> Bool {
+  let #(start_date, end_date, start_time, end_time) =
+    period_get_start_and_end_date_and_time(period)
+
+  naive_datetime
+  |> naive_datetime_is_later_or_equal(NaiveDateTime(start_date, start_time))
+  && naive_datetime
+  |> naive_datetime_is_earlier_or_equal(NaiveDateTime(end_date, end_time))
 }
 
 @internal
-pub fn days_of_month(month: Month, in year: Int) -> Int {
-  case month {
-    Jan -> 31
-    Mar -> 31
-    May -> 31
-    Jul -> 31
-    Aug -> 31
-    Oct -> 31
-    Dec -> 31
-    _ ->
-      case month {
-        Apr -> 30
-        Jun -> 30
-        Sep -> 30
-        Nov -> 30
-        _ ->
-          case is_leap_year(year) {
-            True -> 29
-            False -> 28
-          }
-      }
+pub fn period_comprising_dates(period: Period) -> iterator.Iterator(Date) {
+  let #(start_date, end_date): #(Date, Date) = case period {
+    DatePeriod(start, end) -> #(start, end)
+    NaiveDateTimePeriod(start, end) -> #(start.date, end.date)
+    DateTimePeriod(start, end) -> #(start.naive.date, end.naive.date)
   }
+
+  iterator.unfold(from: start_date, with: fn(date) {
+    case date |> date_is_earlier_or_equal(to: end_date) {
+      True -> iterator.Next(date, date |> date_add(days: 1))
+      False -> iterator.Done
+    }
+  })
 }
 
 @internal
-pub fn month_next(month: Month) -> Month {
-  case month {
-    Jan -> Feb
-    Feb -> Mar
-    Mar -> Apr
-    Apr -> May
-    May -> Jun
-    Jun -> Jul
-    Jul -> Aug
-    Aug -> Sep
-    Sep -> Oct
-    Oct -> Nov
-    Nov -> Dec
-    Dec -> Jan
+pub fn period_comprising_months(period: Period) -> iterator.Iterator(MonthYear) {
+  let #(start_date, end_date) = case period {
+    DatePeriod(start, end) -> #(start, end)
+    NaiveDateTimePeriod(start, end) -> #(
+      start |> naive_datetime_get_date,
+      end |> naive_datetime_get_date,
+    )
+    DateTimePeriod(start, end) -> #(
+      start |> datetime_get_naive |> naive_datetime_get_date,
+      end |> datetime_get_naive |> naive_datetime_get_date,
+    )
   }
-}
 
-@internal
-pub fn month_prior(month: Month) -> Month {
-  case month {
-    Jan -> Dec
-    Feb -> Jan
-    Mar -> Feb
-    Apr -> Mar
-    May -> Apr
-    Jun -> May
-    Jul -> Jun
-    Aug -> Jul
-    Sep -> Aug
-    Oct -> Sep
-    Nov -> Oct
-    Dec -> Nov
-  }
-}
-
-@internal
-pub fn is_leap_year(year: Int) -> Bool {
-  case year % 4 == 0 {
-    True ->
-      case year % 100 == 0 {
+  iterator.unfold(
+    from: MonthYear(start_date.month, start_date.year),
+    with: fn(miy: MonthYear) {
+      case
+        date(miy.year, miy.month, 1)
+        |> date_is_earlier_or_equal(to: end_date)
+      {
         True ->
-          case year % 400 == 0 {
-            True -> True
-            False -> False
-          }
-        False -> True
+          iterator.Next(
+            miy,
+            MonthYear(miy.month |> month_next, case miy.month == Dec {
+              True -> miy.year + 1
+              False -> miy.year
+            }),
+          )
+        False -> iterator.Done
       }
-    False -> False
-  }
+    },
+  )
 }
 
-@internal
-pub fn year_days(of year: Int) -> Int {
-  case is_leap_year(year) {
-    True -> 366
-    False -> 365
-  }
+/// Error values that can be returned from functions in this package.
+pub type Error {
+  TimeInvalidFormat
+  TimeOutOfBounds
+  DateInvalidFormat
+  DateOutOfBounds
+  MonthInvalidFormat
+  MonthOutOfBounds
+  OffsetInvalidFormat
+  OffsetOutOfBounds
+  NaiveDateTimeInvalidFormat
+  DateTimeInvalidFormat
+  InvalidInputShape
+  UnableToParseDirective(String)
+  ParseMissingDate
+  ParseMissingTime
+  ParseMissingOffset
 }
+
+fn err() {
+  todo as "Errors limited to the only actual ones that can be returned per function"
+}
+
+// -------------------------------------------------------------------------- //
+//                          Tempo Module Logic                                //
+// -------------------------------------------------------------------------- //
 
 /// The result of an uncertain conversion. Since this package does not track
 /// timezone offsets, it uses the host system's offset to convert to local
@@ -755,6 +1442,9 @@ pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
     Imprecise(_) -> Error(Nil)
   }
 }
+
+@internal
+pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
@@ -1567,9 +2257,10 @@ pub fn find_offset(in parts) {
   offset_from_string(offset_str)
 }
 
+// -------------------------------------------------------------------------- //
+//                              FFI Logic                                     //
+// -------------------------------------------------------------------------- //
+
 @external(erlang, "tempo_ffi", "current_year")
 @external(javascript, "./tempo_ffi.mjs", "current_year")
 fn current_year() -> Int
-
-@internal
-pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
