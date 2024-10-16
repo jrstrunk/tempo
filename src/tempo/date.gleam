@@ -306,9 +306,8 @@ pub fn parse(str: String, in fmt: String) -> Result(tempo.Date, tempo.Error) {
 /// ```
 pub fn parse_any(str: String) -> Result(tempo.Date, tempo.Error) {
   case tempo.parse_any(str) {
-    Ok(#(Some(date), _, _)) -> Ok(date)
-    Ok(#(None, _, _)) -> Error(tempo.ParseMissingDate)
-    Error(err) -> Error(err)
+    #(Some(date), _, _) -> Ok(date)
+    #(None, _, _) -> Error(tempo.ParseMissingDate)
   }
 }
 

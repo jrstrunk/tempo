@@ -260,10 +260,9 @@ pub fn parse(
 /// ```
 pub fn parse_any(str: String) -> Result(tempo.NaiveDateTime, tempo.Error) {
   case tempo.parse_any(str) {
-    Ok(#(Some(date), Some(time), _)) -> Ok(new(date, time))
-    Ok(#(_, None, _)) -> Error(tempo.ParseMissingTime)
-    Ok(#(None, _, _)) -> Error(tempo.ParseMissingDate)
-    Error(err) -> Error(err)
+    #(Some(date), Some(time), _) -> Ok(new(date, time))
+    #(_, None, _) -> Error(tempo.ParseMissingTime)
+    #(None, _, _) -> Error(tempo.ParseMissingDate)
   }
 }
 

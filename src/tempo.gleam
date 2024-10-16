@@ -1490,48 +1490,45 @@ pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1
 /// ```
 pub fn parse_any(
   str: String,
-) -> Result(
-  #(option.Option(Date), option.Option(Time), option.Option(Offset)),
-  Error,
-) {
-  use serial_re <- result.try(
-    regex.from_string("\\d{9,}") |> result.replace_error(InvalidInputShape),
+) -> #(option.Option(Date), option.Option(Time), option.Option(Offset)) {
+  let empty_result = #(None, None, None)
+
+  use serial_re <- result_guard(
+    when_error: regex.from_string("\\d{9,}"),
+    return: empty_result,
   )
 
-  use <- bool.guard(
-    when: regex.check(serial_re, str),
-    return: Error(InvalidInputShape),
-  )
+  use <- bool.guard(when: regex.check(serial_re, str), return: empty_result)
 
-  use date_re <- result.try(
-    regex.from_string(
+  use date_re <- result_guard(
+    when_error: regex.from_string(
       "(\\d{4})[-_/\\.\\s,]{0,2}(\\d{2})[-_/\\.\\s,]{0,2}(\\d{2})",
-    )
-    |> result.replace_error(InvalidInputShape),
+    ),
+    return: empty_result,
   )
 
-  use date_human_re <- result.try(
-    regex.from_string(
+  use date_human_re <- result_guard(
+    when_error: regex.from_string(
       "(\\d{2}|January|Jan|january|jan|February|Feb|february|feb|March|Mar|march|mar|April|Apr|april|apr|May|may|June|Jun|june|jun|July|Jul|july|jul|August|Aug|august|aug|September|Sep|september|sep|October|Oct|october|oct|November|Nov|november|nov|December|Dec|december|dec)[-_/\\.\\s,]{0,2}(\\d{2})[-_/\\.\\s,]{0,2}(\\d{4})",
-    )
-    |> result.replace_error(InvalidInputShape),
+    ),
+    return: empty_result,
   )
 
-  use time_re <- result.try(
-    regex.from_string(
+  use time_re <- result_guard(
+    when_error: regex.from_string(
       "(\\d{1,2})[:_\\.\\s]{0,1}(\\d{1,2})[:_\\.\\s]{0,1}(\\d{0,2})[\\.]{0,1}(\\d{0,9})\\s*(AM|PM|am|pm)?",
-    )
-    |> result.replace_error(InvalidInputShape),
+    ),
+    return: empty_result,
   )
 
-  use offset_re <- result.try(
-    regex.from_string("([-+]\\d{2}):{0,1}(\\d{1,2})?")
-    |> result.replace_error(InvalidInputShape),
+  use offset_re <- result_guard(
+    when_error: regex.from_string("([-+]\\d{2}):{0,1}(\\d{1,2})?"),
+    return: empty_result,
   )
 
-  use offset_char_re <- result.try(
-    regex.from_string("(?<![a-zA-Z])[Zz](?![a-zA-Z])")
-    |> result.replace_error(InvalidInputShape),
+  use offset_char_re <- result_guard(
+    when_error: regex.from_string("(?<![a-zA-Z])[Zz](?![a-zA-Z])"),
+    return: empty_result,
   )
 
   let unconsumed = str

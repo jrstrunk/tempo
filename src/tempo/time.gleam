@@ -848,9 +848,8 @@ pub fn parse(str: String, in fmt: String) -> Result(tempo.Date, tempo.Error) {
 /// ```
 pub fn parse_any(str: String) -> Result(tempo.Time, tempo.Error) {
   case tempo.parse_any(str) {
-    Ok(#(_, Some(time), _)) -> Ok(time)
-    Ok(#(_, None, _)) -> Error(tempo.ParseMissingTime)
-    Error(err) -> Error(err)
+    #(_, Some(time), _) -> Ok(time)
+    #(_, None, _) -> Error(tempo.ParseMissingTime)
   }
 }
 
