@@ -31,7 +31,7 @@ pub fn local() -> tempo.Offset {
 /// |> result.map(offset.to_string)
 /// // -> Ok("-01:05")
 /// ```
-pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, tempo.Error) {
+pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, Nil) {
   tempo.new_offset(minutes)
 }
 
@@ -52,9 +52,9 @@ pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, tempo.Error) {
 pub fn literal(offset: String) -> tempo.Offset {
   case from_string(offset) {
     Ok(offset) -> offset
-    Error(tempo.OffsetInvalidFormat) -> panic as "Invalid offset literal format"
+    Error(tempo.OffsetInvalidFormat(_)) ->
+      panic as "Invalid offset literal format"
     Error(tempo.OffsetOutOfBounds) -> panic as "Invalid offset literal value"
-    Error(_) -> panic as "Invalid offset literal"
   }
 }
 
@@ -111,7 +111,9 @@ pub fn to_string(offset: tempo.Offset) -> String {
 /// |> result.map(offset.to_string)
 /// // -> Ok("-04:00")
 /// ```
-pub fn from_string(offset: String) -> Result(tempo.Offset, tempo.Error) {
+pub fn from_string(
+  offset: String,
+) -> Result(tempo.Offset, tempo.OffsetParseError) {
   tempo.offset_from_string(offset)
 }
 

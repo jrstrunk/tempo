@@ -90,7 +90,7 @@ pub fn to_long_string(month: tempo.Month) -> String {
 /// month.from_string("Hello")
 /// // -> Error(Nil)
 /// ```
-pub fn from_string(month: String) -> Result(tempo.Month, tempo.Error) {
+pub fn from_string(month: String) -> Result(tempo.Month, Nil) {
   from_short_string(month)
   |> result.try_recover(fn(_) { from_long_string(month) })
 }
@@ -108,7 +108,7 @@ pub fn from_string(month: String) -> Result(tempo.Month, tempo.Error) {
 /// month.from_short_string("June")
 /// // -> Error(Nil)
 /// ```
-pub fn from_short_string(month: String) -> Result(tempo.Month, tempo.Error) {
+pub fn from_short_string(month: String) -> Result(tempo.Month, Nil) {
   tempo.month_from_short_string(month)
 }
 
@@ -125,7 +125,7 @@ pub fn from_short_string(month: String) -> Result(tempo.Month, tempo.Error) {
 /// month.from_long_string("Jun")
 /// // -> Error(Nil)
 /// ```
-pub fn from_long_string(month: String) -> Result(tempo.Month, tempo.Error) {
+pub fn from_long_string(month: String) -> Result(tempo.Month, Nil) {
   tempo.month_from_long_string(month)
 }
 
@@ -157,7 +157,7 @@ pub fn to_int(month: tempo.Month) -> Int {
 /// month.from_int(13)
 /// // -> Error(Nil)
 /// ```
-pub fn from_int(month: Int) -> Result(tempo.Month, tempo.Error) {
+pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
   tempo.month_from_int(month)
 }
 

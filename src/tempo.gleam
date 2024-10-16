@@ -29,6 +29,10 @@ fn diff() {
   todo as "Unify diff functions to return durations and as period to return periods"
 }
 
+fn eq() {
+  todo as "Make == work on types"
+}
+
 // -------------------------------------------------------------------------- //
 //                            DateTime Logic                                  //
 // -------------------------------------------------------------------------- //
@@ -292,13 +296,13 @@ pub fn offset_get_minutes(offset: Offset) {
 pub const utc = Offset(0)
 
 @internal
-pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Error) {
+pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Nil) {
   Offset(minutes) |> validate_offset
 }
 
 @internal
-pub fn offset_from_string(offset: String) -> Result(Offset, Error) {
-  case offset {
+pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
+  use offset <- result.try(case offset {
     // Parse Z format
     "Z" -> Ok(Offset(0))
     "z" -> Ok(Offset(0))
@@ -316,7 +320,7 @@ pub fn offset_from_string(offset: String) -> Result(Offset, Error) {
                 string.slice(hour, at_index: 1, length: 2),
                 minute,
               ))
-            _, _ -> Error(OffsetInvalidFormat)
+            _, _ -> Error(OffsetInvalidFormat("Invalid hour or minute length"))
           }
         _ ->
           // Parse +-hhmm format, +-hh format, or +-h format
@@ -339,7 +343,7 @@ pub fn offset_from_string(offset: String) -> Result(Offset, Error) {
                 string.slice(offset, at_index: 1, length: 1),
                 "0",
               ))
-            _ -> Error(OffsetInvalidFormat)
+            _ -> Error(OffsetInvalidFormat("Invalid offset length"))
           }
       })
 
@@ -349,19 +353,20 @@ pub fn offset_from_string(offset: String) -> Result(Offset, Error) {
           Ok(Offset(-{ hour * 60 + minute }))
         "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
           Ok(Offset(hour * 60 + minute))
-        _, _, _ -> Error(OffsetInvalidFormat)
+        _, _, _ ->
+          Error(OffsetInvalidFormat("Invalid sign or non-integer value"))
       }
     }
-  }
-  |> result.try(validate_offset)
+  })
+  validate_offset(offset) |> result.replace_error(OffsetOutOfBounds)
 }
 
 @internal
-pub fn validate_offset(offset: Offset) -> Result(Offset, Error) {
+pub fn validate_offset(offset: Offset) -> Result(Offset, Nil) {
   // Valid time offsets are between -12:00 and +14:00
   case offset.minutes >= -720 && offset.minutes <= 840 {
     True -> Ok(offset)
-    False -> Error(OffsetOutOfBounds)
+    False -> Error(Nil)
   }
 }
 
@@ -405,25 +410,29 @@ pub fn new_date(
   year year: Int,
   month month: Int,
   day day: Int,
-) -> Result(Date, Error) {
+) -> Result(Date, DateOutOfBoundsError) {
   date_from_tuple(#(year, month, day))
 }
 
 @internal
-pub fn date_from_tuple(date: #(Int, Int, Int)) -> Result(Date, Error) {
+pub fn date_from_tuple(
+  date: #(Int, Int, Int),
+) -> Result(Date, DateOutOfBoundsError) {
   let year = date.0
   let month = date.1
   let day = date.2
 
-  use month <- result.try(month_from_int(month))
+  use month <- result.try(
+    month_from_int(month) |> result.replace_error(DateMonthOutOfBounds),
+  )
 
   case year >= 1000 && year <= 9999 {
     True ->
       case day >= 1 && day <= month_days_of(month, in: year) {
         True -> Ok(Date(year, month, day))
-        False -> Error(DateOutOfBounds)
+        False -> Error(DateDayOutOfBounds)
       }
-    False -> Error(DateOutOfBounds)
+    False -> Error(DateYearOutOfBounds)
   }
 }
 
@@ -613,7 +622,7 @@ pub type Month {
 pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
 
 @internal
-pub fn month_from_int(month: Int) -> Result(Month, Error) {
+pub fn month_from_int(month: Int) -> Result(Month, Nil) {
   case month {
     1 -> Ok(Jan)
     2 -> Ok(Feb)
@@ -627,12 +636,12 @@ pub fn month_from_int(month: Int) -> Result(Month, Error) {
     10 -> Ok(Oct)
     11 -> Ok(Nov)
     12 -> Ok(Dec)
-    _ -> Error(MonthOutOfBounds)
+    _ -> Error(Nil)
   }
 }
 
 @internal
-pub fn month_from_short_string(month: String) -> Result(Month, Error) {
+pub fn month_from_short_string(month: String) -> Result(Month, Nil) {
   case month {
     "Jan" -> Ok(Jan)
     "Feb" -> Ok(Feb)
@@ -646,12 +655,12 @@ pub fn month_from_short_string(month: String) -> Result(Month, Error) {
     "Oct" -> Ok(Oct)
     "Nov" -> Ok(Nov)
     "Dec" -> Ok(Dec)
-    _ -> Error(MonthInvalidFormat)
+    _ -> Error(Nil)
   }
 }
 
 @internal
-pub fn month_from_long_string(month: String) -> Result(Month, Error) {
+pub fn month_from_long_string(month: String) {
   case month {
     "January" -> Ok(Jan)
     "February" -> Ok(Feb)
@@ -665,7 +674,7 @@ pub fn month_from_long_string(month: String) -> Result(Month, Error) {
     "October" -> Ok(Oct)
     "November" -> Ok(Nov)
     "December" -> Ok(Dec)
-    _ -> Error(MonthInvalidFormat)
+    _ -> Error(Nil)
   }
 }
 
@@ -873,7 +882,11 @@ pub fn time_set_mono(
 }
 
 @internal
-pub fn new_time(hour: Int, minute: Int, second: Int) -> Result(Time, Error) {
+pub fn new_time(
+  hour: Int,
+  minute: Int,
+  second: Int,
+) -> Result(Time, TimeOutOfBoundsError) {
   Time(hour, minute, second, 0, Sec, None, None) |> validate_time
 }
 
@@ -883,7 +896,7 @@ pub fn new_time_milli(
   minute: Int,
   second: Int,
   millisecond: Int,
-) -> Result(Time, Error) {
+) -> Result(Time, TimeOutOfBoundsError) {
   Time(hour, minute, second, millisecond * 1_000_000, Milli, None, None)
   |> validate_time
 }
@@ -894,7 +907,7 @@ pub fn new_time_micro(
   minute: Int,
   second: Int,
   microsecond: Int,
-) -> Result(Time, Error) {
+) -> Result(Time, TimeOutOfBoundsError) {
   Time(hour, minute, second, microsecond * 1000, Micro, None, None)
   |> validate_time
 }
@@ -905,7 +918,7 @@ pub fn new_time_nano(
   minute: Int,
   second: Int,
   nanosecond: Int,
-) -> Result(Time, Error) {
+) -> Result(Time, TimeOutOfBoundsError) {
   Time(hour, minute, second, nanosecond, Nano, None, None) |> validate_time
 }
 
@@ -965,7 +978,7 @@ pub fn time_to_nano_precision(time: Time) -> Time {
 }
 
 @internal
-pub fn validate_time(time: Time) -> Result(Time, Error) {
+pub fn validate_time(time: Time) -> Result(Time, TimeOutOfBoundsError) {
   case
     {
       time.hour >= 0
@@ -993,9 +1006,14 @@ pub fn validate_time(time: Time) -> Result(Time, Error) {
         Time(_, _, _, millis, Milli, _, _) if millis <= 999_000_000 -> Ok(time)
         Time(_, _, _, micros, Micro, _, _) if micros <= 999_999_000 -> Ok(time)
         Time(_, _, _, nanos, Nano, _, _) if nanos <= 999_999_999 -> Ok(time)
-        _ -> Error(TimeOutOfBounds)
+        _ -> Error(TimeNanoSecondOutOfBounds)
       }
-    False -> Error(TimeOutOfBounds)
+    False ->
+      case time.hour, time.minute, time.second {
+        _, _, s if s > 59 || s < 0 -> Error(TimeSecondOutOfBounds)
+        _, m, _ if m > 59 || m < 0 -> Error(TimeMinuteOutOfBounds)
+        _, _, _ -> Error(TimeHourOutOfBounds)
+      }
   }
 }
 
@@ -1361,26 +1379,67 @@ pub fn period_comprising_months(period: Period) -> iterator.Iterator(MonthYear) 
 }
 
 /// Error values that can be returned from functions in this package.
-pub type Error {
-  TimeInvalidFormat
-  TimeOutOfBounds
-  DateInvalidFormat
-  DateOutOfBounds
-  MonthInvalidFormat
-  MonthOutOfBounds
-  OffsetInvalidFormat
+pub type OffsetParseError {
+  OffsetInvalidFormat(msg: String)
   OffsetOutOfBounds
-  NaiveDateTimeInvalidFormat
-  DateTimeInvalidFormat
-  InvalidInputShape
-  UnableToParseDirective(String)
-  ParseMissingDate
-  ParseMissingTime
-  ParseMissingOffset
 }
 
-fn err() {
-  todo as "Errors limited to the only actual ones that can be returned per function"
+pub type TimeParseError {
+  TimeInvalidFormat(msg: String)
+  TimeOutOfBounds(TimeOutOfBoundsError)
+}
+
+pub type TimeOutOfBoundsError {
+  TimeHourOutOfBounds
+  TimeMinuteOutOfBounds
+  TimeSecondOutOfBounds
+  TimeNanoSecondOutOfBounds
+}
+
+pub type DateParseError {
+  DateInvalidFormat(msg: String)
+  DateOutOfBounds(DateOutOfBoundsError)
+}
+
+pub type DateOutOfBoundsError {
+  DateDayOutOfBounds
+  DateMonthOutOfBounds
+  DateYearOutOfBounds
+}
+
+pub type DateTimeOutOfBoundsError {
+  DateTimeDateOutOfBounds(DateOutOfBoundsError)
+  DateTimeTimeOutOfBounds(TimeOutOfBoundsError)
+  DateTimeOffsetOutOfBounds
+}
+
+pub type DateTimeParseError {
+  DateTimeInvalidFormat
+  DateTimeTimeParseError(TimeParseError)
+  DateTimeDateParseError(DateParseError)
+  DateTimeOffsetParseError(OffsetParseError)
+}
+
+pub type NaiveDateTimeOutOfBoundsError {
+  NaiveDateTimeDateOutOfBounds(DateOutOfBoundsError)
+  NaiveDateTimeTimeOutOfBounds(TimeOutOfBoundsError)
+}
+
+pub type NaiveDateTimeParseError {
+  NaiveDateTimeInvalidFormat
+  NaiveDateTimeTimeParseError(TimeParseError)
+  NaiveDateTimeDateParseError(DateParseError)
+}
+
+pub type NaiveDateTimeParseAnyError {
+  NaiveDateTimeMissingDate
+  NaiveDateTimeMissingTime
+}
+
+pub type DateTimeParseAnyError {
+  DateTimeMissingDate
+  DateTimeMissingTime
+  DateTimeMissingOffset
 }
 
 // -------------------------------------------------------------------------- //
@@ -1460,10 +1519,10 @@ pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1
 /// 
 /// ```gleam
 /// case tempo.parse_any("06/21/2024 at 01:42:11 PM") {
-///   Ok(#(Some(date), Some(time), Some(offset))) ->
+///   #(Some(date), Some(time), Some(offset)) ->
 ///     datetime.new(date, time, offset)
 /// 
-///   Ok(#(Some(date), Some(time), None)) ->
+///   #(Some(date), Some(time), None) ->
 ///     datetime.new(date, time, offset.local())
 /// 
 ///   _ -> datetime.now_local()
@@ -1473,20 +1532,20 @@ pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1
 /// 
 /// ```gleam
 /// tempo.parse_any("2024.06.21 11:32 AM -0400")
-/// // -> Ok(#(
+/// // -> #(
 /// //  Some(date.literal("2024-06-21")), 
 /// //  Some(time.literal("11:32:00")),
 /// //  Some(offset.literal("-04:00"))
-/// // ))
+/// // )
 /// ```
 /// 
 /// ```gleam
 /// tempo.parse_any("Dec 25, 2024 at 6:00 AM")
-/// // -> Ok(#(
+/// // -> #(
 /// //  Some(date.literal("2024-12-25")), 
 /// //  Some(time.literal("06:00:00")),
 /// //  None
-/// // ))
+/// // )
 /// ```
 pub fn parse_any(
   str: String,
@@ -1561,7 +1620,6 @@ pub fn parse_any(
               int.parse(year),
               // Parse an int month or a written month
               int.parse(month)
-              |> result.replace_error(MonthInvalidFormat)
               |> result.try(month_from_int)
               |> result.try_recover(fn(_) {
                 month_from_short_string(month)
@@ -1714,7 +1772,7 @@ pub fn parse_any(
     }
   }
 
-  Ok(#(date, time, offset))
+  #(date, time, offset)
 }
 
 @external(erlang, "tempo_ffi", "now")
@@ -1992,7 +2050,7 @@ fn consume_part(fmt, from str) {
       }
     }
   }
-  |> result.replace_error(UnableToParseDirective(fmt))
+  |> result.map_error(fn(_) { "Unable to parse directive " <> fmt })
 }
 
 fn consume_one_or_two_digits(str, constructor) {
@@ -2013,98 +2071,6 @@ fn consume_two_digits(str, constructor) {
 }
 
 @internal
-pub fn find_year(in parts) {
-  list.find_map(parts, fn(p) {
-    case p {
-      Year(y) -> Ok(y)
-      _ -> Error(Nil)
-    }
-  })
-  |> result.replace_error(ParseMissingDate)
-}
-
-@internal
-pub fn find_month(in parts) {
-  list.find_map(parts, fn(p) {
-    case p {
-      Month(m) -> Ok(m)
-      _ -> Error(Nil)
-    }
-  })
-  |> result.replace_error(ParseMissingDate)
-}
-
-@internal
-pub fn find_day(in parts) {
-  list.find_map(parts, fn(p) {
-    case p {
-      Day(d) -> Ok(d)
-      _ -> Error(Nil)
-    }
-  })
-  |> result.replace_error(ParseMissingDate)
-}
-
-@internal
-pub fn find_hour(in parts) {
-  use _ <- result.try_recover(
-    list.find_map(parts, fn(p) {
-      case p {
-        Hour(h) -> Ok(h)
-        _ -> Error(Nil)
-      }
-    })
-    |> result.replace_error(ParseMissingTime),
-  )
-
-  use twelve_hour <- result.try(
-    list.find_map(parts, fn(p) {
-      case p {
-        TwelveHour(o) -> Ok(o)
-        _ -> Error(Nil)
-      }
-    })
-    |> result.replace_error(ParseMissingTime),
-  )
-
-  let am_period =
-    list.find_map(parts, fn(p) {
-      case p {
-        AMPeriod -> Ok(Nil)
-        _ -> Error(Nil)
-      }
-    })
-
-  let pm_period =
-    list.find_map(parts, fn(p) {
-      case p {
-        PMPeriod -> Ok(Nil)
-        _ -> Error(Nil)
-      }
-    })
-
-  case am_period, pm_period {
-    Ok(Nil), Error(Nil) ->
-      adjust_12_hour_to_24_hour(twelve_hour, am: True) |> Ok
-    Error(Nil), Ok(Nil) ->
-      adjust_12_hour_to_24_hour(twelve_hour, am: False) |> Ok
-
-    _, _ -> Error(ParseMissingTime)
-  }
-}
-
-@internal
-pub fn find_minute(in parts) {
-  list.find_map(parts, fn(p) {
-    case p {
-      Minute(m) -> Ok(m)
-      _ -> Error(Nil)
-    }
-  })
-  |> result.replace_error(ParseMissingTime)
-}
-
-@internal
 pub fn find_date(in parts) {
   use year <- result.try(
     list.find_map(parts, fn(p) {
@@ -2113,7 +2079,7 @@ pub fn find_date(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(ParseMissingDate),
+    |> result.replace_error(DateInvalidFormat("Missing year")),
   )
 
   use month <- result.try(
@@ -2123,7 +2089,7 @@ pub fn find_date(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(ParseMissingDate),
+    |> result.replace_error(DateInvalidFormat("Missing month")),
   )
 
   use day <- result.try(
@@ -2133,10 +2099,11 @@ pub fn find_date(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(ParseMissingDate),
+    |> result.replace_error(DateInvalidFormat("Missing day")),
   )
 
   new_date(year, month, day)
+  |> result.map_error(fn(e) { DateOutOfBounds(e) })
 }
 
 @internal
@@ -2148,8 +2115,7 @@ pub fn find_time(in parts) {
           Hour(h) -> Ok(h)
           _ -> Error(Nil)
         }
-      })
-      |> result.replace_error(ParseMissingTime),
+      }),
     )
 
     use twelve_hour <- result.try(
@@ -2159,7 +2125,7 @@ pub fn find_time(in parts) {
           _ -> Error(Nil)
         }
       })
-      |> result.replace_error(ParseMissingTime),
+      |> result.replace_error(TimeInvalidFormat("Missing hour")),
     )
 
     let am_period =
@@ -2184,7 +2150,7 @@ pub fn find_time(in parts) {
       Error(Nil), Ok(Nil) ->
         adjust_12_hour_to_24_hour(twelve_hour, am: False) |> Ok
 
-      _, _ -> Error(ParseMissingTime)
+      _, _ -> Error(TimeInvalidFormat("Missing period in 12 hour time"))
     }
   })
 
@@ -2195,7 +2161,7 @@ pub fn find_time(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(ParseMissingTime),
+    |> result.replace_error(TimeInvalidFormat("Missing minute")),
   )
 
   let second =
@@ -2237,6 +2203,7 @@ pub fn find_time(in parts) {
     _, _, Ok(milli) -> new_time_milli(hour, minute, second, milli)
     _, _, _ -> new_time(hour, minute, second)
   }
+  |> result.map_error(fn(e) { TimeOutOfBounds(e) })
 }
 
 @internal
@@ -2248,10 +2215,17 @@ pub fn find_offset(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(ParseMissingOffset),
+    |> result.replace_error(OffsetInvalidFormat("Missing offset")),
   )
 
   offset_from_string(offset_str)
+}
+
+fn result_guard(when_error e, return v, or run) {
+  case e {
+    Error(_) -> v
+    Ok(ok) -> run(ok)
+  }
 }
 
 // -------------------------------------------------------------------------- //

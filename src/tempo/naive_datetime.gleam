@@ -64,11 +64,31 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
     Ok(naive_datetime) -> naive_datetime
     Error(tempo.NaiveDateTimeInvalidFormat) ->
       panic as "Invalid naive datetime literal format"
-    Error(tempo.DateOutOfBounds) ->
-      panic as "Invalid date in naive datetime literal"
-    Error(tempo.TimeOutOfBounds) ->
-      panic as "Invalid time in naive datetime literal"
-    Error(_) -> panic as "Invalid naive datetime literal"
+    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeInvalidFormat(_))) ->
+      panic as "Invalid time format in naive datetime literal"
+    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
+      tempo.TimeHourOutOfBounds,
+    ))) -> panic as "Invalid hour value in naive datetime literal"
+    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
+      tempo.TimeMinuteOutOfBounds,
+    ))) -> panic as "Invalid minute value in naive datetime literal"
+    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
+      tempo.TimeSecondOutOfBounds,
+    ))) -> panic as "Invalid second value in naive datetime literal"
+    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
+      tempo.TimeNanoSecondOutOfBounds,
+    ))) -> panic as "Invalid subsecond value in naive datetime literal"
+    Error(tempo.NaiveDateTimeDateParseError(tempo.DateInvalidFormat(_))) ->
+      panic as "Invalid date format in naive datetime literal"
+    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
+      tempo.DateDayOutOfBounds,
+    ))) -> panic as "Invalid date day in naive datetime literal"
+    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
+      tempo.DateMonthOutOfBounds,
+    ))) -> panic as "Invalid date month in naive datetime literal"
+    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
+      tempo.DateYearOutOfBounds,
+    ))) -> panic as "Invalid date year in naive datetime literal"
   }
 }
 
@@ -130,7 +150,9 @@ pub fn now_utc() -> tempo.NaiveDateTime {
 /// naive_datetime.from_string("24-06-12|23:17:00")
 /// // -> Error(tempo.NaiveDateTimeInvalidFormat)
 /// ```
-pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error) {
+pub fn from_string(
+  datetime: String,
+) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseError) {
   let split_dt = case string.contains(datetime, "T") {
     True -> string.split(datetime, "T")
     False -> string.split(datetime, " ")
@@ -138,12 +160,21 @@ pub fn from_string(datetime: String) -> Result(tempo.NaiveDateTime, tempo.Error)
 
   case split_dt {
     [date, time] -> {
-      use date: tempo.Date <- result.try(date.from_string(date))
-      use time: tempo.Time <- result.map(time.from_string(time))
+      use date: tempo.Date <- result.try(
+        date.from_string(date)
+        |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+      )
+      use time: tempo.Time <- result.map(
+        time.from_string(time)
+        |> result.map_error(fn(e) { tempo.NaiveDateTimeTimeParseError(e) }),
+      )
       tempo.naive_datetime(date, time)
     }
     [date] -> {
-      use date: tempo.Date <- result.map(date.from_string(date))
+      use date: tempo.Date <- result.map(
+        date.from_string(date)
+        |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+      )
       tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, tempo.Sec, None, None))
       |> to_second_precision
     }
@@ -233,12 +264,21 @@ pub fn to_tuple(
 pub fn parse(
   str: String,
   in fmt: String,
-) -> Result(tempo.NaiveDateTime, tempo.Error) {
-  use #(parts, _) <- result.try(tempo.consume_format(str, in: fmt))
+) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseError) {
+  use #(parts, _) <- result.try(
+    tempo.consume_format(str, in: fmt)
+    |> result.replace_error(tempo.NaiveDateTimeInvalidFormat),
+  )
 
-  use date <- result.try(tempo.find_date(in: parts))
+  use date <- result.try(
+    tempo.find_date(in: parts)
+    |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+  )
 
-  use time <- result.try(tempo.find_time(in: parts))
+  use time <- result.try(
+    tempo.find_time(in: parts)
+    |> result.map_error(fn(e) { tempo.NaiveDateTimeTimeParseError(e) }),
+  )
 
   Ok(new(date, time))
 }
@@ -258,11 +298,13 @@ pub fn parse(
 /// naive_datetime.parse_any("2024.06.21")
 /// // -> Error(tempo.ParseMissingTime)
 /// ```
-pub fn parse_any(str: String) -> Result(tempo.NaiveDateTime, tempo.Error) {
+pub fn parse_any(
+  str: String,
+) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseAnyError) {
   case tempo.parse_any(str) {
     #(Some(date), Some(time), _) -> Ok(new(date, time))
-    #(_, None, _) -> Error(tempo.ParseMissingTime)
-    #(None, _, _) -> Error(tempo.ParseMissingDate)
+    #(_, None, _) -> Error(tempo.NaiveDateTimeMissingDate)
+    #(None, _, _) -> Error(tempo.NaiveDateTimeMissingTime)
   }
 }
 

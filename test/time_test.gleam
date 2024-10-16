@@ -32,19 +32,19 @@ pub fn now_unique_test() {
 
 pub fn new_time_test() {
   time.new(0, 0, 0)
-  |> should.equal(time.from_string("00:00:00"))
+  |> should.equal(Ok(time.literal("00:00:00")))
 
   time.new(23, 59, 59)
-  |> should.equal(time.from_string("23:59:59"))
+  |> should.equal(Ok(time.literal("23:59:59")))
 
   time.new(23, 59, 60)
-  |> should.equal(time.from_string("23:59:60"))
+  |> should.equal(Ok(time.literal("23:59:60")))
 
   time.new(23, 60, 0)
   |> should.be_error
 
   time.new(11, 25, 40)
-  |> should.equal(time.from_string("11:25:40"))
+  |> should.equal(Ok(time.literal("11:25:40")))
 
   time.new(110, 25, 40)
   |> should.be_error
@@ -58,10 +58,10 @@ pub fn new_time_test() {
 
 pub fn new_milli_test() {
   time.new_milli(0, 0, 0, 0)
-  |> should.equal(time.from_string("00:00:00.0"))
+  |> should.equal(Ok(time.literal("00:00:00.0")))
 
   time.new_milli(23, 59, 60, 0)
-  |> should.equal(time.from_string("23:59:60.0"))
+  |> should.equal(Ok(time.literal("23:59:60.0")))
 
   time.new_milli(23, 59, 59, 1)
   |> assert_ok
@@ -99,10 +99,10 @@ pub fn new_milli_test() {
 
 pub fn new_micro_test() {
   time.new_micro(0, 0, 0, 0)
-  |> should.equal(time.from_string("00:00:00.000000"))
+  |> should.equal(Ok(time.literal("00:00:00.000000")))
 
   time.new_micro(23, 59, 60, 0)
-  |> should.equal(time.from_string("23:59:60.000000"))
+  |> should.equal(Ok(time.literal("23:59:60.000000")))
 
   time.new_micro(23, 59, 59, 1)
   |> assert_ok
@@ -144,10 +144,10 @@ pub fn new_micro_test() {
 
 pub fn new_nano_test() {
   time.new_nano(0, 0, 0, 0)
-  |> should.equal(time.from_string("00:00:00.000000000"))
+  |> should.equal(Ok(time.literal("00:00:00.000000000")))
 
   time.new_nano(23, 59, 60, 0)
-  |> should.equal(time.from_string("23:59:60.000000000"))
+  |> should.equal(Ok(time.literal("23:59:60.000000000")))
 
   time.new_nano(23, 59, 59, 1)
   |> assert_ok

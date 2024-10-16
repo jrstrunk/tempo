@@ -68,7 +68,7 @@ pub fn new(
   hour: Int,
   minute: Int,
   second: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   tempo.new_time(hour, minute, second)
 }
 
@@ -95,7 +95,7 @@ pub fn new_milli(
   minute: Int,
   second: Int,
   millisecond: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   tempo.new_time_milli(hour, minute, second, millisecond)
 }
 
@@ -122,7 +122,7 @@ pub fn new_micro(
   minute: Int,
   second: Int,
   microsecond: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   tempo.new_time_micro(hour, minute, second, microsecond)
 }
 
@@ -149,7 +149,7 @@ pub fn new_nano(
   minute: Int,
   second: Int,
   nanosecond: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   tempo.new_time_nano(hour, minute, second, nanosecond)
 }
 
@@ -174,9 +174,15 @@ pub fn new_nano(
 pub fn literal(time: String) -> tempo.Time {
   case from_string(time) {
     Ok(time) -> time
-    Error(tempo.TimeInvalidFormat) -> panic as "Invalid time literal format"
-    Error(tempo.TimeOutOfBounds) -> panic as "Invalid time literal value"
-    Error(_) -> panic as "Invalid time literal"
+    Error(tempo.TimeInvalidFormat(_)) -> panic as "Invalid time literal format"
+    Error(tempo.TimeOutOfBounds(tempo.TimeHourOutOfBounds)) ->
+      panic as "Invalid time literal hour value"
+    Error(tempo.TimeOutOfBounds(tempo.TimeMinuteOutOfBounds)) ->
+      panic as "Invalid time literal minute value"
+    Error(tempo.TimeOutOfBounds(tempo.TimeSecondOutOfBounds)) ->
+      panic as "Invalid time literal second value"
+    Error(tempo.TimeOutOfBounds(tempo.TimeNanoSecondOutOfBounds)) ->
+      panic as "Invalid time literal nanosecond value"
   }
 }
 
@@ -338,14 +344,17 @@ pub fn test_literal_nano(
   time
 }
 
-fn validate(time: tempo.Time) -> Result(tempo.Time, tempo.Error) {
+fn validate(time: tempo.Time) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   tempo.validate_time(time)
 }
 
 /// I made this but idk if it should be in the public API, it may lead people
 /// to anti-patterns.
 @internal
-pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, tempo.Error) {
+pub fn set_hour(
+  time: tempo.Time,
+  hour: Int,
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   case time |> tempo.time_get_prec {
     tempo.Sec ->
       new(hour, time |> tempo.time_get_minute, time |> tempo.time_get_second)
@@ -379,7 +388,7 @@ pub fn set_hour(time: tempo.Time, hour: Int) -> Result(tempo.Time, tempo.Error) 
 pub fn set_minute(
   time: tempo.Time,
   minute: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   case time |> tempo.time_get_prec {
     tempo.Sec ->
       new(time |> tempo.time_get_hour, minute, time |> tempo.time_get_second)
@@ -413,7 +422,7 @@ pub fn set_minute(
 pub fn set_second(
   time: tempo.Time,
   second: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   case time |> tempo.time_get_prec {
     tempo.Sec ->
       new(time |> tempo.time_get_hour, time |> tempo.time_get_minute, second)
@@ -447,7 +456,7 @@ pub fn set_second(
 pub fn set_milli(
   time: tempo.Time,
   millisecond: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   new_milli(
     time |> tempo.time_get_hour,
     time |> tempo.time_get_minute,
@@ -462,7 +471,7 @@ pub fn set_milli(
 pub fn set_micro(
   time: tempo.Time,
   microsecond: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   new_micro(
     time |> tempo.time_get_hour,
     time |> tempo.time_get_minute,
@@ -477,7 +486,7 @@ pub fn set_micro(
 pub fn set_nano(
   time: tempo.Time,
   nanosecond: Int,
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   new_nano(
     time |> tempo.time_get_hour,
     time |> tempo.time_get_minute,
@@ -702,13 +711,13 @@ pub fn to_string(time: tempo.Time) -> String {
 /// time.from_string("34:54:16")
 /// // -> Error(tempo.TimeOutOfBounds)
 /// ```
-pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
+pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
   use #(hour, minute, second): #(String, String, String) <- result.try(
     // Parse hh:mm:ss.s or hh:mm format
     case string.split(time, ":") {
       [hour, minute, second] -> Ok(#(hour, minute, second))
       [hour, minute] -> Ok(#(hour, minute, "0"))
-      _ -> Error(tempo.TimeInvalidFormat)
+      _ -> Error(Nil)
     }
     // Parse hhmmss.s or hhmm format
     |> result.try_recover(fn(_) {
@@ -731,12 +740,16 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
             string.slice(time, at_index: 2, length: 2),
             string.slice(time, at_index: 4, length: 12),
           ))
-        _, _ -> Error(tempo.TimeInvalidFormat)
+        _, _ -> Error(tempo.TimeInvalidFormat(time))
       }
     }),
   )
 
-  case int.parse(hour), int.parse(minute), string.split(second, ".") {
+  use time <- result.try(case
+    int.parse(hour),
+    int.parse(minute),
+    string.split(second, ".")
+  {
     Ok(hour), Ok(minute), [second, second_fraction] -> {
       let second_fraction_length = string.length(second_fraction)
       case second_fraction_length {
@@ -755,7 +768,10 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
                 None,
                 None,
               ))
-            _, _ -> Error(tempo.TimeInvalidFormat)
+            _, _ ->
+              Error(tempo.TimeInvalidFormat(
+                "Non-integer second or millisecond value",
+              ))
           }
         len if len <= 6 ->
           case
@@ -772,7 +788,10 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
                 None,
                 None,
               ))
-            _, _ -> Error(tempo.TimeInvalidFormat)
+            _, _ ->
+              Error(tempo.TimeInvalidFormat(
+                "Non-integer second or microsecond value",
+              ))
           }
         len if len <= 9 ->
           case
@@ -781,9 +800,12 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
           {
             Ok(second), Ok(nano) ->
               Ok(tempo.time(hour, minute, second, nano, tempo.Nano, None, None))
-            _, _ -> Error(tempo.TimeInvalidFormat)
+            _, _ ->
+              Error(tempo.TimeInvalidFormat(
+                "Non-integer second or nanosecond value",
+              ))
           }
-        _ -> Error(tempo.TimeInvalidFormat)
+        _ -> Error(tempo.TimeInvalidFormat("Invalid subsecond value"))
       }
     }
 
@@ -791,12 +813,15 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
       case int.parse(second) {
         Ok(second) ->
           Ok(tempo.time(hour, minute, second, 0, tempo.Sec, None, None))
-        _ -> Error(tempo.TimeInvalidFormat)
+        _ -> Error(tempo.TimeInvalidFormat("Non-integer second value"))
       }
 
-    _, _, _ -> Error(tempo.TimeInvalidFormat)
-  }
-  |> result.try(validate)
+    _, _, _ ->
+      Error(tempo.TimeInvalidFormat("Non-integer hour or minute value"))
+  })
+
+  validate(time)
+  |> result.map_error(fn(e) { tempo.TimeOutOfBounds(e) })
 }
 
 /// Parses a time string in the provided format. Always prefer using
@@ -825,10 +850,16 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.Error) {
 /// time.parse("Hi! 12 2 am", "[Hi!] h m a")
 /// // -> Ok(time.literal("00:02:00"))
 /// ```
-pub fn parse(str: String, in fmt: String) -> Result(tempo.Date, tempo.Error) {
-  use #(parts, _) <- result.try(tempo.consume_format(str, in: fmt))
+pub fn parse(
+  str: String,
+  in fmt: String,
+) -> Result(tempo.Time, tempo.TimeParseError) {
+  use #(parts, _) <- result.try(
+    tempo.consume_format(str, in: fmt)
+    |> result.map_error(fn(msg) { tempo.TimeInvalidFormat(msg) }),
+  )
 
-  tempo.find_date(in: parts)
+  tempo.find_time(in: parts)
 }
 
 /// Tries to parse a given date string without a known format. It will not 
@@ -846,10 +877,10 @@ pub fn parse(str: String, in fmt: String) -> Result(tempo.Date, tempo.Error) {
 /// time.parse_any("2024.06.21")
 /// // -> Error(tempo.ParseMissingTime)
 /// ```
-pub fn parse_any(str: String) -> Result(tempo.Time, tempo.Error) {
+pub fn parse_any(str: String) -> Result(tempo.Time, Nil) {
   case tempo.parse_any(str) {
     #(_, Some(time), _) -> Ok(time)
-    #(_, None, _) -> Error(tempo.ParseMissingTime)
+    #(_, None, _) -> Error(Nil)
   }
 }
 
@@ -1109,7 +1140,9 @@ pub fn to_tuple(time: tempo.Time) -> #(Int, Int, Int) {
 /// |> time.from_tuple
 /// // -> time.literal("13:42:11")
 /// ```
-pub fn from_tuple(time: #(Int, Int, Int)) -> Result(tempo.Time, tempo.Error) {
+pub fn from_tuple(
+  time: #(Int, Int, Int),
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   new(time.0, time.1, time.2)
 }
 
@@ -1145,7 +1178,7 @@ pub fn to_tuple_nanosecond(time: tempo.Time) -> #(Int, Int, Int, Int) {
 /// ```
 pub fn from_tuple_nanosecond(
   time: #(Int, Int, Int, Int),
-) -> Result(tempo.Time, tempo.Error) {
+) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
   new_nano(time.0, time.1, time.2, time.3)
 }
 

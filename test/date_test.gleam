@@ -520,7 +520,7 @@ pub fn from_dynamic_string_bad_values_test() {
     Error([
       dynamic.DecodeError(
         expected: "tempo.Date",
-        found: "Date out of bounds: 2024-06-35",
+        found: "Date day out of bounds: 2024-06-35",
         path: [],
       ),
     ]),
