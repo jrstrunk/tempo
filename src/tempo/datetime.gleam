@@ -152,24 +152,6 @@ pub fn now_utc() -> tempo.DateTime {
   )
 }
 
-/// Gets the current local datetime of the host as a string in milliseconds
-/// precision. For easy reading by humans in text formats, like log 
-/// statements, etc.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.now_text()
-/// // -> "2024-06-14 04:19:20.349"
-/// ```
-pub fn now_text() -> String {
-  now_local()
-  |> drop_offset
-  |> naive_datetime.to_milli_precision
-  |> naive_datetime.to_string
-  |> string.replace("T", " ")
-}
-
 /// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
 /// `YYYYMMDDThhmmss.sTZD`, `YYYY-MM-DD hh:mm:ss.sTZD`,
 /// `YYYYMMDD hhmmss.sTZD`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
@@ -217,7 +199,7 @@ pub fn from_string(
       date.from_string(date)
       |> result.map(new(
         _,
-        tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
+        tempo.time(0, 0, 0, 0, None, None),
         tempo.utc,
       ))
       |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) })
@@ -954,94 +936,6 @@ pub fn to_local_date(
       |> tempo.naive_datetime_get_date
       |> tempo.Imprecise
   }
-}
-
-/// Sets a datetime's time value to a second precision. Drops any milliseconds
-/// from the underlying time value.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-13T13:42:11.195423Z")
-/// |> datetime.to_second_precision
-/// |> datetime.to_string
-/// // -> "2024-06-13T13:42:11Z"
-/// ```
-pub fn to_second_precision(datetime: tempo.DateTime) -> tempo.DateTime {
-  new(
-    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-    datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_time
-      |> time.to_second_precision,
-    datetime |> tempo.datetime_get_offset,
-  )
-}
-
-/// Sets a datetime's time value to a millisecond precision. Drops any 
-/// microseconds from the underlying time value.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-13T13:42:11.195423Z")
-/// |> datetime.to_milli_precision
-/// |> datetime.to_string
-/// // -> "2024-06-13T13:42:11.195Z"
-/// ```
-pub fn to_milli_precision(datetime: tempo.DateTime) -> tempo.DateTime {
-  new(
-    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-    datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_time
-      |> time.to_milli_precision,
-    datetime |> tempo.datetime_get_offset,
-  )
-}
-
-/// Sets a datetime's time value to a microsecond precision. Drops any 
-/// nanoseconds from the underlying time value.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-13T13:42:11.195423534Z")
-/// |> datetime.to_micro_precision
-/// |> datetime.to_string
-/// // -> "2024-06-13T13:42:11.195423Z"
-/// ```
-pub fn to_micro_precision(datetime: tempo.DateTime) -> tempo.DateTime {
-  new(
-    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-    datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_time
-      |> time.to_micro_precision,
-    datetime |> tempo.datetime_get_offset,
-  )
-}
-
-/// Sets a datetime's time value to a nanosecond precision. Leaves the
-/// underlying time value unchanged.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-13T13:42:11.195Z")
-/// |> datetime.to_nano_precision
-/// |> datetime.to_string
-/// // -> "2024-06-13T13:42:11.195000000Z"
-/// ```
-pub fn to_nano_precision(datetime: tempo.DateTime) -> tempo.DateTime {
-  new(
-    datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date,
-    datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_time
-      |> time.to_nano_precision,
-    datetime |> tempo.datetime_get_offset,
-  )
 }
 
 /// Compares two datetimes.

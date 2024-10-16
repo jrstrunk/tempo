@@ -175,8 +175,7 @@ pub fn from_string(
         date.from_string(date)
         |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
       )
-      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, tempo.Sec, None, None))
-      |> to_second_precision
+      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, None, None))
     }
     _ -> Error(tempo.NaiveDateTimeInvalidFormat)
   }
@@ -426,7 +425,7 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 /// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
   tempo.naive_datetime_get_date(datetime)
-  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, tempo.Sec, None, None))
+  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, None, None))
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and
@@ -444,86 +443,6 @@ pub fn set_offset(
   offset: tempo.Offset,
 ) -> tempo.DateTime {
   tempo.naive_datetime_set_offset(datetime, offset)
-}
-
-/// Sets a naive datetime's time value to a second precision. Drops any 
-/// milliseconds from the underlying time value.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// naive_datetime.literal("2024-06-13T13:42:11.195423")
-/// |> naive_datetime.to_second_precision
-/// |> naive_datetime.to_string
-/// // -> "2024-06-13T13:42:11"
-/// ```
-pub fn to_second_precision(
-  naive_datetime: tempo.NaiveDateTime,
-) -> tempo.NaiveDateTime {
-  new(
-    naive_datetime |> tempo.naive_datetime_get_date,
-    naive_datetime |> tempo.naive_datetime_get_time |> time.to_second_precision,
-  )
-}
-
-/// Sets a naive datetime's time value to a millisecond precision. Drops any 
-/// microseconds from the underlying time value.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// naive_datetime.literal("2024-06-13T13:42:11.195423")
-/// |> naive_datetime.to_milli_precision
-/// |> naive_datetime.to_string
-/// // -> "2024-06-13T13:42:11.195"
-/// ```
-pub fn to_milli_precision(
-  naive_datetime: tempo.NaiveDateTime,
-) -> tempo.NaiveDateTime {
-  new(
-    naive_datetime |> tempo.naive_datetime_get_date,
-    naive_datetime |> tempo.naive_datetime_get_time |> time.to_milli_precision,
-  )
-}
-
-/// Sets a naive datetime's time value to a microsecond precision. Drops any 
-/// nanoseconds from the underlying time value.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// naive_datetime.literal("2024-06-13T13:42:11.195423534")
-/// |> naive_datetime.to_micro_precision
-/// |> naive_datetime.to_string
-/// // -> "2024-06-13T13:42:11.195423"
-/// ```
-pub fn to_micro_precision(
-  naive_datetime: tempo.NaiveDateTime,
-) -> tempo.NaiveDateTime {
-  new(
-    naive_datetime |> tempo.naive_datetime_get_date,
-    naive_datetime |> tempo.naive_datetime_get_time |> time.to_micro_precision,
-  )
-}
-
-/// Sets a naive datetime's time value to a nanosecond precision. Leaves the
-/// underlying time value unchanged.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// naive_datetime.literal("2024-06-13T13:42:11.195")
-/// |> naive_datetime.to_nano_precision
-/// |> naive_datetime.to_string
-/// // -> "2024-06-13T13:42:11.195000000"
-/// ```
-pub fn to_nano_precision(
-  naive_datetime: tempo.NaiveDateTime,
-) -> tempo.NaiveDateTime {
-  new(
-    naive_datetime |> tempo.naive_datetime_get_date,
-    naive_datetime |> tempo.naive_datetime_get_time |> time.to_nano_precision,
-  )
 }
 
 /// Compares two naive datetimes.

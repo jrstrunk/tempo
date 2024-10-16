@@ -139,9 +139,9 @@ pub fn as_days(period: tempo.Period) -> Int {
   // of the day, then 1 needs to be added to the days count.
   + case
     start_time
-    |> time.is_equal(to: tempo.time(0, 0, 0, 0, tempo.Sec, None, None))
+    |> time.is_equal(to: tempo.time(0, 0, 0, 0, None, None))
     && end_time
-    |> time.is_equal(to: tempo.time(24, 0, 0, 0, tempo.Sec, None, None))
+    |> time.is_equal(to: tempo.time(24, 0, 0, 0, None, None))
   {
     True -> 1
     False -> 0
@@ -195,7 +195,7 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
       case
         time.is_equal(
           end_time,
-          to: tempo.time(24, 0, 0, 0, tempo.Sec, None, None),
+          to: tempo.time(24, 0, 0, 0, None, None),
         )
       {
         True -> 0.0
@@ -242,13 +242,13 @@ pub fn from_month(month: tempo.Month, year: Int) -> tempo.Period {
   let start =
     tempo.naive_datetime(
       tempo.date(year, month, 1),
-      tempo.time(0, 0, 0, 0, tempo.Sec, None, None),
+      tempo.time(0, 0, 0, 0, None, None),
     )
 
   let end =
     tempo.naive_datetime(
       tempo.date(year, month, month.days(of: month, in: year)),
-      tempo.time(24, 0, 0, 0, tempo.Sec, None, None),
+      tempo.time(24, 0, 0, 0, None, None),
     )
 
   new_naive(start, end)

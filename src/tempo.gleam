@@ -29,10 +29,6 @@ fn diff() {
   todo as "Unify diff functions to return durations and as period to return periods"
 }
 
-fn eq() {
-  todo as "Make == work on types"
-}
-
 // -------------------------------------------------------------------------- //
 //                            DateTime Logic                                  //
 // -------------------------------------------------------------------------- //
@@ -793,27 +789,15 @@ pub fn year_days(of year: Int) -> Int {
 /// It cannot be greater than 24 hours or less than 0 hours. It can have 
 /// different precisions between second and nanosecond, depending on what 
 /// your application needs.
-/// 
-/// Do not use the `==` operator to check for time equality (it will not
-/// handle time precision correctly)! Use the compare functions instead.
 pub opaque type Time {
   Time(
     hour: Int,
     minute: Int,
     second: Int,
     nanosecond: Int,
-    precision: TimePrecision,
     monotonic: option.Option(Int),
     unique: option.Option(Int),
   )
-}
-
-@internal
-pub type TimePrecision {
-  Sec
-  Milli
-  Micro
-  Nano
 }
 
 @internal
@@ -822,11 +806,10 @@ pub fn time(
   minute minute,
   second second,
   nano nanosecond,
-  prec precision,
   mono monotonic,
   unique unique,
 ) {
-  Time(hour:, minute:, second:, nanosecond:, precision:, monotonic:, unique:)
+  Time(hour:, minute:, second:, nanosecond:, monotonic:, unique:)
 }
 
 @internal
@@ -850,11 +833,6 @@ pub fn time_get_nano(time: Time) {
 }
 
 @internal
-pub fn time_get_prec(time: Time) {
-  time.precision
-}
-
-@internal
 pub fn time_get_mono(time: Time) {
   time.monotonic
 }
@@ -875,7 +853,6 @@ pub fn time_set_mono(
     time.minute,
     time.second,
     time.nanosecond,
-    time.precision,
     monotonic:,
     unique:,
   )
@@ -887,7 +864,7 @@ pub fn new_time(
   minute: Int,
   second: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, 0, Sec, None, None) |> validate_time
+  Time(hour, minute, second, 0, None, None) |> validate_time
 }
 
 @internal
@@ -897,7 +874,7 @@ pub fn new_time_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, millisecond * 1_000_000, Milli, None, None)
+  Time(hour, minute, second, millisecond * 1_000_000, None, None)
   |> validate_time
 }
 
@@ -908,7 +885,7 @@ pub fn new_time_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, microsecond * 1000, Micro, None, None)
+  Time(hour, minute, second, microsecond * 1000, None, None)
   |> validate_time
 }
 
@@ -919,62 +896,7 @@ pub fn new_time_nano(
   second: Int,
   nanosecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, nanosecond, Nano, None, None) |> validate_time
-}
-
-@internal
-pub fn time_to_second_precision(time: Time) -> Time {
-  // Drop any milliseconds
-  Time(
-    time |> time_get_hour,
-    time |> time_get_minute,
-    time |> time_get_second,
-    0,
-    Sec,
-    time |> time_get_mono,
-    time |> time_get_unique,
-  )
-}
-
-@internal
-pub fn time_to_milli_precision(time: Time) -> Time {
-  Time(
-    time |> time_get_hour,
-    time |> time_get_minute,
-    time |> time_get_second,
-    // Drop any microseconds
-    { time_get_nano(time) / 1_000_000 } * 1_000_000,
-    Milli,
-    time |> time_get_mono,
-    time |> time_get_unique,
-  )
-}
-
-@internal
-pub fn time_to_micro_precision(time: Time) -> Time {
-  Time(
-    time |> time_get_hour,
-    time |> time_get_minute,
-    time |> time_get_second,
-    // Drop any nanoseconds
-    { time_get_nano(time) / 1000 } * 1000,
-    Micro,
-    time |> time_get_mono,
-    time |> time_get_unique,
-  )
-}
-
-@internal
-pub fn time_to_nano_precision(time: Time) -> Time {
-  Time(
-    time |> time_get_hour,
-    time |> time_get_minute,
-    time |> time_get_second,
-    time |> time_get_nano,
-    Nano,
-    time |> time_get_mono,
-    time |> time_get_unique,
-  )
+  Time(hour, minute, second, nanosecond, None, None) |> validate_time
 }
 
 @internal
@@ -1001,12 +923,9 @@ pub fn validate_time(time: Time) -> Result(Time, TimeOutOfBoundsError) {
     || { time.minute == 59 && time.second == 60 && time.nanosecond == 0 }
   {
     True ->
-      case time {
-        Time(_, _, _, _, Sec, _, _) -> Ok(time)
-        Time(_, _, _, millis, Milli, _, _) if millis <= 999_000_000 -> Ok(time)
-        Time(_, _, _, micros, Micro, _, _) if micros <= 999_999_000 -> Ok(time)
-        Time(_, _, _, nanos, Nano, _, _) if nanos <= 999_999_999 -> Ok(time)
-        _ -> Error(TimeNanoSecondOutOfBounds)
+      case time.nanosecond <= 999_999_999 {
+        True -> Ok(time)
+        False -> Error(TimeNanoSecondOutOfBounds)
       }
     False ->
       case time.hour, time.minute, time.second {
@@ -1069,7 +988,7 @@ pub fn time_from_nanoseconds(nanoseconds: Int) -> Time {
     - seconds
     * 1_000_000_000
 
-  Time(hours, minutes, seconds, nanoseconds, Nano, None, None)
+  Time(hours, minutes, seconds, nanoseconds, None, None)
 }
 
 @internal
@@ -1123,40 +1042,21 @@ pub fn time_compare(a: Time, to b: Time) -> order.Order {
 
 @internal
 pub fn time_add(a: Time, duration b: Duration) -> Time {
-  let new_time =
-    time_to_nanoseconds(a) + duration_get_ns(b) |> time_from_nanoseconds
-  let adj_time = case a |> time_get_prec {
-    Sec -> time_to_second_precision(new_time)
-    Milli -> time_to_milli_precision(new_time)
-    Micro -> time_to_micro_precision(new_time)
-    Nano -> time_to_nano_precision(new_time)
-  }
+  let new_time = time_to_nanoseconds(a) + b.nanoseconds |> time_from_nanoseconds
 
-  case time_get_mono(a) {
-    None -> adj_time
-    Some(mns) ->
-      adj_time
-      |> time_set_mono(Some(mns + duration_get_ns(b)), None)
+  case a.monotonic {
+    None -> new_time
+    Some(mns) -> new_time |> time_set_mono(Some(mns + duration_get_ns(b)), None)
   }
 }
 
 @internal
 pub fn time_subtract(a: Time, duration b: Duration) -> Time {
-  let new_time =
-    time_to_nanoseconds(a) - duration_get_ns(b) |> time_from_nanoseconds
-  // Restore original time precision
-  let adj_time = case a |> time_get_prec {
-    Sec -> time_to_second_precision(new_time)
-    Milli -> time_to_milli_precision(new_time)
-    Micro -> time_to_micro_precision(new_time)
-    Nano -> time_to_nano_precision(new_time)
-  }
+  let new_time = time_to_nanoseconds(a) - b.nanoseconds |> time_from_nanoseconds
 
-  case time_get_mono(a) {
-    None -> adj_time
-    Some(mns) ->
-      adj_time
-      |> time_set_mono(Some(mns - duration_get_ns(b)), None)
+  case a.monotonic {
+    None -> new_time
+    Some(mns) -> new_time |> time_set_mono(Some(mns - duration_get_ns(b)), None)
   }
 }
 
@@ -1282,8 +1182,8 @@ pub fn period_get_start_and_end_date_and_time(
     DatePeriod(start, end) -> #(
       start,
       end,
-      Time(0, 0, 0, 0, Sec, None, None),
-      Time(24, 0, 0, 0, Sec, None, None),
+      Time(0, 0, 0, 0, None, None),
+      Time(24, 0, 0, 0, None, None),
     )
     NaiveDateTimePeriod(start, end) -> #(
       start.date,
