@@ -1198,8 +1198,8 @@ pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
 /// |> duration.as_minutes
 /// // -> -25
 /// ```
-pub fn difference(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  tempo.time_difference(a, b)
+pub fn difference(from a: tempo.Time, to b: tempo.Time) -> tempo.Duration {
+  tempo.time_difference(from: a, to: b)
 }
 
 /// Gets the absolute difference between two times as a duration.

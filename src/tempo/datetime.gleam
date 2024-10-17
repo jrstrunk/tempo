@@ -197,11 +197,7 @@ pub fn from_string(
 
     [date] ->
       date.from_string(date)
-      |> result.map(new(
-        _,
-        tempo.time(0, 0, 0, 0, None, None),
-        tempo.utc,
-      ))
+      |> result.map(new(_, tempo.time(0, 0, 0, 0, None, None), tempo.utc))
       |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) })
 
     _ -> Error(tempo.DateTimeInvalidFormat)
@@ -1075,15 +1071,7 @@ pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
   tempo.datetime_is_later_or_equal(a, b)
 }
 
-@internal
-pub fn difference_from(a: tempo.DateTime, from b: tempo.DateTime) {
-  // Sadly the `difference` function is messed up because it is the same name
-  // as the `time.difference` and `date.difference` function with one of the 
-  // same labels, but with opposite logic.
-  as_period(b, a)
-}
-
-/// Returns the difference between two datetimes as a period between their
+/// Returns the difference between two datetimes as a duration between their
 /// equivalent UTC times.
 /// 
 /// ## Examples
@@ -1093,7 +1081,7 @@ pub fn difference_from(a: tempo.DateTime, from b: tempo.DateTime) {
 /// |> datetime.difference(
 ///   from: datetime.literal("2024-06-16T01:16:12Z"),
 /// )
-/// |> period.as_days
+/// |> duration.as_days
 /// // -> 3
 /// ```
 /// 
@@ -1102,12 +1090,17 @@ pub fn difference_from(a: tempo.DateTime, from b: tempo.DateTime) {
 /// |> datetime.difference(
 ///   from: datetime.literal("2024-06-16T01:18:12Z"),
 /// )
-/// |> period.format
+/// |> duration.format
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
-@deprecated("Use `as_period` instead, this function is an alias for it. This function has the same name and one label as the `time.difference` and `date.difference` functions, but with different logic, making it too confusing.")
-pub fn difference(from a: tempo.DateTime, to b: tempo.DateTime) -> tempo.Period {
-  as_period(a, b)
+pub fn difference(
+  from a: tempo.DateTime,
+  to b: tempo.DateTime,
+) -> tempo.Duration {
+  naive_datetime.difference(
+    from: tempo.datetime_apply_offset(a),
+    to: tempo.datetime_apply_offset(b),
+  )
 }
 
 /// Creates a period between two datetimes, where the start and end times are

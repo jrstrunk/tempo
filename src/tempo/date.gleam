@@ -48,6 +48,7 @@ import tempo/month
 import tempo/offset
 import tempo/year
 
+/// A named day of the week.
 pub type DayOfWeek {
   Sun
   Mon
@@ -840,8 +841,7 @@ pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
   compare(a, b) == order.Gt || compare(a, b) == order.Eq
 }
 
-/// Gets the difference between two dates as a period between the two dates
-/// at 00:00:00 each.
+/// Gets the difference between two dates.
 /// 
 /// ## Examples
 /// 
@@ -852,31 +852,31 @@ pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
 /// ```
 /// 
 /// ```gleam
-/// date.literal("2024-06-12")
-/// |> date.difference(from: date.literal("2024-06-03"))
-/// // -> 9
+/// date.literal("2024-06-03")
+/// |> date.difference(from: date.literal("2024-06-11"))
+/// // -> -9
 /// ```
-pub fn difference(start a: tempo.Date, end b: tempo.Date) -> Int {
+pub fn difference(from a: tempo.Date, to b: tempo.Date) -> Int {
   tempo.date_days_apart(from: a, to: b)
 }
 
 /// Creates a period between the first date at 00:00:00 and the second date at
-/// 24:00:00.
+/// 24:00:00. Periods only represent positive datetime differences.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// date.literal("2024-06-12")
-/// |> date.difference(from: date.literal("2024-06-23"))
+/// |> date.as_period(end: date.literal("2024-06-23"))
 /// |> period.as_days
 /// // -> 11
 /// ```
 /// 
 /// ```gleam
 /// date.literal("2024-06-12")
-/// |> date.difference(from: date.literal("2024-06-03"))
-/// |> period.as_days
-/// // -> 9
+/// |> date.as_period(start: date.literal("2024-06-09"))
+/// |> period.comprising_dates
+/// // -> ["2024-06-09", "2024-06-10", "2024-06-11", "2024-06-12"]
 /// ```
 pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
   tempo.period_new_date(start:, end:)

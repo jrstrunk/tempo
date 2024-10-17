@@ -588,41 +588,32 @@ pub fn is_later_or_equal(
   tempo.naive_datetime_is_later_or_equal(a, b)
 }
 
-@internal
-pub fn difference_from(a: tempo.NaiveDateTime, from b: tempo.NaiveDateTime) {
-  // Sadly the `difference` function is messed up because it is the same name
-  // as the `time.difference` function with one of the same labels, but with
-  // opposite logic.
-  as_period(b, a)
-}
-
-/// Returns the difference between two naive datetimes as a period between them.
+/// Returns the difference between two naive datetimes as a duration.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-16T01:16:12")
-/// |> naive_datetime.difference_from(
+/// |> naive_datetime.difference(
 ///   naive_datetime.literal("2024-06-12T23:17:00"),
 /// )
-/// |> period.as_days
+/// |> duration.as_days
 /// // -> 3
 /// ```
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-16T01:18:12")
-/// |> naive_datetime.difference_from(
+/// |> naive_datetime.difference(
 ///   naive_datetime.literal("2024-06-12T23:17:00"),
 /// )
-/// |> period.format
+/// |> duration.format
 /// // -> "3 days, 2 hours, and 1 minute"
 /// ```
-@deprecated("Use `as_period` instead, this function is an alias for it. This function has the same name and one label as the `time.difference` and `date.difference` functions, but with different logic, making it too confusing.")
 pub fn difference(
   from a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
-) -> tempo.Period {
-  as_period(a, b)
+) -> tempo.Duration {
+  tempo.naive_datetime_difference(from: a, to: b)
 }
 
 /// Creates a period between two naive datetimes. The specified start and end

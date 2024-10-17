@@ -608,8 +608,7 @@ pub fn monotonic_difference_override_test() {
       offset: tempo.utc,
     )
 
-  datetime.as_period(start:, end: warped)
-  |> period.as_duration
+  datetime.difference(from: start, to: warped)
   |> duration.as_nanoseconds
   |> should.equal(400)
 }
@@ -632,8 +631,7 @@ pub fn monotonic_difference_no_override_test() {
       offset: tempo.utc,
     )
 
-  datetime.as_period(end: warped, start:)
-  |> period.as_duration
+  datetime.difference(from: start, to: warped)
   |> duration.as_nanoseconds
   |> should.not_equal(-600)
 }
@@ -792,4 +790,38 @@ pub fn unique_compare_does_not_survive_subtract_test() {
   datetime.subtract(warped, duration: duration.nanoseconds(500))
   |> datetime.compare(to: start)
   |> should.equal(order.Lt)
+}
+
+pub fn datetime_difference_no_test() {
+  datetime.literal("2024-06-21T23:17:00Z")
+  |> datetime.difference(from: datetime.literal("2024-06-21T23:17:00Z"))
+  |> should.equal(duration.nanoseconds(0))
+}
+
+pub fn datetime_difference_time_test() {
+  datetime.literal("2024-06-21T23:17:00Z")
+  |> datetime.difference(to: datetime.literal("2024-06-21T23:18:05Z"))
+  |> duration.as_seconds
+  |> should.equal(65)
+}
+
+pub fn datetime_difference_offset_test() {
+  datetime.literal("2024-06-21T23:17:00Z")
+  |> datetime.difference(to: datetime.literal("2024-06-21T23:17:00-03:00"))
+  |> duration.as_hours
+  |> should.equal(3)
+}
+
+pub fn datetime_differnce_same_utc_time_offset_test() {
+  datetime.literal("2024-06-21T23:17:00Z")
+  |> datetime.difference(from: datetime.literal("2024-06-21T20:17:00-03:00"))
+  |> duration.as_hours
+  |> should.equal(0)
+}
+
+pub fn datetime_difference_negative_test() {
+  datetime.literal("2024-06-21T23:18:00Z")
+  |> datetime.difference(to: datetime.literal("2024-06-21T23:16:00Z"))
+  |> duration.as_minutes
+  |> should.equal(-2)
 }

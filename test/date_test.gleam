@@ -582,3 +582,45 @@ pub fn prior_day_of_week_month_boundary_test() {
   |> date.prior_day_of_week(date.Thu)
   |> should.equal(date.literal("2024-06-27"))
 }
+
+pub fn date_no_difference_test() {
+  date.literal("2024-06-13")
+  |> date.difference(from: date.literal("2024-06-13"))
+  |> should.equal(0)
+}
+
+pub fn date_difference_test() {
+  date.literal("2024-06-12")
+  |> date.difference(to: date.literal("2024-06-23"))
+  |> should.equal(11)
+}
+
+pub fn date_difference_over_year_test() {
+  date.literal("2023-05-22")
+  |> date.difference(to: date.literal("2024-06-23"))
+  |> should.equal(398)
+}
+
+pub fn date_difference_negative_test() {
+  date.literal("2024-06-14")
+  |> date.difference(from: date.literal("2024-06-23"))
+  |> should.equal(-9)
+}
+
+pub fn date_difference_over_month_test() {
+  date.literal("2024-05-22")
+  |> date.difference(to: date.literal("2024-06-23"))
+  |> should.equal(32)
+}
+
+pub fn date_difference_negative_month_test() {
+  date.literal("2024-05-23")
+  |> date.difference(from: date.literal("2024-06-23"))
+  |> should.equal(-31)
+}
+
+pub fn date_difference_negative_year_test() {
+  date.literal("2024-06-23")
+  |> date.difference(from: date.literal("2025-06-23"))
+  |> should.equal(-365)
+}

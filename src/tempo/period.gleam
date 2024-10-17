@@ -1,5 +1,5 @@
-//// Functions to use with the `Period` type in Tempo. Periods are a way to 
-//// represent a range of dates or datetimes.
+//// Functions to use with the `Period` type in Tempo. Periods represent a 
+//// positive range of dates or datetimes.
 //// 
 //// ## Example
 //// 
@@ -192,16 +192,11 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
       // The as_days functions alread accounted for the time between the
       // start and end dates when the end is at the last moment of the day,
       // so we do not need to account for it here as well.
-      case
-        time.is_equal(
-          end_time,
-          to: tempo.time(24, 0, 0, 0, None, None),
-        )
-      {
+      case time.is_equal(end_time, to: tempo.time(24, 0, 0, 0, None, None)) {
         True -> 0.0
         False ->
           int.to_float(
-            time.difference(end_time, start_time)
+            time.difference(from: start_time, to: end_time)
             |> duration.as_nanoseconds,
           )
           /. int.to_float(unit.imprecise_day_nanoseconds)

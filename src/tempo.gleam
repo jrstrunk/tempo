@@ -1,7 +1,6 @@
 //// The main module of this package. Contains most types and only a couple 
 //// general purpose functions. Look in specific modules for more functionality!
 
-import gleam/io
 import gleam/bool
 import gleam/int
 import gleam/iterator
@@ -26,8 +25,8 @@ import gtempo/internal as unit
 // 10. Tempo module logic
 // 11. FFI logic
 
-fn diff() {
-  todo as "Unify diff functions to return durations and as period to return periods"
+fn tz() {
+  todo as "Add tz support to Offsets via external providers"
 }
 
 // -------------------------------------------------------------------------- //
@@ -179,6 +178,16 @@ pub fn naive_datetime_is_later_or_equal(
 ) -> Bool {
   naive_datetime_compare(a, b) == order.Gt
   || naive_datetime_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn naive_datetime_difference(
+  from a: NaiveDateTime,
+  to b: NaiveDateTime,
+) -> Duration {
+  date_days_apart(from: a.date, to: b.date)
+  |> duration_days
+  |> duration_increase(by: time_difference(from: a.time, to: b.time))
 }
 
 @internal
@@ -472,6 +481,15 @@ pub fn date_subtract(date: Date, days days: Int) -> Date {
 
 @internal
 pub fn date_days_apart(from start_date: Date, to end_date: Date) {
+  case start_date |> date_is_earlier_or_equal(to: end_date) {
+    True -> date_days_apart_positive(start_date, end_date)
+    False -> -date_days_apart_positive(end_date, start_date)
+  }
+}
+
+/// Returns the difference between two dates, assuming the start date
+/// is sooner than the end_date
+fn date_days_apart_positive(from start_date: Date, to end_date: Date) {
   // Caclulate the number of days in the years that are between (exclusive)
   // the start and end dates.
   let days_in_the_years_between = case
@@ -948,10 +966,10 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
 }
 
 @internal
-pub fn time_difference(a: Time, from b: Time) -> Duration {
+pub fn time_difference(from a: Time, to b: Time) -> Duration {
   case a.monotonic, b.monotonic {
-    Some(amns), Some(bmns) -> amns - bmns |> Duration
-    _, _ -> time_to_nanoseconds(a) - time_to_nanoseconds(b) |> Duration
+    Some(amns), Some(bmns) -> bmns - amns |> Duration
+    _, _ -> time_to_nanoseconds(b) - time_to_nanoseconds(a) |> Duration
   }
 }
 
@@ -2112,7 +2130,6 @@ fn result_guard(when_error e, return v, or run) {
 // -------------------------------------------------------------------------- //
 //                              FFI Logic                                     //
 // -------------------------------------------------------------------------- //
-
 
 @external(erlang, "tempo_ffi", "now")
 @external(javascript, "./tempo_ffi.mjs", "now")
