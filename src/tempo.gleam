@@ -248,6 +248,7 @@ pub fn naive_datetime_is_earlier(
   naive_datetime_compare(a, b) == order.Lt
 }
 
+@internal
 pub fn naive_datetime_is_earlier_or_equal(
   a: NaiveDateTime,
   to b: NaiveDateTime,
