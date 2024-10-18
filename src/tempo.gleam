@@ -25,19 +25,26 @@ import gtempo/internal as unit
 // 10. Tempo module logic
 // 11. FFI logic
 
-fn tz() {
-  todo as "Add tz support to Offsets via external providers"
-}
-
 // -------------------------------------------------------------------------- //
 //                            DateTime Logic                                  //
 // -------------------------------------------------------------------------- //
 
 /// A datetime value with a timezone offset associated with it. It has the 
 /// most amount of information about a point in time, and can be compared to 
-/// all other types in this package.
+/// all other types in this package by getting its lesser parts.
 pub opaque type DateTime {
   DateTime(naive: NaiveDateTime, offset: Offset)
+  LocalDateTime(naive: NaiveDateTime, offset: Offset, tz: TimeZoneProvider)
+}
+
+/// A type for external packages to provide so that datetimes can be converted
+/// between timezones. The package `gtz` was created to provide this and must
+/// be installed separately.
+pub type TimeZoneProvider {
+  TimeZoneProvider(
+    get_name: fn() -> String,
+    calculate_offset: fn(NaiveDateTime) -> Offset,
+  )
 }
 
 @internal
@@ -53,6 +60,43 @@ pub fn datetime_get_naive(datetime: DateTime) {
 @internal
 pub fn datetime_get_offset(datetime: DateTime) {
   datetime.offset
+}
+
+@internal
+pub fn datetime_to_utc(datetime: DateTime) -> DateTime {
+  datetime
+  |> datetime_apply_offset
+  |> naive_datetime_set_offset(utc)
+}
+
+@internal
+pub fn datetime_to_offset(datetime: DateTime, offset: Offset) -> DateTime {
+  datetime
+  |> datetime_to_utc
+  |> datetime_subtract(offset_to_duration(offset))
+  |> datetime_drop_offset
+  |> naive_datetime_set_offset(offset)
+}
+
+@internal
+pub fn datetime_to_tz(datetime: DateTime, tz: TimeZoneProvider) {
+  let utc_dt = datetime_apply_offset(datetime)
+
+  let offset = tz.calculate_offset(utc_dt)
+
+  let naive =
+    datetime_to_offset(utc_dt |> naive_datetime_set_offset(utc), offset)
+    |> datetime_drop_offset
+
+  LocalDateTime(naive:, offset:, tz:)
+}
+
+@internal
+pub fn datetime_get_tz(datetime: DateTime) -> option.Option(String) {
+  case datetime {
+    DateTime(_, _) -> None
+    LocalDateTime(_, _, tz:) -> Some(tz.get_name())
+  }
 }
 
 @internal
@@ -78,21 +122,19 @@ pub fn datetime_is_later_or_equal(a: DateTime, to b: DateTime) -> Bool {
 
 @internal
 pub fn datetime_apply_offset(datetime: DateTime) -> NaiveDateTime {
-  let original_time = datetime.naive.time
-
   let applied =
     datetime
-    |> datetime_add(offset_to_duration(datetime.offset))
     |> datetime_drop_offset
+    |> naive_datetime_add(offset_to_duration(datetime.offset))
 
   // Applying an offset does not change the abosolute time value, so we need
-  // to preserve the monotonic and unique values.
+  // to preserve the monotonic and unique values.zzzz
   NaiveDateTime(
     date: applied.date,
     time: Time(
       ..{ applied.time },
-      monotonic: original_time.monotonic,
-      unique: original_time.unique,
+      monotonic: datetime.naive.time.monotonic,
+      unique: datetime.naive.time.unique,
     ),
   )
 }
@@ -107,10 +149,53 @@ pub fn datetime_add(
   datetime: DateTime,
   duration duration_to_add: Duration,
 ) -> DateTime {
-  datetime
-  |> datetime_drop_offset
-  |> naive_datetime_add(duration: duration_to_add)
-  |> naive_datetime_set_offset(datetime.offset)
+  case datetime {
+    DateTime(naive:, offset:) ->
+      DateTime(
+        naive: naive_datetime_add(naive, duration: duration_to_add),
+        offset:,
+      )
+    LocalDateTime(_, _, tz:) -> {
+      let utc_dt_added =
+        datetime_to_utc(datetime)
+        |> datetime_add(duration: duration_to_add)
+
+      let offset = utc_dt_added |> datetime_drop_offset |> tz.calculate_offset
+
+      let naive =
+        datetime_to_offset(utc_dt_added, offset)
+        |> datetime_drop_offset
+
+      LocalDateTime(naive:, offset:, tz:)
+    }
+  }
+}
+
+@internal
+pub fn datetime_subtract(
+  datetime: DateTime,
+  duration duration_to_subtract: Duration,
+) -> DateTime {
+  case datetime {
+    DateTime(naive:, offset:) ->
+      DateTime(
+        naive: naive_datetime_subtract(naive, duration: duration_to_subtract),
+        offset:,
+      )
+    LocalDateTime(_, _, tz:) -> {
+      let utc_dt_sub =
+        datetime_to_utc(datetime)
+        |> datetime_subtract(duration: duration_to_subtract)
+
+      let offset = utc_dt_sub |> datetime_drop_offset |> tz.calculate_offset
+
+      let naive =
+        datetime_to_offset(utc_dt_sub, offset)
+        |> datetime_drop_offset
+
+      LocalDateTime(naive:, offset:, tz:)
+    }
+  }
 }
 
 // -------------------------------------------------------------------------- //
@@ -310,8 +395,8 @@ pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Nil) {
 pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
   use offset <- result.try(case offset {
     // Parse Z format
-    "Z" -> Ok(Offset(0))
-    "z" -> Ok(Offset(0))
+    "Z" -> Ok(utc)
+    "z" -> Ok(utc)
 
     // Parse +-hh:mm format
     _ -> {
@@ -354,7 +439,7 @@ pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
       })
 
       case sign, int.parse(hour), int.parse(minute) {
-        _, Ok(0), Ok(0) -> Ok(Offset(0))
+        _, Ok(0), Ok(0) -> Ok(utc)
         "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
           Ok(Offset(-{ hour * 60 + minute }))
         "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->

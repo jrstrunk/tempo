@@ -23,12 +23,10 @@
 //// ```gleam
 //// import tempo/datetime
 //// 
-//// pub fn is_30_mins_old(datetime_str: String) {
-////   let my_dt = datetime.from_string(datetime_str)
-//// 
-////   my_dt
-////   |> datetime.is_equal(
-////      to: my_dt |> datetime.subtract(duration.minutes(30))
+//// pub fn is_30_mins_old(unix_ts: Int) {
+////   datetime.from_unix_utc(unix_ts)
+////   |> datetime.is_equal_or_earlier(
+////      to: datetime.now_utc() |> datetime.subtract(duration.minutes(30))
 ////   )
 //// }
 //// ```
@@ -751,7 +749,7 @@ pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
 /// in a new naive datetime value that represents the original datetime in 
 /// UTC time.
 /// 
-/// P## Examples
+/// ## Examples
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-21T05:36:11.195-04:00")
@@ -772,9 +770,7 @@ pub fn apply_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
 /// // -> datetime.literal("2024-06-21T09:36:11.195Z")
 /// ```
 pub fn to_utc(datetime: tempo.DateTime) -> tempo.DateTime {
-  datetime
-  |> apply_offset
-  |> naive_datetime.set_offset(tempo.utc)
+  tempo.datetime_to_utc(datetime)
 }
 
 /// Converts a datetime to the equivalent time in an offset.
@@ -790,16 +786,12 @@ pub fn to_offset(
   datetime: tempo.DateTime,
   offset: tempo.Offset,
 ) -> tempo.DateTime {
-  datetime
-  |> to_utc
-  |> subtract(offset.to_duration(offset))
-  |> drop_offset
-  |> naive_datetime.set_offset(offset)
+  tempo.datetime_to_offset(datetime, offset)
 }
 
 /// Converts a datetime to the equivalent local datetime. The return value
-/// indicates if the conversion was precise or imprecise. Use mattern
-/// matching to handle the two cases.
+/// indicates if the conversion was precise or imprecise. Use pattern
+/// matching or the `tempo.accept_imprecision` function to handle the two cases.
 /// 
 /// Conversion is based on the host's current offset. If the date of the
 /// supplied datetime matches the date of the host, then we can apply the
@@ -845,8 +837,8 @@ pub fn to_local(
 }
 
 /// Converts a datetime to the equivalent local time. The return value
-/// indicates if the conversion was precise or imprecise. Use mattern
-/// matching to handle the two cases.
+/// indicates if the conversion was precise or imprecise. Use pattern
+/// matching or the `tempo.accept_imprecision` function to handle the two cases.
 /// 
 /// Conversion is based on the host's current offset. If the date of the
 /// supplied datetime matches the date of the host, then we can apply the
@@ -890,8 +882,8 @@ pub fn to_local_time(
 }
 
 /// Converts a datetime to the equivalent local time. The return value
-/// indicates if the conversion was precise or imprecise. Use mattern
-/// matching to handle the two cases.
+/// indicates if the conversion was precise or imprecise. Use pattern
+/// matching or the `tempo.accept_imprecision` function to handle the two cases.
 /// 
 /// Conversion is based on the host's current offset. If the date of the
 /// supplied datetime matches the date of the host, then we can apply the
@@ -932,6 +924,59 @@ pub fn to_local_date(
       |> tempo.naive_datetime_get_date
       |> tempo.Imprecise
   }
+}
+
+/// Converts a datetime to the specified timezone. Relies on an external 
+/// package like `gtz` to provide timezone information. Try to prefer using
+/// `to_local` when converting datetimes to local time, as that does not depend
+/// on any external package.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// import gtz
+/// let assert Ok(tz) = gtz.timezone("America/New_York")
+/// datetime.literal("2024-06-21T06:30:02.334Z")
+/// |> datetime.to_timezone(tz)
+/// |> datetime.to_string
+/// // -> "2024-01-03T02:30:02.334-04:00"
+/// ```
+/// 
+/// ```gleam
+/// import gtz
+/// let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
+/// datetime.from_unix_utc(1_729_257_776)
+/// |> datetime.to_timezone(local_tz)
+/// |> datetime.to_string
+/// // -> "2024-10-18T14:22:56.000+01:00"
+/// ```
+pub fn to_timezone(
+  datetime: tempo.DateTime,
+  tz: tempo.TimeZoneProvider,
+) -> tempo.DateTime {
+  tempo.datetime_to_tz(datetime, tz)
+}
+
+/// Gets the name of the timezone the datetime is in.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T06:30:02.334Z")
+/// |> datetime.get_timezone_name
+/// // -> None
+/// ```
+/// 
+/// ```gleam
+/// import gtz
+/// let assert Ok(tz) = gtz.timezone("Europe/London")
+/// datetime.now_local()
+/// |> datetime.to_timezone(tz)
+/// |> datetime.get_timezone_name
+/// // -> Some("Europe/London")
+/// ```
+pub fn get_timezone_name(datetime: tempo.DateTime) -> option.Option(String) {
+  tempo.datetime_get_tz(datetime)
 }
 
 /// Compares two datetimes.
@@ -1163,10 +1208,7 @@ pub fn subtract(
   datetime: tempo.DateTime,
   duration duration_to_subtract: tempo.Duration,
 ) -> tempo.DateTime {
-  datetime
-  |> drop_offset
-  |> naive_datetime.subtract(duration: duration_to_subtract)
-  |> naive_datetime.set_offset(datetime |> tempo.datetime_get_offset)
+  tempo.datetime_subtract(datetime, duration: duration_to_subtract)
 }
 
 /// Gets the time left in the day.
