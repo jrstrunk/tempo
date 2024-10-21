@@ -60,6 +60,16 @@ pub fn parse_any_date_test() {
   |> should.equal(#(Some(date.literal("2024-06-22")), None, None))
 }
 
+pub fn parse_any_date_single_digit_test() {
+  tempo.parse_any("2024/6/2")
+  |> should.equal(#(Some(date.literal("2024-06-02")), None, None))
+}
+
+pub fn parse_any_date_single_digit_human_test() {
+  tempo.parse_any("7/8/2024")
+  |> should.equal(#(Some(date.literal("2024-07-08")), None, None))
+}
+
 pub fn parse_any_time_test() {
   tempo.parse_any("13:42:11")
   |> should.equal(#(None, Some(time.literal("13:42:11")), None))
