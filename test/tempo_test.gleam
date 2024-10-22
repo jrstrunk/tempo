@@ -65,8 +65,18 @@ pub fn parse_any_date_single_digit_test() {
   |> should.equal(#(Some(date.literal("2024-06-02")), None, None))
 }
 
-pub fn parse_any_date_single_digit_human_test() {
+pub fn parse_any_date_single_digit_us_test() {
   tempo.parse_any("7/8/2024")
+  |> should.equal(#(Some(date.literal("2024-07-08")), None, None))
+}
+
+pub fn parse_any_date_ordinal_test() {
+  tempo.parse_any("June 21st, 2024")
+  |> should.equal(#(Some(date.literal("2024-06-21")), None, None))
+}
+
+pub fn parse_any_date_single_digit_ordinal_test() {
+  tempo.parse_any("July 8th, 2024")
   |> should.equal(#(Some(date.literal("2024-07-08")), None, None))
 }
 

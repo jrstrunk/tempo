@@ -1573,7 +1573,7 @@ pub fn parse_any(
 
   use date_human_re <- result_guard(
     when_error: regex.from_string(
-      "(\\d{1,2}|January|Jan|january|jan|February|Feb|february|feb|March|Mar|march|mar|April|Apr|april|apr|May|may|June|Jun|june|jun|July|Jul|july|jul|August|Aug|august|aug|September|Sep|september|sep|October|Oct|october|oct|November|Nov|november|nov|December|Dec|december|dec)[-_/\\.\\s,]{0,2}(\\d{1,2})[-_/\\.\\s,]{0,2}(\\d{4})",
+      "(\\d{1,2}|January|Jan|january|jan|February|Feb|february|feb|March|Mar|march|mar|April|Apr|april|apr|May|may|June|Jun|june|jun|July|Jul|july|jul|August|Aug|august|aug|September|Sep|september|sep|October|Oct|october|oct|November|Nov|november|nov|December|Dec|december|dec)[-_/\\.\\s,]{0,2}(\\d{1,2})(?:st|nd|rd|th)?[-_/\\.\\s,]{0,2}(\\d{4})",
     ),
     return: empty_result,
   )
