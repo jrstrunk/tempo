@@ -70,7 +70,6 @@ pub fn main() {
     // send somewhere external, then retrieve it
     |> dynamic.from
     |> datetime.from_dynamic_string
-
   my_dt == faulty_external_dt
   // -> False, because sub-millisecond precision was lost
 }
@@ -142,11 +141,6 @@ pub fn main() {
         <> tempo.now_utc_adjusted(by: duration.hours(3))
         |> datetime.format("h:mm a"),
       )
-
-      run_long_task(for: date.current_local())
-    }
-  }
-
   io.println("Phew, that only took " <> duration.since(timer))
 }
 
