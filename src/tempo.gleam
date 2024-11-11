@@ -2191,7 +2191,7 @@ pub type UncertainConversion(a) {
 /// datetime.literal("2024-06-21T23:17:00Z")
 /// |> datetime.to_local
 /// |> tempo.accept_imprecision
-/// |> datetime.to_string
+/// |> datetime.to_text
 /// // -> "2024-06-21T19:17:00-04:00"
 /// ```
 pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {

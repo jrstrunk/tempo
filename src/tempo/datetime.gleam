@@ -11,7 +11,7 @@
 ////   // -> "Fri @ 6:00 AM, +05:00"
 //// 
 ////   datetime.parse("06:21:2024 23:17:07.123Z", "MM:DD:YYYY HH:mm:ss.SSSZ")
-////   |> datetime.to_string
+////   |> datetime.to_text
 ////   // -> "2024-06-21T23:17:07.123Z"
 //// 
 ////   datetime.now_local()
@@ -50,8 +50,10 @@ import gleam/dynamic
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import gleam/string_builder
 import tempo
 import tempo/date
+import tempo/month
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -87,7 +89,7 @@ pub fn new(
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-13T23:04:00.009+10:00")
-/// |> datetime.to_string
+/// |> datetime.to_text
 /// // -> "2024-06-13T23:04:00.009+10:00"
 /// ```
 pub fn literal(datetime: String) -> tempo.DateTime {
@@ -234,8 +236,82 @@ fn split_time_and_offset(time_with_offset: String) {
 /// datetime.to_string(my_datetime)
 /// // -> "2024-06-21T05:22:22.009534Z" 
 /// ```
+@deprecated("Use `to_text` for the same functionality, or `serialize` for sending datetime values outside of Gleam to later be parsed by this library.")
 pub fn to_string(datetime: tempo.DateTime) -> String {
   tempo.datetime_to_string(datetime)
+}
+
+/// Returns a string representation of a datetime value in the ISO 8601
+/// format with millisecond precision. If a different precision is needed, 
+/// use the `format` function. If serializing to send outside of Gleam and then
+/// parse back into a datetime value, use the `serialize` function.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.now_utc()
+/// |> datetime.to_text
+/// // -> "2024-06-21T05:22:22.009Z" 
+/// ```
+pub fn to_text(datetime: tempo.DateTime) -> String {
+  datetime |> tempo.datetime_get_naive |> naive_datetime.to_string
+  <> case datetime |> tempo.datetime_get_offset |> tempo.offset_get_minutes {
+    0 -> "Z"
+    _ -> datetime |> tempo.datetime_get_offset |> offset.to_string
+  }
+}
+
+/// Serializes a datetime value to a string in the compact, precise format  
+/// `YYYYMMDDTHHmmss.SSSSSz`. Useful for sending a complete datetime value
+/// outside of Gleam then parsing it back into a datetime value later.
+/// If serializing the current time, see `now_wall`. Use the `to_text` function
+/// when displaying datetimes or simply logging them.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let my_dt = datetime.literal("2024-06-21T23:17:07.3752Z")
+///
+/// let recovered_dt = 
+///   datetime.serialize(my_dt)
+///   |> dynamic.from
+///   // store in a database, then retrieve it
+///   |> datetime.from_dynamic_string
+/// 
+/// my_dt == recovered_dt
+/// // -> True
+/// ```
+pub fn serialize(datetime: tempo.DateTime) -> String {
+  let d = get_date(datetime)
+  let t = get_time(datetime)
+  let o = get_offset(datetime)
+
+  string_builder.from_strings([
+    date.get_year(d) |> int.to_string |> string.pad_left(4, with: "0"),
+    date.get_month(d)
+      |> month.to_int
+      |> int.to_string
+      |> string.pad_left(2, with: "0"),
+    date.get_day(d) |> int.to_string |> string.pad_left(2, with: "0"),
+    "T",
+    time.get_hour(t) |> int.to_string |> string.pad_left(2, with: "0"),
+    time.get_minute(t) |> int.to_string |> string.pad_left(2, with: "0"),
+    time.get_second(t) |> int.to_string |> string.pad_left(2, with: "0"),
+    ".",
+    time.get_nanosecond(t) |> int.to_string |> string.pad_left(9, with: "0"),
+    case o |> tempo.offset_get_minutes {
+      0 -> "Z"
+      _ -> {
+        let str_offset = o |> offset.to_string
+
+        case str_offset |> string.split(":") {
+          [hours, "00"] -> hours
+          _ -> str_offset
+        }
+      }
+    },
+  ])
+  |> string_builder.to_string
 }
 
 /// Parses a datetime string in the provided format. Always prefer using
@@ -888,7 +964,7 @@ pub fn to_local_date(
 /// let assert Ok(tz) = gtz.timezone("America/New_York")
 /// datetime.literal("2024-06-21T06:30:02.334Z")
 /// |> datetime.to_timezone(tz)
-/// |> datetime.to_string
+/// |> datetime.to_text
 /// // -> "2024-01-03T02:30:02.334-04:00"
 /// ```
 /// 
@@ -897,7 +973,7 @@ pub fn to_local_date(
 /// let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
 /// datetime.from_unix_utc(1_729_257_776)
 /// |> datetime.to_timezone(local_tz)
-/// |> datetime.to_string
+/// |> datetime.to_text
 /// // -> "2024-10-18T14:22:56.000+01:00"
 /// ```
 pub fn to_timezone(
