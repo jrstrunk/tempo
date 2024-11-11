@@ -21,7 +21,7 @@ gleam add gtz
 [![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gtempo)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gtempo/)
 
-#### Parsing and Formatting Example
+#### Parsing and Formatting
 
 ```gleam
 import tempo
@@ -40,7 +40,35 @@ pub fn main() {
 }
 ```
 
-#### Time Zone Conversion Example
+#### Serializing DateTimes
+```gleam
+import tempo/datetime
+import dynamic
+
+pub fn main() {
+  let my_dt = datetime.now_local()
+
+  let assert Ok(external_dt) =
+    datetime.serialize(my_dt)
+    // send somewhere external, then retrieve it
+    |> dynamic.from
+    |> datetime.from_dynamic_string
+
+  my_dt == external_dt
+  // -> True
+
+  let assert Ok(faulty_external_dt) =
+    datetime.to_text(my_dt)
+    // send somewhere external, then retrieve it
+    |> dynamic.from
+    |> datetime.from_dynamic_string
+  
+  my_dt == faulty_external_dt
+  // -> False, because sub-millisecond precision was lost
+}
+```
+
+#### Time Zone Conversion
 
 ```gleam
 import gtz
@@ -51,21 +79,21 @@ pub fn main() {
 
   datetime.from_unix_utc(1_729_257_776)
   |> datetime.to_timezone(local_tz)
-  |> datetime.to_string
+  |> datetime.to_text
   |> io.println
 
   let assert Ok(tz) = gtz.timezone("America/New_York")
 
   datetime.literal("2024-01-03T05:30:02.334Z")
   |> datetime.to_timezone(tz)
-  |> datetime.to_string
+  |> datetime.to_text
   |> io.println
 }
 // -> "2024-10-18T14:22:56.000+01:00"
 // -> "2024-01-03T00:30:02.334-05:00"
 ```
 
-#### Time-Based Logical Branching and Logging Example
+#### Time-Based Logical Branching and Logging
 
 ```gleam
 import gleam/int
@@ -95,7 +123,7 @@ pub fn main() {
         <> " minutes! This should take until "
         <> datetime.now_utc()
         |> datetime.add(duration.minutes(16))
-        |> datetime.to_string
+        |> datetime.to_text
         <> " UTC",
       )
 
@@ -107,7 +135,7 @@ pub fn main() {
         "No rush :) This should take until "
         <> datetime.now_local()
         |> datetime.add(duration.hours(3))
-        |> datetime.to_string,
+        |> datetime.to_text,
       )
 
       run_long_task(for: date.current_local())
@@ -122,7 +150,7 @@ pub fn main() {
 // -> Phew, that only took 978 microseconds
 ```
 
-#### Iterating Over a Date Range Example
+#### Iterating Over a Date Range
 
 ```gleam
 import gleam/iterator
@@ -144,7 +172,7 @@ pub fn main() {
 }
 ```
 
-#### Waiting Until a Specific Time Example
+#### Waiting Until a Specific Time
 
 ```gleam
 import gleam/erlang/process
@@ -188,7 +216,7 @@ pub fn main() {
 
   datetime.literal("2024-01-03T05:30:02.334Z")
   |> datetime.to_timezone(tz)
-  |> datetime.to_string
+  |> datetime.to_text
   // -> "2024-06-12T06:47:00.000-04:00"
 }
 ```

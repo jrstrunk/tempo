@@ -382,7 +382,9 @@ pub fn get_nanosecond(time: tempo.Time) -> Int {
   time |> tempo.time_get_nano
 }
 
-/// Converts a time value to a string in the format `hh:mm:ss.s`
+/// Converts a time value to a string in the format `hh:mm:ss.s` with 
+/// millisecond precision. If a different precision is needed, use the `format` 
+/// function.
 /// 
 /// ## Example
 /// 

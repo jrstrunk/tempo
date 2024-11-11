@@ -182,14 +182,15 @@ pub fn from_string(
 }
 
 /// Returns a string representation of a naive datetime value in the ISO 8601
-/// format
+/// format with millisecond precision. If a different precision is needed, 
+/// use the `format` function. 
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.to_string
-/// // -> "2024-06-21T23:17:00"
+/// // -> "2024-06-21T23:17:00.000"
 /// ```
 pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
   datetime
