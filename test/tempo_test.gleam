@@ -1,14 +1,9 @@
 import gleam/option.{None, Some}
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/date
 import tempo/offset
 import tempo/time
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn parse_any_all_test() {
   tempo.parse_any("2024/06/22 at 13:42:11.314 in +05:00")

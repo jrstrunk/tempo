@@ -1,11 +1,6 @@
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/duration
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn monotonic_time_start_stop_test() {
   duration.start_monotonic()

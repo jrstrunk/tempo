@@ -1,7 +1,6 @@
 import gleam/dynamic
 import gleam/option.{None, Some}
 import gleam/order
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/date
@@ -11,10 +10,6 @@ import tempo/naive_datetime
 import tempo/offset
 import tempo/period
 import tempo/time
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn from_string_negative_offset_test() {
   datetime.from_string("2024-06-13T13:42:11.354053-04:00")

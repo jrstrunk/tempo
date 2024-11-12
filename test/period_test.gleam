@@ -1,15 +1,10 @@
 import gleam/iterator
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/date
 import tempo/datetime
 import tempo/naive_datetime
 import tempo/period
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn full_years_apart_same_year_test() {
   date.literal("2024-08-13")

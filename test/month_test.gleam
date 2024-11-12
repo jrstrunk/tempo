@@ -1,11 +1,6 @@
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/month
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn get_next_test() {
   month.next(tempo.Jan)

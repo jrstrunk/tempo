@@ -1,6 +1,5 @@
 import gleam/option.{None, Some}
 import gleam/order
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/duration
@@ -9,10 +8,6 @@ import tempo/time
 fn assert_ok(res) {
   let assert Ok(v) = res
   v
-}
-
-pub fn main() {
-  gleeunit.main()
 }
 
 pub fn time_now_test() {

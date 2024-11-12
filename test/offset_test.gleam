@@ -1,12 +1,7 @@
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/duration
 import tempo/offset
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn new_offset_test() {
   offset.new(0)

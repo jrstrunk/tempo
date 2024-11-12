@@ -1,13 +1,8 @@
 import gleam/dynamic
 import gleam/order
 import gleam/string
-import gleeunit
 import gleeunit/should
 import tempo/date
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn date_current_test() {
   date.current_utc()

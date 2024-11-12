@@ -1,6 +1,5 @@
 import gleam/option.{None, Some}
 import gleam/order
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/date
@@ -8,10 +7,6 @@ import tempo/duration
 import tempo/naive_datetime
 import tempo/period
 import tempo/time
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn from_string_test() {
   naive_datetime.from_string("2024-06-13T13:42:11")
