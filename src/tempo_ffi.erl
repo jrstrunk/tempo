@@ -5,12 +5,34 @@
     now_monotonic/0,
     now_unique/0,
     local_offset/0,
+    pause_time/0,
     current_year/0
 ]).
 
 now() -> erlang:system_time(nanosecond).
 
-now_monotonic() -> erlang:monotonic_time(nanosecond).
+pause_time() ->
+    spawn(fun() ->
+        try
+            {ok, ets:new(tempo_state, [set, public, named_table])}
+        catch
+            error:badarg -> {error, nil}
+        end,
+        ets:insert(tempo_state, {paused_time, erlang:monotonic_time(nanosecond)}),
+        receive
+            stop -> ok
+        end
+    end).
+
+now_monotonic() ->
+    try
+        case ets:lookup(tempo_state, paused_time) of
+            [{paused_time, Value}] -> Value;
+            [] -> erlang:monotonic_time(nanosecond)
+        end
+    catch
+        error:badarg -> erlang:monotonic_time(nanosecond)
+    end.
 
 now_unique() -> erlang:unique_integer([positive, monotonic]).
 

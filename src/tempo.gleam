@@ -25,6 +25,23 @@ import gtempo/internal as unit
 // 10. Tempo module logic
 // 11. FFI logic
 
+pub fn set_time(datetime: DateTime) -> Nil {
+  // let utc_dt = datetime |> datetime_apply_offset
+
+  // {
+  //   { date_to_unix_utc(utc_dt.date) * 1_000_000_000 }
+  //   + time_to_nanoseconds(utc_dt.time)
+  // }
+  // |> set_time_ffi
+  pause_time_ffi()
+}
+
+@external(erlang, "tempo_ffi", "set_time")
+fn set_time_ffi(ts_nano: Int) -> Nil
+
+@external(erlang, "tempo_ffi", "pause_time")
+fn pause_time_ffi() -> Nil
+
 // -------------------------------------------------------------------------- //
 //                            DateTime Logic                                  //
 // -------------------------------------------------------------------------- //
@@ -504,6 +521,48 @@ pub fn new_date(
   day day: Int,
 ) -> Result(Date, DateOutOfBoundsError) {
   date_from_tuple(#(year, month, day))
+}
+
+@internal
+pub fn date_to_unix_utc(date: Date) -> Int {
+  let full_years_since_epoch = date.year - 1970
+  // Offset the year by one to cacluate the number of leap years since the
+  // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
+  // so when the date is 1972, the elpased leap years (1972 has not elapsed
+  // yet) is equal to (2 + 1) / 4, which is 0. When the date is 1973, the
+  // elapsed leap years is equal to (3 + 1) / 4, which is 1, because one leap
+  // year, 1972, has fully elapsed.
+  let full_elapsed_leap_years_since_epoch = { full_years_since_epoch + 1 } / 4
+  let full_elapsed_non_leap_years_since_epoch =
+    full_years_since_epoch - full_elapsed_leap_years_since_epoch
+
+  let year_sec =
+    { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
+    + { full_elapsed_leap_years_since_epoch * 31_622_400 }
+
+  let feb_milli = case is_leap_year(date.year) {
+    True -> 2_505_600
+    False -> 2_419_200
+  }
+
+  let month_sec = case date.month {
+    Jan -> 0
+    Feb -> 2_678_400
+    Mar -> 2_678_400 + feb_milli
+    Apr -> 5_356_800 + feb_milli
+    May -> 7_948_800 + feb_milli
+    Jun -> 10_627_200 + feb_milli
+    Jul -> 13_219_200 + feb_milli
+    Aug -> 15_897_600 + feb_milli
+    Sep -> 18_576_000 + feb_milli
+    Oct -> 21_168_000 + feb_milli
+    Nov -> 23_846_400 + feb_milli
+    Dec -> 26_438_400 + feb_milli
+  }
+
+  let day_sec = { date.day - 1 } * 86_400
+
+  year_sec + month_sec + day_sec
 }
 
 @internal

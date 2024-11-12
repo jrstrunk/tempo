@@ -606,44 +606,7 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
 /// instead and get the date from there if they need it.
 @internal
 pub fn to_unix_utc(date: tempo.Date) -> Int {
-  let full_years_since_epoch = tempo.date_get_year(date) - 1970
-  // Offset the year by one to cacluate the number of leap years since the
-  // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
-  // so when the date is 1972, the elpased leap years (1972 has not elapsed
-  // yet) is equal to (2 + 1) / 4, which is 0. When the date is 1973, the
-  // elapsed leap years is equal to (3 + 1) / 4, which is 1, because one leap
-  // year, 1972, has fully elapsed.
-  let full_elapsed_leap_years_since_epoch = { full_years_since_epoch + 1 } / 4
-  let full_elapsed_non_leap_years_since_epoch =
-    full_years_since_epoch - full_elapsed_leap_years_since_epoch
-
-  let year_sec =
-    { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
-    + { full_elapsed_leap_years_since_epoch * 31_622_400 }
-
-  let feb_milli = case year.is_leap_year(date |> tempo.date_get_year) {
-    True -> 2_505_600
-    False -> 2_419_200
-  }
-
-  let month_sec = case date |> tempo.date_get_month {
-    tempo.Jan -> 0
-    tempo.Feb -> 2_678_400
-    tempo.Mar -> 2_678_400 + feb_milli
-    tempo.Apr -> 5_356_800 + feb_milli
-    tempo.May -> 7_948_800 + feb_milli
-    tempo.Jun -> 10_627_200 + feb_milli
-    tempo.Jul -> 13_219_200 + feb_milli
-    tempo.Aug -> 15_897_600 + feb_milli
-    tempo.Sep -> 18_576_000 + feb_milli
-    tempo.Oct -> 21_168_000 + feb_milli
-    tempo.Nov -> 23_846_400 + feb_milli
-    tempo.Dec -> 26_438_400 + feb_milli
-  }
-
-  let day_sec = { tempo.date_get_day(date) - 1 } * 86_400
-
-  year_sec + month_sec + day_sec
+  tempo.date_to_unix_utc(date)
 }
 
 /// Returns the UTC date of a unix timestamp in milliseconds. If the local 
