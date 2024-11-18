@@ -119,14 +119,11 @@ pub fn now_local() -> tempo.NaiveDateTime {
 /// // -> "2024-06-21T16:23:23.380413364"
 /// ```
 pub fn now_utc() -> tempo.NaiveDateTime {
-  let #(now_monotonic, now_unique) = tempo.now_monounique()
-
   let now_ts_nano = tempo.now_utc()
 
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano)
-      |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique)),
+    time.from_unix_nano_utc(now_ts_nano),
   )
 }
 
@@ -175,7 +172,7 @@ pub fn from_string(
         date.from_string(date)
         |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
       )
-      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, None, None))
+      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0))
     }
     _ -> Error(tempo.NaiveDateTimeInvalidFormat)
   }
@@ -426,7 +423,7 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 /// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
   tempo.naive_datetime_get_date(datetime)
-  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, None, None))
+  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0))
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and

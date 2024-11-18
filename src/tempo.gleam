@@ -13,17 +13,19 @@ import gleam/string
 import gtempo/internal as unit
 
 // This is a big file. The contents are generally ordered by:
-// 1. DateTime logic (funcctions starting with `dt_`)
-// 2. NaiveDateTime logic (functions starting with `ndt_`)
-// 3. Offset logic (functions starting with `offset_`)
-// 4. Date logic (functions starting with `date_`)
-// 5. Month logic (functions starting with `month_`)
-// 6. Year logic (functions starting with `year_`)
-// 7. Time logic (functions starting with `time_`)
-// 8. Duration logic (functions starting with `dur_`)
-// 9. Period logic (functions starting with `period_`)
-// 10. Tempo module logic
-// 11. FFI logic
+// - Moment logic (functions starting with `_moment`)
+// - DateTime logic (funcctions starting with `datetime_`)
+// - NaiveDateTime logic (functions starting with `naive_datetime_`)
+// - Offset logic (functions starting with `offset_`)
+// - Date logic (functions starting with `date_`)
+// - Month logic (functions starting with `month_`)
+// - Year logic (functions starting with `year_`)
+// - Time logic (functions starting with `time_`)
+// - Duration logic (functions starting with `dur_`)
+// - Period logic (functions starting with `period_`)
+// - Tempo module logic
+// - FFI logic
+
 
 // -------------------------------------------------------------------------- //
 //                            DateTime Logic                                  //
@@ -129,14 +131,7 @@ pub fn datetime_apply_offset(datetime: DateTime) -> NaiveDateTime {
 
   // Applying an offset does not change the abosolute time value, so we need
   // to preserve the monotonic and unique values.zzzz
-  NaiveDateTime(
-    date: applied.date,
-    time: Time(
-      ..{ applied.time },
-      monotonic: datetime.naive.time.monotonic,
-      unique: datetime.naive.time.unique,
-    ),
-  )
+  NaiveDateTime(date: applied.date, time: applied.time)
 }
 
 @internal
@@ -895,26 +890,12 @@ pub fn year_days(of year: Int) -> Int {
 /// different precisions between second and nanosecond, depending on what 
 /// your application needs.
 pub opaque type Time {
-  Time(
-    hour: Int,
-    minute: Int,
-    second: Int,
-    nanosecond: Int,
-    monotonic: option.Option(Int),
-    unique: option.Option(Int),
-  )
+  Time(hour: Int, minute: Int, second: Int, nanosecond: Int)
 }
 
 @internal
-pub fn time(
-  hour hour,
-  minute minute,
-  second second,
-  nano nanosecond,
-  mono monotonic,
-  unique unique,
-) {
-  Time(hour:, minute:, second:, nanosecond:, monotonic:, unique:)
+pub fn time(hour hour, minute minute, second second, nano nanosecond) {
+  Time(hour:, minute:, second:, nanosecond:)
 }
 
 @internal
@@ -938,29 +919,8 @@ pub fn time_get_nano(time: Time) {
 }
 
 @internal
-pub fn time_get_mono(time: Time) {
-  time.monotonic
-}
-
-@internal
-pub fn time_get_unique(time: Time) {
-  time.unique
-}
-
-@internal
-pub fn time_set_mono(
-  time: Time,
-  monotonic: option.Option(Int),
-  unique: option.Option(Int),
-) {
-  Time(
-    time.hour,
-    time.minute,
-    time.second,
-    time.nanosecond,
-    monotonic:,
-    unique:,
-  )
+pub fn time_set_mono(time: Time) {
+  Time(time.hour, time.minute, time.second, time.nanosecond)
 }
 
 @internal
@@ -969,7 +929,7 @@ pub fn new_time(
   minute: Int,
   second: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, 0, None, None) |> validate_time
+  Time(hour, minute, second, 0) |> validate_time
 }
 
 @internal
@@ -979,7 +939,7 @@ pub fn new_time_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, millisecond * 1_000_000, None, None)
+  Time(hour, minute, second, millisecond * 1_000_000)
   |> validate_time
 }
 
@@ -990,7 +950,7 @@ pub fn new_time_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, microsecond * 1000, None, None)
+  Time(hour, minute, second, microsecond * 1000)
   |> validate_time
 }
 
@@ -1001,7 +961,7 @@ pub fn new_time_nano(
   second: Int,
   nanosecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, nanosecond, None, None) |> validate_time
+  Time(hour, minute, second, nanosecond) |> validate_time
 }
 
 @internal
@@ -1053,10 +1013,7 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
 
 @internal
 pub fn time_difference(from a: Time, to b: Time) -> Duration {
-  case a.monotonic, b.monotonic {
-    Some(amns), Some(bmns) -> bmns - amns |> Duration
-    _, _ -> time_to_nanoseconds(b) - time_to_nanoseconds(a) |> Duration
-  }
+  time_to_nanoseconds(b) - time_to_nanoseconds(a) |> Duration
 }
 
 @internal
@@ -1093,7 +1050,7 @@ pub fn time_from_nanoseconds(nanoseconds: Int) -> Time {
     - seconds
     * 1_000_000_000
 
-  Time(hours, minutes, seconds, nanoseconds, None, None)
+  Time(hours, minutes, seconds, nanoseconds)
 }
 
 @internal
@@ -1103,66 +1060,48 @@ pub fn time_to_duration(time: Time) -> Duration {
 
 @internal
 pub fn time_compare(a: Time, to b: Time) -> order.Order {
-  case a.unique, b.unique {
-    Some(au), Some(bu) -> int.compare(au, bu)
-    _, _ ->
-      case a.monotonic, b.monotonic {
-        Some(amns), Some(bmns) -> int.compare(amns, bmns)
-        _, _ ->
-          case a.hour == b.hour {
+  case a.hour == b.hour {
+    True ->
+      case a.minute == b.minute {
+        True ->
+          case a.second == b.second {
             True ->
-              case a.minute == b.minute {
-                True ->
-                  case a.second == b.second {
-                    True ->
-                      case a.nanosecond == b.nanosecond {
-                        True -> order.Eq
-                        False ->
-                          case a.nanosecond < b.nanosecond {
-                            True -> order.Lt
-                            False -> order.Gt
-                          }
-                      }
-                    False ->
-                      case a.second < b.second {
-                        True -> order.Lt
-                        False -> order.Gt
-                      }
-                  }
+              case a.nanosecond == b.nanosecond {
+                True -> order.Eq
                 False ->
-                  case a.minute < b.minute {
+                  case a.nanosecond < b.nanosecond {
                     True -> order.Lt
                     False -> order.Gt
                   }
               }
             False ->
-              case a.hour < b.hour {
+              case a.second < b.second {
                 True -> order.Lt
                 False -> order.Gt
               }
           }
+        False ->
+          case a.minute < b.minute {
+            True -> order.Lt
+            False -> order.Gt
+          }
+      }
+    False ->
+      case a.hour < b.hour {
+        True -> order.Lt
+        False -> order.Gt
       }
   }
 }
 
 @internal
 pub fn time_add(a: Time, duration b: Duration) -> Time {
-  let new_time = time_to_nanoseconds(a) + b.nanoseconds |> time_from_nanoseconds
-
-  case a.monotonic {
-    None -> new_time
-    Some(mns) -> new_time |> time_set_mono(Some(mns + duration_get_ns(b)), None)
-  }
+  time_to_nanoseconds(a) + b.nanoseconds |> time_from_nanoseconds
 }
 
 @internal
 pub fn time_subtract(a: Time, duration b: Duration) -> Time {
-  let new_time = time_to_nanoseconds(a) - b.nanoseconds |> time_from_nanoseconds
-
-  case a.monotonic {
-    None -> new_time
-    Some(mns) -> new_time |> time_set_mono(Some(mns - duration_get_ns(b)), None)
-  }
+  time_to_nanoseconds(a) - b.nanoseconds |> time_from_nanoseconds
 }
 
 // -------------------------------------------------------------------------- //
@@ -1284,12 +1223,7 @@ pub fn period_get_start_and_end_date_and_time(
   period,
 ) -> #(Date, Date, Time, Time) {
   case period {
-    DatePeriod(start, end) -> #(
-      start,
-      end,
-      Time(0, 0, 0, 0, None, None),
-      Time(24, 0, 0, 0, None, None),
-    )
+    DatePeriod(start, end) -> #(start, end, Time(0, 0, 0, 0), Time(24, 0, 0, 0))
     NaiveDateTimePeriod(start, end) -> #(
       start.date,
       end.date,

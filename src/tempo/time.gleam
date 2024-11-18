@@ -202,8 +202,6 @@ pub fn literal(time: String) -> tempo.Time {
 /// }
 /// ```
 pub fn now_utc() {
-  let #(now_monotonic, now_unique) = tempo.now_monounique()
-
   let now_ts_nano = tempo.now_utc()
   let date_ts_nano =
     { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
@@ -212,7 +210,6 @@ pub fn now_utc() {
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
   tempo.time_from_nanoseconds(now_ts_nano - date_ts_nano)
-  |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique))
 }
 
 /// Gets the local wall time of the host. Always prefer using 
@@ -231,8 +228,6 @@ pub fn now_utc() {
 /// }
 /// ```
 pub fn now_local() {
-  let #(now_monotonic, now_unique) = tempo.now_monounique()
-
   let now_ts_nano = tempo.now_utc()
   let date_ts_nano =
     { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
@@ -241,7 +236,6 @@ pub fn now_local() {
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
   tempo.time_from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
-  |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique))
 }
 
 /// Gets the monotonic time of the host. Monotonic time
@@ -282,8 +276,7 @@ pub fn now_unique() {
 /// updated and these functions removed.
 @internal
 pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
-  let assert Ok(time) =
-    tempo.time(hour, minute, second, 0, None, None) |> validate
+  let assert Ok(time) = tempo.time(hour, minute, second, 0) |> validate
   time
 }
 
@@ -295,7 +288,7 @@ pub fn test_literal_milli(
   millisecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, millisecond * 1_000_000, None, None)
+    tempo.time(hour, minute, second, millisecond * 1_000_000)
     |> validate
   time
 }
@@ -308,7 +301,7 @@ pub fn test_literal_micro(
   microsecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, microsecond * 1000, None, None)
+    tempo.time(hour, minute, second, microsecond * 1000)
     |> validate
   time
 }
@@ -321,7 +314,7 @@ pub fn test_literal_nano(
   nanosecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, nanosecond, None, None)
+    tempo.time(hour, minute, second, nanosecond)
     |> validate
   time
 }
@@ -480,7 +473,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
             int.parse(second_fraction |> string.pad_right(3, with: "0"))
           {
             Ok(second), Ok(milli) ->
-              Ok(tempo.time(hour, minute, second, milli * 1_000_000, None, None))
+              Ok(tempo.time(hour, minute, second, milli * 1_000_000))
             _, _ ->
               Error(tempo.TimeInvalidFormat(
                 "Non-integer second or millisecond value",
@@ -492,7 +485,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
             int.parse(second_fraction |> string.pad_right(6, with: "0"))
           {
             Ok(second), Ok(micro) ->
-              Ok(tempo.time(hour, minute, second, micro * 1000, None, None))
+              Ok(tempo.time(hour, minute, second, micro * 1000))
             _, _ ->
               Error(tempo.TimeInvalidFormat(
                 "Non-integer second or microsecond value",
@@ -503,8 +496,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
             int.parse(second),
             int.parse(second_fraction |> string.pad_right(9, with: "0"))
           {
-            Ok(second), Ok(nano) ->
-              Ok(tempo.time(hour, minute, second, nano, None, None))
+            Ok(second), Ok(nano) -> Ok(tempo.time(hour, minute, second, nano))
             _, _ ->
               Error(tempo.TimeInvalidFormat(
                 "Non-integer second or nanosecond value",
@@ -516,7 +508,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
 
     Ok(hour), Ok(minute), _ ->
       case int.parse(second) {
-        Ok(second) -> Ok(tempo.time(hour, minute, second, 0, None, None))
+        Ok(second) -> Ok(tempo.time(hour, minute, second, 0))
         _ -> Error(tempo.TimeInvalidFormat("Non-integer second value"))
       }
 
@@ -964,52 +956,36 @@ pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
 /// // -> order.Lt
 /// ```
 pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
-  case tempo.time_get_unique(a), tempo.time_get_unique(b) {
-    Some(au), Some(bu) -> int.compare(au, bu)
-    _, _ ->
-      case tempo.time_get_mono(a), tempo.time_get_mono(b) {
-        Some(amns), Some(bmns) -> int.compare(amns, bmns)
-        _, _ ->
-          case a |> tempo.time_get_hour == b |> tempo.time_get_hour {
+  case a |> tempo.time_get_hour == b |> tempo.time_get_hour {
+    True ->
+      case a |> tempo.time_get_minute == b |> tempo.time_get_minute {
+        True ->
+          case a |> tempo.time_get_second == b |> tempo.time_get_second {
             True ->
-              case a |> tempo.time_get_minute == b |> tempo.time_get_minute {
-                True ->
-                  case
-                    a |> tempo.time_get_second == b |> tempo.time_get_second
-                  {
-                    True ->
-                      case
-                        a |> tempo.time_get_nano == b |> tempo.time_get_nano
-                      {
-                        True -> order.Eq
-                        False ->
-                          case
-                            a |> tempo.time_get_nano < b |> tempo.time_get_nano
-                          {
-                            True -> order.Lt
-                            False -> order.Gt
-                          }
-                      }
-                    False ->
-                      case
-                        a |> tempo.time_get_second < b |> tempo.time_get_second
-                      {
-                        True -> order.Lt
-                        False -> order.Gt
-                      }
-                  }
+              case a |> tempo.time_get_nano == b |> tempo.time_get_nano {
+                True -> order.Eq
                 False ->
-                  case a |> tempo.time_get_minute < b |> tempo.time_get_minute {
+                  case a |> tempo.time_get_nano < b |> tempo.time_get_nano {
                     True -> order.Lt
                     False -> order.Gt
                   }
               }
             False ->
-              case a |> tempo.time_get_hour < b |> tempo.time_get_hour {
+              case a |> tempo.time_get_second < b |> tempo.time_get_second {
                 True -> order.Lt
                 False -> order.Gt
               }
           }
+        False ->
+          case a |> tempo.time_get_minute < b |> tempo.time_get_minute {
+            True -> order.Lt
+            False -> order.Gt
+          }
+      }
+    False ->
+      case a |> tempo.time_get_hour < b |> tempo.time_get_hour {
+        True -> order.Lt
+        False -> order.Gt
       }
   }
 }
@@ -1222,28 +1198,10 @@ pub fn difference(from a: tempo.Time, to b: tempo.Time) -> tempo.Duration {
 /// // -> 25
 /// ```
 pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
-  let diff = case tempo.time_get_mono(a), tempo.time_get_mono(b) {
-    Some(a_mns), Some(b_mns) -> a_mns - b_mns
-    _, _ -> tempo.time_to_nanoseconds(a) - tempo.time_to_nanoseconds(b)
+  case tempo.time_to_nanoseconds(a) - tempo.time_to_nanoseconds(b) {
+    diff if diff < 0 -> -diff |> tempo.duration
+    diff -> diff |> tempo.duration
   }
-
-  case diff {
-    _ if diff < 0 -> -diff |> tempo.duration
-    _ -> diff |> tempo.duration
-  }
-}
-
-/// Adjusts the time by a duration, reversing any side effects (dropping the
-/// unique value). This is only for internal use adjusting times by offset
-/// values in the datetime module.
-@internal
-pub fn adj(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
-  let added = add(a, b)
-  tempo.time_set_mono(
-    added,
-    tempo.time_get_mono(added),
-    tempo.time_get_unique(a),
-  )
 }
 
 /// Adds a duration to a time.

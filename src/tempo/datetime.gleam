@@ -195,14 +195,11 @@ pub fn now_wall_local() -> tempo.DateTime {
 /// // -> "2024-06-14T08:19:20.056Z"
 /// ```
 pub fn now_utc() -> tempo.DateTime {
-  let #(now_monotonic, now_unique) = tempo.now_monounique()
-
   let now_ts_nano = tempo.now_utc()
 
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano)
-      |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique)),
+    time.from_unix_nano_utc(now_ts_nano),
     tempo.utc,
   )
 }
@@ -252,7 +249,7 @@ pub fn from_string(
 
     [date] ->
       date.from_string(date)
-      |> result.map(new(_, tempo.time(0, 0, 0, 0, None, None), tempo.utc))
+      |> result.map(new(_, tempo.time(0, 0, 0, 0), tempo.utc))
       |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) })
 
     _ -> Error(tempo.DateTimeInvalidFormat)

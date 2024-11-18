@@ -1,4 +1,3 @@
-import gleam/option.{None, Some}
 import gleam/order
 import gleeunit/should
 import tempo
@@ -183,27 +182,27 @@ pub fn new_nano_test() {
 }
 
 pub fn to_string_test() {
-  tempo.time(4, 0, 0, 0, None, None)
+  tempo.time(4, 0, 0, 0)
   |> time.to_string
   |> should.equal("04:00:00.000")
 
-  tempo.time(12, 13, 25, 0, None, None)
+  tempo.time(12, 13, 25, 0)
   |> time.to_string
   |> should.equal("12:13:25.000")
 
-  tempo.time(12, 13, 25, 123_000_000, None, None)
+  tempo.time(12, 13, 25, 123_000_000)
   |> time.to_string
   |> should.equal("12:13:25.123")
 
-  tempo.time(8, 7, 25, 1_000_000, None, None)
+  tempo.time(8, 7, 25, 1_000_000)
   |> time.to_string
   |> should.equal("08:07:25.001")
 
-  tempo.time(12, 13, 25, 12_345_000, None, None)
+  tempo.time(12, 13, 25, 12_345_000)
   |> time.to_string
   |> should.equal("12:13:25.012")
 
-  tempo.time(12, 13, 25, 124_567, None, None)
+  tempo.time(12, 13, 25, 124_567)
   |> time.to_string
   |> should.equal("12:13:25.000")
 }
@@ -211,15 +210,15 @@ pub fn to_string_test() {
 pub fn from_string_test() {
   "04:00:00"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(4, 0, 0, 0, None, None)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 0)))
 
   "04:00:01"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(4, 0, 1, 0, None, None)))
+  |> should.equal(Ok(tempo.time(4, 0, 1, 0)))
 
   "4:0:1"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(4, 0, 1, 0, None, None)))
+  |> should.equal(Ok(tempo.time(4, 0, 1, 0)))
 
   "04:00"
   |> time.from_string
@@ -228,49 +227,49 @@ pub fn from_string_test() {
 
   "16:05:23"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(16, 5, 23, 0, None, None)))
+  |> should.equal(Ok(tempo.time(16, 5, 23, 0)))
 
   "16:55:23"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(16, 55, 23, 0, None, None)))
+  |> should.equal(Ok(tempo.time(16, 55, 23, 0)))
 }
 
 pub fn from_string_milli_test() {
   "04:00:00.1"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(4, 0, 0, 100_000_000, None, None)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 100_000_000)))
 
   "14:50:04.945"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(14, 50, 4, 945_000_000, None, None)))
+  |> should.equal(Ok(tempo.time(14, 50, 4, 945_000_000)))
 }
 
 pub fn from_string_micro_test() {
   "04:00:00.0000"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(4, 0, 0, 0, None, None)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 0)))
 
   "04:00:00.0100"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(4, 0, 0, 10_000_000, None, None)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 10_000_000)))
 
   "04:00:00.000007"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(4, 0, 0, 7000, None, None)))
+  |> should.equal(Ok(tempo.time(4, 0, 0, 7000)))
 }
 
 pub fn from_string_nano_test() {
   "15:18:50.0000003"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(15, 18, 50, 300, None, None)))
+  |> should.equal(Ok(tempo.time(15, 18, 50, 300)))
 
   "15:18:50.000000001"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(15, 18, 50, 1, None, None)))
+  |> should.equal(Ok(tempo.time(15, 18, 50, 1)))
 
   "15:18:50.000000000"
   |> time.from_string
-  |> should.equal(Ok(tempo.time(15, 18, 50, 0, None, None)))
+  |> should.equal(Ok(tempo.time(15, 18, 50, 0)))
 }
 
 pub fn from_condensed_string_test() {
@@ -766,91 +765,91 @@ pub fn since_negative_test() {
   |> should.equal(0)
 }
 
-pub fn monotonic_difference_override_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
+// pub fn monotonic_difference_override_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
 
-  time.difference(warped, from: start)
-  |> duration.as_nanoseconds
-  |> should.equal(400)
-}
+//   time.difference(warped, from: start)
+//   |> duration.as_nanoseconds
+//   |> should.equal(400)
+// }
 
-pub fn monotonic_difference_no_override_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-  let warped = tempo.time(8, 30, 12, 600, None, None)
+// pub fn monotonic_difference_no_override_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
+//   let warped = tempo.time(8, 30, 12, 600)
 
-  time.difference(warped, from: start)
-  |> duration.as_nanoseconds
-  |> should.not_equal(400)
-}
+//   time.difference(warped, from: start)
+//   |> duration.as_nanoseconds
+//   |> should.not_equal(400)
+// }
 
-pub fn monotonic_abs_difference_override_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
+// pub fn monotonic_abs_difference_override_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
 
-  time.difference_abs(start, from: warped)
-  |> duration.as_nanoseconds
-  |> should.equal(400)
-}
+//   time.difference_abs(start, from: warped)
+//   |> duration.as_nanoseconds
+//   |> should.equal(400)
+// }
 
-pub fn monotonic_survives_add_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
+// pub fn monotonic_survives_add_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
 
-  time.add(start, duration: duration.nanoseconds(500))
-  |> time.difference(from: warped)
-  |> duration.as_nanoseconds
-  |> should.equal(100)
-}
+//   time.add(start, duration: duration.nanoseconds(500))
+//   |> time.difference(from: warped)
+//   |> duration.as_nanoseconds
+//   |> should.equal(100)
+// }
 
-pub fn monotonic_survives_subtract_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
+// pub fn monotonic_survives_subtract_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
 
-  time.subtract(warped, duration: duration.nanoseconds(200))
-  |> time.difference(from: start)
-  |> duration.as_nanoseconds
-  |> should.equal(200)
-}
+//   time.subtract(warped, duration: duration.nanoseconds(200))
+//   |> time.difference(from: start)
+//   |> duration.as_nanoseconds
+//   |> should.equal(200)
+// }
 
-pub fn unique_compare_override_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
+// pub fn unique_compare_override_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
 
-  time.compare(start, to: warped)
-  |> should.equal(order.Lt)
-}
+//   time.compare(start, to: warped)
+//   |> should.equal(order.Lt)
+// }
 
-pub fn unique_compare_no_override_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-  let warped = tempo.time(8, 30, 12, 600, None, None)
+// pub fn unique_compare_no_override_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
+//   let warped = tempo.time(8, 30, 12, 600)
 
-  time.compare(start, to: warped)
-  |> should.equal(order.Gt)
-}
+//   time.compare(start, to: warped)
+//   |> should.equal(order.Gt)
+// }
 
-pub fn monotonic_compare_override_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(100), None)
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), None)
+// pub fn monotonic_compare_override_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(100), None)
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), None)
 
-  time.compare(start, to: warped)
-  |> should.equal(order.Lt)
-}
+//   time.compare(start, to: warped)
+//   |> should.equal(order.Lt)
+// }
 
-pub fn unique_compare_does_not_survive_add_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
+// pub fn unique_compare_does_not_survive_add_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
 
-  time.add(warped, duration: duration.nanoseconds(500))
-  |> time.compare(to: start)
-  |> should.equal(order.Lt)
-}
+//   time.add(warped, duration: duration.nanoseconds(500))
+//   |> time.compare(to: start)
+//   |> should.equal(order.Lt)
+// }
 
-pub fn unique_compare_does_not_survive_subtract_test() {
-  let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-  let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
+// pub fn unique_compare_does_not_survive_subtract_test() {
+//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
+//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
 
-  time.subtract(warped, duration: duration.nanoseconds(500))
-  |> time.compare(to: start)
-  |> should.equal(order.Lt)
-}
+//   time.subtract(warped, duration: duration.nanoseconds(500))
+//   |> time.compare(to: start)
+//   |> should.equal(order.Lt)
+// }
