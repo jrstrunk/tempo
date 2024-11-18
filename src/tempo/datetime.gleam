@@ -130,6 +130,32 @@ pub fn now_local() -> tempo.DateTime {
   }
 }
 
+/// Gets the current utc datetime of the host without an associated monotonic
+/// time or unique time. Useful for times that will be serialized, then later 
+/// checked for equality with the original value after deserialization. Because
+/// `now_local` and `now_utc` contain monotonic and unique times, equality with
+/// the original value will not be true after serialization and deserialization.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// let wall = datetime.now_wall()
+/// wall == { datetime.serialize(wall) |> datetime.from_string }
+/// // -> True
+/// ```
+pub fn now_wall_utc() -> tempo.DateTime {
+  let dt = now_utc()
+  let ndt = tempo.datetime_get_naive(dt)
+  let offset = tempo.datetime_get_offset(dt)
+
+  let date = ndt |> tempo.naive_datetime_get_date
+  let time =
+    ndt |> tempo.naive_datetime_get_time |> tempo.time_set_mono(None, None)
+
+  tempo.naive_datetime(date, time)
+  |> tempo.datetime(offset)
+}
+
 /// Gets the current local datetime of the host without an associated monotonic
 /// time or unique time. Useful for times that will be serialized, then later 
 /// checked for equality with the original value after deserialization. Because
@@ -143,7 +169,7 @@ pub fn now_local() -> tempo.DateTime {
 /// wall == { datetime.serialize(wall) |> datetime.from_string }
 /// // -> True
 /// ```
-pub fn now_wall() -> tempo.DateTime {
+pub fn now_wall_local() -> tempo.DateTime {
   let dt = now_local()
   let ndt = tempo.datetime_get_naive(dt)
   let offset = tempo.datetime_get_offset(dt)
