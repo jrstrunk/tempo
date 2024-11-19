@@ -249,8 +249,7 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.now_utc()
-/// |> datetime.to_text
+/// datetime.to_text(my_datetime)
 /// // -> "2024-06-21T05:22:22.009Z" 
 /// ```
 pub fn to_text(datetime: tempo.DateTime) -> String {
@@ -264,8 +263,6 @@ pub fn to_text(datetime: tempo.DateTime) -> String {
 /// Serializes a datetime value to a string in the compact, precise format  
 /// `YYYYMMDDTHHmmss.SSSSSz`. Useful for sending a complete datetime value
 /// outside of Gleam then parsing it back into a datetime value later.
-/// If serializing the current time, see `now_wall`. Use the `to_text` function
-/// when displaying datetimes or simply logging them.
 /// 
 /// ## Example
 /// 
