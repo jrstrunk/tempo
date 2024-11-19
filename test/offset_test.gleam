@@ -117,18 +117,18 @@ pub fn from_hour_posative_string_test() {
 }
 
 pub fn to_duration_test() {
-  offset.to_duration(tempo.offset(0))
+  tempo.offset_to_duration(tempo.offset(0))
   |> should.equal(tempo.duration(0))
 
-  offset.to_duration(tempo.offset(5))
+  tempo.offset_to_duration(tempo.offset(5))
   |> should.equal(duration.minutes(-5))
 
-  offset.to_duration(tempo.offset(-720))
+  tempo.offset_to_duration(tempo.offset(-720))
   |> should.equal(duration.minutes(720))
 
-  offset.to_duration(tempo.offset(70))
+  tempo.offset_to_duration(tempo.offset(70))
   |> should.equal(duration.minutes(-70))
 
-  offset.to_duration(tempo.offset(840))
+  tempo.offset_to_duration(tempo.offset(840))
   |> should.equal(duration.minutes(-840))
 }

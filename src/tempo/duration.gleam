@@ -45,7 +45,7 @@ pub opaque type MonotonicClock {
 /// // -> duration.mintues(15)
 /// ```
 pub fn start_monotonic() -> MonotonicClock {
-  tempo.now_monotonic() |> MonotonicClock
+  tempo.now_monotonic_ffi() |> MonotonicClock
 }
 
 /// Returns the duration between the monotonic clock start and the current time.
@@ -59,7 +59,7 @@ pub fn start_monotonic() -> MonotonicClock {
 /// // -> duration.mintues(15)
 /// ```
 pub fn stop_monotonic(start: MonotonicClock) -> tempo.Duration {
-  tempo.now_monotonic() - start.nanoseconds |> tempo.duration
+  tempo.now_monotonic_ffi() - start.nanoseconds |> tempo.duration
 }
 
 /// Returns the formatted duration between the monotonic clock start and 
@@ -137,29 +137,7 @@ pub fn format_as_many(
 /// // -> "1 week, 1 day, 0 hours, and 2 minutes"
 /// ```
 pub fn format(duration: tempo.Duration) {
-  case duration |> tempo.duration_get_ns {
-    n if n >= unit.imprecise_year_nanoseconds ->
-      format_as_many(
-        duration,
-        [YearImprecise, Week, Day, Hour, Minute],
-        decimals: 0,
-      )
-    n if n >= unit.imprecise_week_nanoseconds ->
-      format_as_many(duration, [Week, Day, Hour, Minute], decimals: 0)
-    n if n >= unit.imprecise_day_nanoseconds ->
-      format_as_many(duration, [Day, Hour, Minute], decimals: 0)
-    n if n >= unit.hour_nanoseconds ->
-      format_as_many(duration, [Hour, Minute, Second], decimals: 2)
-    n if n >= unit.minute_nanoseconds ->
-      format_as_many(duration, [Minute, Second], decimals: 3)
-    n if n >= unit.second_nanoseconds ->
-      format_as(duration, Second, decimals: 3)
-    n if n >= unit.millisecond_nanoseconds ->
-      format_as(duration, Millisecond, decimals: 0)
-    n if n >= unit.microsecond_nanoseconds ->
-      format_as(duration, Microsecond, decimals: 0)
-    _ -> format_as(duration, Nanosecond, decimals: 0)
-  }
+  duration |> tempo.duration_get_ns |> unit.format
 }
 
 pub type Unit {

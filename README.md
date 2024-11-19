@@ -6,14 +6,16 @@ Only run a task past a certain time of day, only accept submissions since a cert
 
 Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible.
 
-Supports both the Erlang and JavaScript targets. 
+Supports both the Erlang and JavaScript targets.
 
 ## Installation
 
 ```sh
 gleam add gtempo
 ```
+
 Supports timezones only through the `gtz` package. Add it with:
+
 ```sh
 gleam add gtz
 ```
@@ -41,12 +43,18 @@ pub fn main() {
 ```
 
 #### Serializing DateTimes
+
+If you need to send a datetime value outside of Gleam, then need to parse it back into a datetime value later, prefer using the `datetime.serialize` function.
+
 ```gleam
 import tempo/datetime
+import tempo/moment
+import tempo
 import dynamic
 
 pub fn main() {
-  let my_dt = datetime.now_local()
+  // The `moment.as_datetime` call drops monotonic and unique time
+  let my_dt: DateTime = tempo.now_local() |> moment.as_datetime
 
   let assert Ok(external_dt) =
     datetime.serialize(my_dt)
@@ -62,7 +70,7 @@ pub fn main() {
     // send somewhere external, then retrieve it
     |> dynamic.from
     |> datetime.from_dynamic_string
-  
+
   my_dt == faulty_external_dt
   // -> False, because sub-millisecond precision was lost
 }
@@ -112,18 +120,16 @@ pub fn main() {
   // This is monotonic time
   let timer = duration.start_monotonic()
 
-  case time.now_local() |> time.is_later(than: target_time) {
+  case tempo.is_time_later(than: target_time) {
     True -> {
       io.println(
-        "Oh no! We are late by "
-        <> time.now_local()
-        |> time.difference(from: target_time)
+        "We are late by "
+        <> tempo.time_since(target_time)
         |> duration.as_minutes
         |> int.to_string
         <> " minutes! This should take until "
-        <> datetime.now_utc()
-        |> datetime.add(duration.minutes(16))
-        |> datetime.to_text
+        <> tempo.now_utc_adjusted(by: duration.minutes(16))
+        |> datetime.format("h:mm a"),
         <> " UTC",
       )
 
@@ -133,9 +139,8 @@ pub fn main() {
     False -> {
       io.println(
         "No rush :) This should take until "
-        <> datetime.now_local()
-        |> datetime.add(duration.hours(3))
-        |> datetime.to_text,
+        <> tempo.now_utc_adjusted(by: duration.hours(3))
+        |> datetime.format("h:mm a"),
       )
 
       run_long_task(for: date.current_local())
@@ -146,7 +151,7 @@ pub fn main() {
 }
 
 // -> 2024-06-21 08:06:54.279 booting up!
-// -> Oh no! We are late by 16 minutes! This should take until 12:22:54.301 UTC
+// -> We are late by 16 minutes! This should take until 9:30 PM
 // -> Phew, that only took 978 microseconds
 ```
 

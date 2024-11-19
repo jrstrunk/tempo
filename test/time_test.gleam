@@ -9,21 +9,6 @@ fn assert_ok(res) {
   v
 }
 
-pub fn time_now_test() {
-  time.now_local()
-  |> time.is_later_or_equal(to: time.literal("00:00:00"))
-  |> should.be_true
-
-  time.now_utc()
-  |> time.is_later_or_equal(to: time.literal("00:00:00"))
-  |> should.be_true
-}
-
-pub fn now_unique_test() {
-  { time.now_unique() < time.now_unique() }
-  |> should.be_true
-}
-
 pub fn new_time_test() {
   time.new(0, 0, 0)
   |> should.equal(Ok(time.literal("00:00:00")))

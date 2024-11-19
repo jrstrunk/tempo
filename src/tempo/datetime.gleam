@@ -1,6 +1,6 @@
 //// Functions to use with the `DateTime` type in Tempo.
 //// 
-//// ## Example
+//// ## Examples
 //// 
 //// ```gleam
 //// import tempo/datetime
@@ -15,7 +15,6 @@
 ////   // -> "2024-06-21T23:17:07.123Z"
 //// 
 ////   datetime.now_local()
-////   |> datetime.to_text
 ////   // -> "2024-10-09T13:42:11.195Z"
 //// }
 //// ```
@@ -26,7 +25,7 @@
 //// pub fn is_30_mins_old(unix_ts: Int) {
 ////   datetime.from_unix_utc(unix_ts)
 ////   |> datetime.is_equal_or_earlier(
-////      to: datetime.now_utc() |> datetime.subtract(duration.minutes(30))
+////      to: tempo.now_utc_adjusted(by: duration.minutes(-30))
 ////   )
 //// }
 //// ```
@@ -49,10 +48,7 @@
 import gleam/bool
 import gleam/dynamic
 import gleam/int
-import gleam/list
 import gleam/option.{None, Some}
-import gleam/order
-import gleam/regex
 import gleam/result
 import gleam/string
 import gleam/string_builder
@@ -110,98 +106,56 @@ pub fn literal(datetime: String) -> tempo.DateTime {
   }
 }
 
-/// Gets the current local datetime of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time. Contains an associated monotonic time and unique
-/// time.
+/// Gets the current local datetime of the host as an ISO-8601 formatted string. 
+/// To record the current time (including monotonic and unique), use 
+/// `tempo.now_utc`. To get the current datetime for other purposes,
+/// use `tempo.now_utc |> moment.as_datetime`.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// datetime.now_local()
-/// |> datetime.to_text
 /// // -> "2024-06-14T04:19:20.086-04:00"
 /// ```
-pub fn now_local() -> tempo.DateTime {
+pub fn now_local() -> String {
+  let now_utc = {
+    let now_ts_nano = tempo.now_utc_ffi()
+
+    new(
+      date.from_unix_utc(now_ts_nano / 1_000_000_000),
+      time.from_unix_nano_utc(now_ts_nano),
+      tempo.utc,
+    )
+  }
+
   // This should always be precise because it is the current time.
-  case now_utc() |> to_local {
+  case now_utc |> to_local {
     tempo.Precise(datetime) -> datetime
     tempo.Imprecise(datetime) -> datetime
   }
+  |> to_text
 }
 
-/// Gets the current utc datetime of the host without an associated monotonic
-/// time or unique time. Useful for times that will be serialized, then later 
-/// checked for equality with the original value after deserialization. Because
-/// `now_local` and `now_utc` contain monotonic and unique times, equality with
-/// the original value will not be true after serialization and deserialization.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// let wall = datetime.now_wall()
-/// wall == { datetime.serialize(wall) |> datetime.from_string }
-/// // -> True
-/// ```
-pub fn now_wall_utc() -> tempo.DateTime {
-  let dt = now_utc()
-  let ndt = tempo.datetime_get_naive(dt)
-  let offset = tempo.datetime_get_offset(dt)
-
-  let date = ndt |> tempo.naive_datetime_get_date
-  let time =
-    ndt |> tempo.naive_datetime_get_time |> tempo.time_set_mono(None, None)
-
-  tempo.naive_datetime(date, time)
-  |> tempo.datetime(offset)
-}
-
-/// Gets the current local datetime of the host without an associated monotonic
-/// time or unique time. Useful for times that will be serialized, then later 
-/// checked for equality with the original value after deserialization. Because
-/// `now_local` and `now_utc` contain monotonic and unique times, equality with
-/// the original value will not be true after serialization and deserialization.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// let wall = datetime.now_wall()
-/// wall == { datetime.serialize(wall) |> datetime.from_string }
-/// // -> True
-/// ```
-pub fn now_wall_local() -> tempo.DateTime {
-  let dt = now_local()
-  let ndt = tempo.datetime_get_naive(dt)
-  let offset = tempo.datetime_get_offset(dt)
-
-  let date = ndt |> tempo.naive_datetime_get_date
-  let time =
-    ndt |> tempo.naive_datetime_get_time |> tempo.time_set_mono(None, None)
-
-  tempo.naive_datetime(date, time)
-  |> tempo.datetime(offset)
-}
-
-/// Gets the current UTC datetime of the host.Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time. Contains an associated monotonic time and unique
-/// time.
+/// Gets the current UTC datetime of the host as an ISO-8601 formatted string. 
+/// To record the current time (including monotonic and unique), use 
+/// `tempo.now_utc`. To get the current datetime for other purposes,
+/// use `tempo.now_utc |> moment.as_datetime`.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// datetime.now_utc()
-/// |> datetime.to_text
 /// // -> "2024-06-14T08:19:20.056Z"
 /// ```
-pub fn now_utc() -> tempo.DateTime {
-  let now_ts_nano = tempo.now_utc()
+pub fn now_utc() -> String {
+  let now_ts_nano = tempo.now_utc_ffi()
 
   new(
     date.from_unix_utc(now_ts_nano / 1_000_000_000),
     time.from_unix_nano_utc(now_ts_nano),
     tempo.utc,
   )
+  |> to_text
 }
 
 /// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
@@ -273,25 +227,6 @@ fn split_time_and_offset(time_with_offset: String) {
 }
 
 /// Returns a string representation of a datetime value in the ISO 8601
-/// format.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.now_utc()
-/// |> datetime.to_text
-/// // -> "2024-06-21T05:22:22.009Z" 
-/// ```
-@deprecated("Use `to_text` for the same functionality, or `serialize` for sending datetime values outside of Gleam to later be parsed by this library.")
-pub fn to_string(datetime: tempo.DateTime) -> String {
-  datetime |> tempo.datetime_get_naive |> naive_datetime.to_string
-  <> case datetime |> tempo.datetime_get_offset |> tempo.offset_get_minutes {
-    0 -> "Z"
-    _ -> datetime |> tempo.datetime_get_offset |> offset.to_string
-  }
-}
-
-/// Returns a string representation of a datetime value in the ISO 8601
 /// format with millisecond precision. If a different precision is needed, 
 /// use the `format` function. If serializing to send outside of Gleam and then
 /// parse back into a datetime value, use the `serialize` function.
@@ -299,8 +234,7 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.now_utc()
-/// |> datetime.to_text
+/// datetime.to_text(my_datetime)
 /// // -> "2024-06-21T05:22:22.009Z" 
 /// ```
 pub fn to_text(datetime: tempo.DateTime) -> String {
@@ -314,8 +248,6 @@ pub fn to_text(datetime: tempo.DateTime) -> String {
 /// Serializes a datetime value to a string in the compact, precise format  
 /// `YYYYMMDDTHHmmss.SSSSSz`. Useful for sending a complete datetime value
 /// outside of Gleam then parsing it back into a datetime value later.
-/// If serializing the current time, see `now_wall`. Use the `to_text` function
-/// when displaying datetimes or simply logging them.
 /// 
 /// ## Example
 /// 
@@ -466,7 +398,7 @@ pub fn parse_any(
 /// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 /// 
-/// ## Example
+/// ## Examples
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-21T13:42:11.314-04:00")
@@ -492,55 +424,7 @@ pub fn parse_any(
 /// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
-  let assert Ok(re) = regex.from_string(tempo.format_regex)
-
-  regex.scan(re, fmt)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regex.Match(content, []) -> [
-        content
-          |> date.replace_format(datetime |> get_date)
-          |> time.replace_format(datetime |> get_time)
-          |> replace_format(datetime),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape 
-      // character "[ ... ]" matched, so we should not change anything here.
-      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it 
-      // so just prepend whatever was found
-      regex.Match(content, _) -> [content, ..acc]
-    }
-  })
-  |> string.join("")
-}
-
-fn replace_format(content: String, datetime) -> String {
-  let offset = datetime |> get_offset
-
-  case content {
-    "z" ->
-      case offset |> tempo.offset_get_minutes {
-        0 -> "Z"
-        _ -> {
-          let str_offset = offset |> offset.to_string
-
-          case str_offset |> string.split(":") {
-            [hours, "00"] -> hours
-            _ -> str_offset
-          }
-        }
-      }
-    "Z" -> offset |> offset.to_string
-    "ZZ" ->
-      offset
-      |> offset.to_string
-      |> string.replace(":", "")
-    _ -> content
-  }
+  tempo.datetime_format(datetime, in: fmt)
 }
 
 /// Returns the UTC datetime of a unix timestamp.
@@ -1098,8 +982,7 @@ pub fn to_timezone(
 /// ```gleam
 /// import gtz
 /// let assert Ok(tz) = gtz.timezone("Europe/London")
-/// datetime.now_local()
-/// |> datetime.to_timezone(tz)
+/// datetime.to_timezone(my_datetime, tz)
 /// |> datetime.get_timezone_name
 /// // -> Some("Europe/London")
 /// ```
@@ -1196,7 +1079,7 @@ pub fn is_earlier_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// // -> False
 /// ```
 pub fn is_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
-  compare(a, b) == order.Eq
+  tempo.datetime_is_equal(a, to: b)
 }
 
 /// Checks if the first datetime is later than the second datetime.
@@ -1219,7 +1102,7 @@ pub fn is_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// // -> True
 /// ```
 pub fn is_later(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
-  compare(a, b) == order.Gt
+  tempo.datetime_is_later(a, than: b)
 }
 
 /// Checks if the first datetime is later or equal to the second datetime.

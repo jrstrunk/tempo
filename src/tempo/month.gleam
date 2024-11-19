@@ -29,20 +29,7 @@ import tempo
 /// // -> "Jun"
 /// ```
 pub fn to_short_string(month: tempo.Month) -> String {
-  case month {
-    tempo.Jan -> "Jan"
-    tempo.Feb -> "Feb"
-    tempo.Mar -> "Mar"
-    tempo.Apr -> "Apr"
-    tempo.May -> "May"
-    tempo.Jun -> "Jun"
-    tempo.Jul -> "Jul"
-    tempo.Aug -> "Aug"
-    tempo.Sep -> "Sep"
-    tempo.Oct -> "Oct"
-    tempo.Nov -> "Nov"
-    tempo.Dec -> "Dec"
-  }
+  tempo.month_to_short_string(month)
 }
 
 /// Returns a month's long name.
@@ -56,20 +43,7 @@ pub fn to_short_string(month: tempo.Month) -> String {
 /// // -> "June"
 /// ```
 pub fn to_long_string(month: tempo.Month) -> String {
-  case month {
-    tempo.Jan -> "January"
-    tempo.Feb -> "February"
-    tempo.Mar -> "March"
-    tempo.Apr -> "April"
-    tempo.May -> "May"
-    tempo.Jun -> "June"
-    tempo.Jul -> "July"
-    tempo.Aug -> "August"
-    tempo.Sep -> "September"
-    tempo.Oct -> "October"
-    tempo.Nov -> "November"
-    tempo.Dec -> "December"
-  }
+  tempo.month_to_long_string(month)
 }
 
 /// Gets a month from a month string.

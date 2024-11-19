@@ -10,9 +10,11 @@ import gleam/order
 import gleam/regex
 import gleam/result
 import gleam/string
+import gleam/string_builder
 import gtempo/internal as unit
 
 // This is a big file. The contents are generally ordered by:
+// - Tempo now functions
 // - Moment logic (functions starting with `_moment`)
 // - DateTime logic (funcctions starting with `datetime_`)
 // - NaiveDateTime logic (functions starting with `naive_datetime_`)
@@ -23,9 +25,234 @@ import gtempo/internal as unit
 // - Time logic (functions starting with `time_`)
 // - Duration logic (functions starting with `dur_`)
 // - Period logic (functions starting with `period_`)
-// - Tempo module logic
+// - Tempo module other logic 
 // - FFI logic
 
+// -------------------------------------------------------------------------- //
+//                              Now Logic                                     //
+// -------------------------------------------------------------------------- //
+
+pub fn now_local() -> Moment {
+  let monotonic_ns = now_monotonic_ffi()
+
+  Moment(
+    timestamp_ns: now_utc_ffi(),
+    offset_ns: offset_local_nano(),
+    monotonic_ns:,
+    unique: now_unique_ffi(),
+  )
+}
+
+pub fn now_utc() -> Moment {
+  let monotonic_ns = now_monotonic_ffi()
+
+  Moment(
+    timestamp_ns: now_utc_ffi(),
+    offset_ns: 0,
+    monotonic_ns:,
+    unique: now_unique_ffi(),
+  )
+}
+
+pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
+  let new_ts = now_utc().timestamp_ns + duration.nanoseconds
+
+  DateTime(
+    NaiveDateTime(
+      date_from_unix_utc(new_ts / 1_000_000_000),
+      time_from_unix_nano_utc(new_ts),
+    ),
+    offset: utc,
+  )
+}
+
+pub fn now_formatted(in format: String) -> String {
+  now_utc() |> moment_as_datetime |> datetime_format(format)
+}
+
+// -------------------------------------------------------------------------- //
+//                             Moment Logic                                   //
+// -------------------------------------------------------------------------- //
+
+pub opaque type Moment {
+  Moment(timestamp_ns: Int, offset_ns: Int, monotonic_ns: Int, unique: Int)
+}
+
+@internal
+pub fn moment_as_datetime(moment: Moment) -> DateTime {
+  DateTime(
+    naive: NaiveDateTime(
+      date: moment_as_date(moment),
+      time: moment_as_time(moment),
+    ),
+    offset: Offset(moment.offset_ns / 60_000_000_000),
+  )
+}
+
+@internal
+pub fn moment_as_unix_utc(moment: Moment) -> Int {
+  moment.timestamp_ns / 1_000_000_000
+}
+
+@internal
+pub fn moment_as_unix_milli_utc(moment: Moment) -> Int {
+  moment.timestamp_ns / 1_000_000
+}
+
+@internal
+pub fn moment_serialize_as_datetime(moment: Moment) -> String {
+  moment |> moment_as_datetime |> datetime_serialize
+}
+
+@internal
+pub fn moment_as_date(moment: Moment) -> Date {
+  date_from_unix_utc({ moment.timestamp_ns + moment.offset_ns } / 1_000_000_000)
+}
+
+@internal
+pub fn moment_as_time(moment: Moment) -> Time {
+  time_from_unix_nano_utc(moment.timestamp_ns + moment.offset_ns)
+}
+
+pub fn is_earlier(than datetime: DateTime) -> Bool {
+  datetime_is_earlier(now_utc() |> moment_as_datetime, than: datetime)
+}
+
+pub fn is_earlier_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_earlier_or_equal(now_utc() |> moment_as_datetime, to: datetime)
+}
+
+pub fn is_equal(to datetime: DateTime) -> Bool {
+  datetime_is_equal(now_utc() |> moment_as_datetime, to: datetime)
+}
+
+pub fn is_later(than datetime: DateTime) -> Bool {
+  datetime_is_later(now_utc() |> moment_as_datetime, than: datetime)
+}
+
+pub fn is_later_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_later_or_equal(now_utc() |> moment_as_datetime, to: datetime)
+}
+
+pub fn is_date_earlier(than date: Date) -> Bool {
+  date_is_earlier(now_utc() |> moment_as_date, than: date)
+}
+
+pub fn is_date_earlier_or_equal(to date: Date) -> Bool {
+  date_is_earlier_or_equal(now_utc() |> moment_as_date, to: date)
+}
+
+pub fn is_date_equal(to date: Date) -> Bool {
+  date_is_equal(now_utc() |> moment_as_date, to: date)
+}
+
+pub fn is_date_later(than date: Date) -> Bool {
+  date_is_later(now_utc() |> moment_as_date, than: date)
+}
+
+pub fn is_date_later_or_equal(to date: Date) -> Bool {
+  date_is_later_or_equal(now_utc() |> moment_as_date, to: date)
+}
+
+pub fn is_time_earlier(than time: Time) -> Bool {
+  time_is_earlier(now_utc() |> moment_as_time, than: time)
+}
+
+pub fn is_time_earlier_or_equal(to time: Time) -> Bool {
+  time_is_earlier_or_equal(now_utc() |> moment_as_time, to: time)
+}
+
+pub fn is_time_equal(to time: Time) -> Bool {
+  time_is_equal(now_utc() |> moment_as_time, to: time)
+}
+
+pub fn is_time_later(than time: Time) -> Bool {
+  time_is_later(now_utc() |> moment_as_time, than: time)
+}
+
+pub fn is_time_later_or_equal(to time: Time) -> Bool {
+  time_is_later_or_equal(now_utc() |> moment_as_time, to: time)
+}
+
+pub fn difference(from start: DateTime) -> Duration {
+  now_utc() |> moment_as_datetime |> datetime_difference(from: start)
+}
+
+pub fn since(start start: DateTime) -> Duration {
+  case difference(from: start) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+pub fn until(end end: DateTime) -> Duration {
+  case now_utc() |> moment_as_datetime |> datetime_difference(to: end) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+pub fn difference_time(from start: Time) -> Duration {
+  now_utc() |> moment_as_time |> time_difference(from: start)
+}
+
+pub fn since_time(start start: Time) -> Duration {
+  case difference_time(from: start) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+pub fn until_time(end end: Time) -> Duration {
+  case now_utc() |> moment_as_time |> time_difference(to: end) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+@internal
+pub fn moment_compare(a: Moment, b: Moment) -> order.Order {
+  int.compare(a.unique, b.unique)
+}
+
+@internal
+pub fn moment_is_earlier(a: Moment, than b: Moment) {
+  moment_compare(a, b) == order.Lt
+}
+
+@internal
+pub fn moment_is_earlier_or_equal(a: Moment, to b: Moment) {
+  moment_compare(a, b) == order.Lt || moment_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn moment_is_equal(a: Moment, to b: Moment) {
+  moment_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn moment_is_later(a: Moment, than b: Moment) {
+  moment_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn moment_is_later_or_equal(a: Moment, to b: Moment) {
+  moment_compare(a, b) == order.Gt || moment_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn moment_difference(from a: Moment, to b: Moment) -> Duration {
+  { b.monotonic_ns } - { a.monotonic_ns }
+  |> Duration
+}
+
+@internal
+pub fn moment_since(to moment: Moment, since start: Moment) -> String {
+  let dur = moment |> moment_difference(from: start)
+
+  int.absolute_value(dur.nanoseconds)
+  |> unit.format
+}
 
 // -------------------------------------------------------------------------- //
 //                            DateTime Logic                                  //
@@ -102,6 +329,68 @@ pub fn datetime_get_tz(datetime: DateTime) -> option.Option(String) {
 }
 
 @internal
+pub fn datetime_serialize(datetime: DateTime) -> String {
+  let d = datetime.naive.date
+  let t = datetime.naive.time
+  let o = datetime.offset
+
+  string_builder.from_strings([
+    d.year |> int.to_string |> string.pad_left(4, with: "0"),
+    d.month
+      |> month_to_int
+      |> int.to_string
+      |> string.pad_left(2, with: "0"),
+    d.day |> int.to_string |> string.pad_left(2, with: "0"),
+    "T",
+    t.hour |> int.to_string |> string.pad_left(2, with: "0"),
+    t.minute |> int.to_string |> string.pad_left(2, with: "0"),
+    t.second |> int.to_string |> string.pad_left(2, with: "0"),
+    ".",
+    t.nanosecond |> int.to_string |> string.pad_left(9, with: "0"),
+    case o |> offset_get_minutes {
+      0 -> "Z"
+      _ -> {
+        let str_offset = o |> offset_to_string
+
+        case str_offset |> string.split(":") {
+          [hours, "00"] -> hours
+          _ -> str_offset
+        }
+      }
+    },
+  ])
+  |> string_builder.to_string
+}
+
+@internal
+pub fn datetime_format(datetime: DateTime, in fmt: String) -> String {
+  let assert Ok(re) = regex.from_string(format_regex)
+
+  regex.scan(re, fmt)
+  |> list.reverse
+  |> list.fold(from: [], with: fn(acc, match) {
+    case match {
+      regex.Match(content, []) -> [
+        content
+          |> date_replace_format(datetime.naive.date)
+          |> time_replace_format(datetime.naive.time)
+          |> offset_replace_format(datetime.offset),
+        ..acc
+      ]
+
+      // If there is a non-empty subpattern, then the escape 
+      // character "[ ... ]" matched, so we should not change anything here.
+      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+
+      // This case is not expected, not really sure what to do with it 
+      // so just prepend whatever was found
+      regex.Match(content, _) -> [content, ..acc]
+    }
+  })
+  |> string.join("")
+}
+
+@internal
 pub fn datetime_compare(a: DateTime, to b: DateTime) {
   datetime_apply_offset(a)
   |> naive_datetime_compare(to: datetime_apply_offset(b))
@@ -118,8 +407,26 @@ pub fn datetime_is_earlier_or_equal(a: DateTime, to b: DateTime) -> Bool {
 }
 
 @internal
+pub fn datetime_is_equal(a: DateTime, to b: DateTime) -> Bool {
+  datetime_compare(a, b) == order.Eq
+}
+
+@internal
 pub fn datetime_is_later_or_equal(a: DateTime, to b: DateTime) -> Bool {
   datetime_compare(a, b) == order.Gt || datetime_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn datetime_is_later(a: DateTime, than b: DateTime) -> Bool {
+  datetime_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn datetime_difference(from a: DateTime, to b: DateTime) -> Duration {
+  naive_datetime_difference(
+    from: datetime_apply_offset(a),
+    to: datetime_apply_offset(b),
+  )
 }
 
 @internal
@@ -449,6 +756,37 @@ pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
 }
 
 @internal
+pub fn offset_to_string(offset: Offset) -> String {
+  let #(is_negative, hours) = case offset_get_minutes(offset) / 60 {
+    h if h <= 0 -> #(True, -h)
+    h -> #(False, h)
+  }
+
+  let mins = case offset_get_minutes(offset) % 60 {
+    m if m < 0 -> -m
+    m -> m
+  }
+
+  case is_negative, hours, mins {
+    _, 0, 0 -> "-00:00"
+
+    _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_left(2, with: "0")
+
+    True, h, m ->
+      "-"
+      <> int.to_string(h) |> string.pad_left(2, with: "0")
+      <> ":"
+      <> int.to_string(m) |> string.pad_left(2, with: "0")
+
+    False, h, m ->
+      "+"
+      <> int.to_string(h) |> string.pad_left(2, with: "0")
+      <> ":"
+      <> int.to_string(m) |> string.pad_left(2, with: "0")
+  }
+}
+
+@internal
 pub fn validate_offset(offset: Offset) -> Result(Offset, Nil) {
   // Valid time offsets are between -12:00 and +14:00
   case offset.minutes >= -720 && offset.minutes <= 840 {
@@ -502,6 +840,125 @@ pub fn new_date(
 }
 
 @internal
+pub fn date_replace_format(content: String, date: Date) -> String {
+  case content {
+    "YY" ->
+      date.year
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+      |> string.slice(at_index: -2, length: 2)
+    "YYYY" ->
+      date.year
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 4)
+    "M" ->
+      date.month
+      |> month_to_int
+      |> int.to_string
+    "MM" ->
+      date.month
+      |> month_to_int
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "MMM" ->
+      date.month
+      |> month_to_short_string
+    "MMMM" ->
+      date.month
+      |> month_to_long_string
+    "D" ->
+      date.day
+      |> int.to_string
+    "DD" ->
+      date.day
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "d" ->
+      date
+      |> date_to_day_of_week_number
+      |> int.to_string
+    "dd" ->
+      date
+      |> date_to_day_of_week_short
+      |> string.slice(at_index: 0, length: 2)
+    "ddd" -> date |> date_to_day_of_week_short
+    "dddd" -> date |> date_to_day_of_week_long
+    _ -> content
+  }
+}
+
+fn date_to_day_of_week_short(date: Date) -> String {
+  case date_to_day_of_week_number(date) {
+    0 -> "Sun"
+    1 -> "Mon"
+    2 -> "Tue"
+    3 -> "Wed"
+    4 -> "Thu"
+    5 -> "Fri"
+    6 -> "Sat"
+    _ -> panic as "Invalid day of week found after modulo by 7"
+  }
+}
+
+fn date_to_day_of_week_long(date: Date) -> String {
+  case date_to_day_of_week_number(date) {
+    0 -> "Sunday"
+    1 -> "Monday"
+    2 -> "Tuesday"
+    3 -> "Wednesday"
+    4 -> "Thursday"
+    5 -> "Friday"
+    6 -> "Saturday"
+    _ -> panic as "Invalid day of week found after modulo by 7"
+  }
+}
+
+@internal
+pub fn date_to_day_of_week_number(date: Date) -> Int {
+  let year_code =
+    date.year % 100
+    |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
+
+  let month_code = case date.month {
+    Jan -> 0
+    Feb -> 3
+    Mar -> 3
+    Apr -> 6
+    May -> 1
+    Jun -> 4
+    Jul -> 6
+    Aug -> 2
+    Sep -> 5
+    Oct -> 0
+    Nov -> 3
+    Dec -> 5
+  }
+
+  let century_code = case date.year {
+    year if year < 1752 -> 0
+    year if year < 1800 -> 4
+    year if year < 1900 -> 2
+    year if year < 2000 -> 0
+    year if year < 2100 -> 6
+    year if year < 2200 -> 4
+    year if year < 2300 -> 2
+    year if year < 2400 -> 4
+    _ -> 0
+  }
+
+  let leap_year_code = case is_leap_year(date.year) {
+    True ->
+      case date.month {
+        Jan | Feb -> 1
+        _ -> 0
+      }
+    False -> 0
+  }
+
+  { year_code + month_code + century_code + date.day - leap_year_code } % 7
+}
+
+@internal
 pub fn date_from_tuple(
   date: #(Int, Int, Int),
 ) -> Result(Date, DateOutOfBoundsError) {
@@ -521,6 +978,86 @@ pub fn date_from_tuple(
       }
     False -> Error(DateYearOutOfBounds)
   }
+}
+
+@internal
+pub fn date_from_unix_utc(unix_ts: Int) -> Date {
+  let z = unix_ts / 86_400 + 719_468
+  let era =
+    case z >= 0 {
+      True -> z
+      False -> z - 146_096
+    }
+    / 146_097
+  let doe = z - era * 146_097
+  let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
+  let y = yoe + era * 400
+  let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
+  let mp = { 5 * doy + 2 } / 153
+  let d = doy - { 153 * mp + 2 } / 5 + 1
+  let m =
+    mp
+    + case mp < 10 {
+      True -> 3
+      False -> -9
+    }
+  let y = y + bool.to_int(m <= 2)
+
+  let assert Ok(month) = month_from_int(m)
+
+  Date(y, month, d)
+}
+
+@internal
+pub fn date_to_unix_utc(date: Date) -> Int {
+  let full_years_since_epoch = date_get_year(date) - 1970
+  // Offset the year by one to cacluate the number of leap years since the
+  // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
+  // so when the date is 1972, the elpased leap years (1972 has not elapsed
+  // yet) is equal to (2 + 1) / 4, which is 0. When the date is 1973, the
+  // elapsed leap years is equal to (3 + 1) / 4, which is 1, because one leap
+  // year, 1972, has fully elapsed.
+  let full_elapsed_leap_years_since_epoch = { full_years_since_epoch + 1 } / 4
+  let full_elapsed_non_leap_years_since_epoch =
+    full_years_since_epoch - full_elapsed_leap_years_since_epoch
+
+  let year_sec =
+    { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
+    + { full_elapsed_leap_years_since_epoch * 31_622_400 }
+
+  let feb_milli = case is_leap_year(date |> date_get_year) {
+    True -> 2_505_600
+    False -> 2_419_200
+  }
+
+  let month_sec = case date |> date_get_month {
+    Jan -> 0
+    Feb -> 2_678_400
+    Mar -> 2_678_400 + feb_milli
+    Apr -> 5_356_800 + feb_milli
+    May -> 7_948_800 + feb_milli
+    Jun -> 10_627_200 + feb_milli
+    Jul -> 13_219_200 + feb_milli
+    Aug -> 15_897_600 + feb_milli
+    Sep -> 18_576_000 + feb_milli
+    Oct -> 21_168_000 + feb_milli
+    Nov -> 23_846_400 + feb_milli
+    Dec -> 26_438_400 + feb_milli
+  }
+
+  let day_sec = { date_get_day(date) - 1 } * 86_400
+
+  year_sec + month_sec + day_sec
+}
+
+@internal
+pub fn date_from_unix_micro_utc(unix_ts: Int) -> Date {
+  date_from_unix_utc(unix_ts / 1_000_000)
+}
+
+@internal
+pub fn date_to_unix_micro_utc(date: Date) -> Int {
+  date_to_unix_utc(date) * 1_000_000
 }
 
 @internal
@@ -685,8 +1222,28 @@ pub fn date_compare(a: Date, to b: Date) -> order.Order {
 }
 
 @internal
+pub fn date_is_earlier(a: Date, than b: Date) -> Bool {
+  date_compare(a, b) == order.Lt
+}
+
+@internal
 pub fn date_is_earlier_or_equal(a: Date, to b: Date) -> Bool {
   date_compare(a, b) == order.Lt || date_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn date_is_equal(a: Date, to b: Date) -> Bool {
+  date_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn date_is_later(a: Date, than b: Date) -> Bool {
+  date_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn date_is_later_or_equal(a: Date, to b: Date) -> Bool {
+  date_compare(a, b) == order.Gt || date_compare(a, b) == order.Eq
 }
 
 // -------------------------------------------------------------------------- //
@@ -789,6 +1346,42 @@ pub fn month_to_int(month: Month) -> Int {
     Oct -> 10
     Nov -> 11
     Dec -> 12
+  }
+}
+
+@internal
+pub fn month_to_short_string(month: Month) -> String {
+  case month {
+    Jan -> "Jan"
+    Feb -> "Feb"
+    Mar -> "Mar"
+    Apr -> "Apr"
+    May -> "May"
+    Jun -> "Jun"
+    Jul -> "Jul"
+    Aug -> "Aug"
+    Sep -> "Sep"
+    Oct -> "Oct"
+    Nov -> "Nov"
+    Dec -> "Dec"
+  }
+}
+
+@internal
+pub fn month_to_long_string(month: Month) -> String {
+  case month {
+    Jan -> "January"
+    Feb -> "February"
+    Mar -> "March"
+    Apr -> "April"
+    May -> "May"
+    Jun -> "June"
+    Jul -> "July"
+    Aug -> "August"
+    Sep -> "September"
+    Oct -> "October"
+    Nov -> "November"
+    Dec -> "December"
   }
 }
 
@@ -1002,6 +1595,67 @@ pub fn validate_time(time: Time) -> Result(Time, TimeOutOfBoundsError) {
 }
 
 @internal
+pub fn time_replace_format(content: String, time: Time) -> String {
+  case content {
+    "H" -> time.hour |> int.to_string
+    "HH" ->
+      time.hour
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "h" ->
+      case time.hour {
+        hour if hour == 0 -> 12
+        hour if hour > 12 -> hour - 12
+        hour -> hour
+      }
+      |> int.to_string
+    "hh" ->
+      case time.hour {
+        hour if hour == 0 -> 12
+        hour if hour > 12 -> hour - 12
+        hour -> hour
+      }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "a" ->
+      case time.hour >= 12 {
+        True -> "pm"
+        False -> "am"
+      }
+    "A" ->
+      case time.hour >= 12 {
+        True -> "PM"
+        False -> "AM"
+      }
+    "m" -> time.minute |> int.to_string
+    "mm" ->
+      time.minute
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "s" -> time.second |> int.to_string
+    "ss" ->
+      time.second
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 2)
+    "SSS" ->
+      time.nanosecond
+      |> fn(nano) { nano / 1_000_000 }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 3)
+    "SSSS" ->
+      time.nanosecond
+      |> fn(nano) { nano / 1000 }
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 6)
+    "SSSSS" ->
+      time.nanosecond
+      |> int.to_string
+      |> string.pad_left(with: "0", to: 9)
+    _ -> content
+  }
+}
+
+@internal
 pub fn adjust_12_hour_to_24_hour(hour, am am) {
   case am, hour {
     True, _ if hour == 12 -> 0
@@ -1014,6 +1668,17 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
 @internal
 pub fn time_difference(from a: Time, to b: Time) -> Duration {
   time_to_nanoseconds(b) - time_to_nanoseconds(a) |> Duration
+}
+
+@internal
+pub fn time_from_unix_nano_utc(unix_ts: Int) -> Time {
+  // Subtract the nanoseconds that are responsible for the date.
+  {
+    unix_ts
+    - { date_to_unix_micro_utc(date_from_unix_micro_utc(unix_ts / 1000)) }
+    * 1000
+  }
+  |> time_from_nanoseconds
 }
 
 @internal
@@ -1092,6 +1757,31 @@ pub fn time_compare(a: Time, to b: Time) -> order.Order {
         False -> order.Gt
       }
   }
+}
+
+@internal
+pub fn time_is_earlier(a: Time, than b: Time) -> Bool {
+  time_compare(a, b) == order.Lt
+}
+
+@internal
+pub fn time_is_earlier_or_equal(a: Time, to b: Time) -> Bool {
+  time_compare(a, b) == order.Lt || time_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn time_is_equal(a: Time, to b: Time) -> Bool {
+  time_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn time_is_later(a: Time, than b: Time) -> Bool {
+  time_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn time_is_later_or_equal(a: Time, to b: Time) -> Bool {
+  time_compare(a, b) == order.Gt || time_compare(a, b) == order.Eq
 }
 
 @internal
@@ -1384,6 +2074,29 @@ pub type DateTimeParseAnyError {
 // -------------------------------------------------------------------------- //
 //                          Tempo Module Logic                                //
 // -------------------------------------------------------------------------- //
+
+fn offset_replace_format(content: String, offset: Offset) -> String {
+  case content {
+    "z" ->
+      case offset.minutes {
+        0 -> "Z"
+        _ -> {
+          let str_offset = offset |> offset_to_string
+
+          case str_offset |> string.split(":") {
+            [hours, "00"] -> hours
+            _ -> str_offset
+          }
+        }
+      }
+    "Z" -> offset |> offset_to_string
+    "ZZ" ->
+      offset
+      |> offset_to_string
+      |> string.replace(":", "")
+    _ -> content
+  }
+}
 
 /// The result of an uncertain conversion. Since this package does not track
 /// timezone offsets, it uses the host system's offset to convert to local
@@ -2154,22 +2867,27 @@ fn result_guard(when_error e, return v, or run) {
 @external(erlang, "tempo_ffi", "now")
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal
-pub fn now_utc() -> Int
+pub fn now_utc_ffi() -> Int
 
 @external(erlang, "tempo_ffi", "now_monotonic")
 @external(javascript, "./tempo_ffi.mjs", "now_monotonic")
 @internal
-pub fn now_monotonic() -> Int
+pub fn now_monotonic_ffi() -> Int
 
 @external(erlang, "tempo_ffi", "now_unique")
 @external(javascript, "./tempo_ffi.mjs", "now_unique")
 @internal
-pub fn now_unique() -> Int
+pub fn now_unique_ffi() -> Int
 
 @internal
-pub fn now_monounique() -> #(Int, Int) {
-  #(now_monotonic(), now_unique())
+pub fn offset_local_nano() -> Int {
+  offset_local_minutes() * 60_000_000_000
 }
+
+@external(erlang, "tempo_ffi", "local_offset")
+@external(javascript, "../tempo_ffi.mjs", "local_offset")
+@internal
+pub fn offset_local_minutes() -> Int
 
 @external(erlang, "tempo_ffi", "current_year")
 @external(javascript, "./tempo_ffi.mjs", "current_year")

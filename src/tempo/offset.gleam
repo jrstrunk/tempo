@@ -13,13 +13,11 @@
 //// }
 //// ```
 
-import gleam/int
-import gleam/string
 import tempo
 
 @internal
 pub fn local() -> tempo.Offset {
-  local_minutes() |> tempo.offset
+  tempo.offset_local_minutes() |> tempo.offset
 }
 
 /// Creates a new offset from a number of minutes.
@@ -72,33 +70,7 @@ pub fn literal(offset: String) -> tempo.Offset {
 /// // -> "-00:00"
 /// ```
 pub fn to_string(offset: tempo.Offset) -> String {
-  let #(is_negative, hours) = case tempo.offset_get_minutes(offset) / 60 {
-    h if h <= 0 -> #(True, -h)
-    h -> #(False, h)
-  }
-
-  let mins = case tempo.offset_get_minutes(offset) % 60 {
-    m if m < 0 -> -m
-    m -> m
-  }
-
-  case is_negative, hours, mins {
-    _, 0, 0 -> "-00:00"
-
-    _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_left(2, with: "0")
-
-    True, h, m ->
-      "-"
-      <> int.to_string(h) |> string.pad_left(2, with: "0")
-      <> ":"
-      <> int.to_string(m) |> string.pad_left(2, with: "0")
-
-    False, h, m ->
-      "+"
-      <> int.to_string(h) |> string.pad_left(2, with: "0")
-      <> ":"
-      <> int.to_string(m) |> string.pad_left(2, with: "0")
-  }
+  tempo.offset_to_string(offset)
 }
 
 /// Tries to create a new offset from a string. Accepted formats are 
@@ -115,19 +87,4 @@ pub fn from_string(
   offset: String,
 ) -> Result(tempo.Offset, tempo.OffsetParseError) {
   tempo.offset_from_string(offset)
-}
-
-@internal
-pub fn to_duration(offset: tempo.Offset) -> tempo.Duration {
-  tempo.offset_to_duration(offset)
-}
-
-@external(erlang, "tempo_ffi", "local_offset")
-@external(javascript, "../tempo_ffi.mjs", "local_offset")
-@internal
-pub fn local_minutes() -> Int
-
-@internal
-pub fn local_nano() -> Int {
-  local_minutes() * 60_000_000_000
 }

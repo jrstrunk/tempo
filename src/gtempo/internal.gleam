@@ -39,6 +39,27 @@ pub const millisecond_nanoseconds = 1_000_000
 
 pub const microsecond_nanoseconds = 1000
 
+pub fn format(nanoseconds: Int) {
+  case nanoseconds {
+    n if n >= imprecise_year_nanoseconds ->
+      format_as_many(nanoseconds, [Year, Week, Day, Hour, Minute], decimals: 0)
+    n if n >= imprecise_week_nanoseconds ->
+      format_as_many(nanoseconds, [Week, Day, Hour, Minute], decimals: 0)
+    n if n >= imprecise_day_nanoseconds ->
+      format_as_many(nanoseconds, [Day, Hour, Minute], decimals: 0)
+    n if n >= hour_nanoseconds ->
+      format_as_many(nanoseconds, [Hour, Minute, Second], decimals: 2)
+    n if n >= minute_nanoseconds ->
+      format_as_many(nanoseconds, [Minute, Second], decimals: 3)
+    n if n >= second_nanoseconds -> format_as(nanoseconds, Second, decimals: 3)
+    n if n >= millisecond_nanoseconds ->
+      format_as(nanoseconds, Millisecond, decimals: 0)
+    n if n >= microsecond_nanoseconds ->
+      format_as(nanoseconds, Microsecond, decimals: 0)
+    _ -> format_as(nanoseconds, Nanosecond, decimals: 0)
+  }
+}
+
 pub fn format_as(
   nanoseconds: Int,
   unit unit: Unit,

@@ -92,41 +92,6 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
   }
 }
 
-/// Gets the current local naive datetime of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// naive_datetime.now_local()
-/// |> naive_datetime.to_string
-/// // -> "2024-06-21T12:23:23.380956212"
-/// ```
-pub fn now_local() -> tempo.NaiveDateTime {
-  now_utc() |> subtract(offset.to_duration(offset.local()))
-}
-
-/// Gets the current UTC naive datetime of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time. 
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// naive_datetime.now_utc()
-/// |> naive_datetime.to_string
-/// // -> "2024-06-21T16:23:23.380413364"
-/// ```
-pub fn now_utc() -> tempo.NaiveDateTime {
-  let now_ts_nano = tempo.now_utc()
-
-  new(
-    date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano),
-  )
-}
-
 /// Parses a naive datetime string in the format `YYYY-MM-DDThh:mm:ss.s`,
 /// `YYYY-MM-DD hh:mm:ss.s`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, 
@@ -354,8 +319,8 @@ pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
     case match {
       regex.Match(content, []) -> [
         content
-          |> date.replace_format(naive_datetime |> get_date)
-          |> time.replace_format(naive_datetime |> get_time),
+          |> tempo.date_replace_format(naive_datetime |> get_date)
+          |> tempo.time_replace_format(naive_datetime |> get_time),
         ..acc
       ]
 
@@ -379,11 +344,26 @@ pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
-/// |> naive_datetime.set_utc
+/// |> naive_datetime.as_utc
 /// // -> datetime.literal("2024-06-21T23:17:00Z")
 /// ```
-pub fn set_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
+pub fn as_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
   set_offset(datetime, tempo.utc)
+}
+
+/// Sets a naive datetime's offset to the host's local offset, leaving the 
+/// date and time unchanged while returning a datetime value. 
+/// Alias for `set_offset(naive_datetime, offset.local())`.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-21T23:17:00")
+/// |> naive_datetime.as_local
+/// // -> datetime.literal("2024-06-21T23:17:00+01:00")
+/// ```
+pub fn as_local(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
+  set_offset(datetime, offset.local())
 }
 
 /// Gets the date of a naive datetime.

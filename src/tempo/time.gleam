@@ -1,14 +1,13 @@
 //// Functions to use with the `Time` type in Tempo. The time values are wall
 //// time values unless explicitly stated otherwise.
 //// 
-//// ## Example
+//// ## Examples
 //// 
 //// ```gleam
 //// import tempo/time
 //// 
 //// pub fn is_past_5pm() {
-////   time.now_utc()
-////   |> time.is_later(than: time.literal("17:00"))
+////   tempo.is_time_later(than: time.literal("17:00"))
 //// }
 //// ```
 //// 
@@ -16,25 +15,12 @@
 //// import tempo/time
 //// 
 //// pub fn get_enthusiastic_time() {
-////   time.now_local()
+////   time.literal("13:42")
 ////   |> time.format(
 ////     "[The hour is:] HH, [wow! And even better the minute is:] mm!"
 ////   )
 ////   // -> "The hour is: 13, wow! And even better the minute is: 42!"
 //// }
-//// ```
-//// 
-//// ```gleam
-//// import tempo/time
-//// 
-//// pub fn run_task() {
-////   let resuult = do_long_task()
-//// 
-////   let end_time = time.now_unique()
-//// 
-////   #(end_time, resuult)
-//// }
-//// // -> These tasks are now sortable by end time
 //// ```
 
 import gleam/int
@@ -49,7 +35,6 @@ import gtempo/internal as unit
 import tempo
 import tempo/date
 import tempo/duration
-import tempo/offset
 
 /// Creates a new time value with second precision.
 /// 
@@ -186,9 +171,9 @@ pub fn literal(time: String) -> tempo.Time {
   }
 }
 
-/// Gets the UTC wall time of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time.
+/// Gets the UTC wall time of the host as a string. To time events, use the
+/// `tempo.now_utc` function. To get the current time for other purposes,
+/// use `tempo.now_utc |> moment.as_time`.
 ///
 /// ## Example
 /// 
@@ -201,8 +186,8 @@ pub fn literal(time: String) -> tempo.Time {
 ///   False -> "No rush :)"
 /// }
 /// ```
-pub fn now_utc() {
-  let now_ts_nano = tempo.now_utc()
+pub fn now_utc() -> String {
+  let now_ts_nano = tempo.now_utc_ffi()
   let date_ts_nano =
     { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
     * 1_000_000_000
@@ -210,11 +195,12 @@ pub fn now_utc() {
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
   tempo.time_from_nanoseconds(now_ts_nano - date_ts_nano)
+  |> to_string
 }
 
-/// Gets the local wall time of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time.
+/// Gets the local wall time of the host as a string. To time events, use the
+/// `tempo.now_local` function. To get the current time for other purposes,
+/// use `tempo.now_local |> moment.as_time`.
 /// 
 /// ## Example
 /// 
@@ -227,48 +213,18 @@ pub fn now_utc() {
 ///   False -> "No rush :)"
 /// }
 /// ```
-pub fn now_local() {
-  let now_ts_nano = tempo.now_utc()
+pub fn now_local() -> String {
+  let now_ts_nano = tempo.now_utc_ffi()
   let date_ts_nano =
     { date.to_unix_utc(date.from_unix_utc(now_ts_nano / 1_000_000_000)) }
     * 1_000_000_000
 
   // Subtract the nanoseconds that are responsible for the date and the local
   // offset nanoseconds.
-  tempo.time_from_nanoseconds(now_ts_nano - date_ts_nano + offset.local_nano())
-}
-
-/// Gets the monotonic time of the host. Monotonic time
-/// is useful for timing events; `now_utc` and `now_local` should not be
-/// used for timing events. The `duration` module has nicer functions to use
-/// for timing events and should be preferred over this function.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// time.now_monotonic()
-/// // -> -576_460_750_802_442_634
-/// ```
-pub fn now_monotonic() -> Int {
-  tempo.now_monotonic()
-}
-
-/// Gets a positive unique integer based on the monotonic time of the 
-/// Erlang VM on the Erlang target. Returns the a value that starts at 1 and
-/// increments by 1 with each call on the JavaScript target. This is useful
-/// for tagging and then ordering events by time, but should not be assumed
-/// to represent wall time.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// time.now_unique()
-/// // -> 1
-/// time.now_unique()
-/// // -> 2
-/// ```
-pub fn now_unique() {
-  tempo.now_unique()
+  tempo.time_from_nanoseconds(
+    now_ts_nano - date_ts_nano + tempo.offset_local_nano(),
+  )
+  |> to_string
 }
 
 /// Early on these were part of the public API and used in a lot of tests, 
@@ -617,7 +573,10 @@ pub fn format(time: tempo.Time, in fmt: String) -> String {
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-      regex.Match(content, []) -> [replace_format(content, time), ..acc]
+      regex.Match(content, []) -> [
+        tempo.time_replace_format(content, time),
+        ..acc
+      ]
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.
@@ -629,89 +588,6 @@ pub fn format(time: tempo.Time, in fmt: String) -> String {
     }
   })
   |> string.join("")
-}
-
-@internal
-pub fn replace_format(content: String, time) -> String {
-  case content {
-    "H" -> time |> get_hour |> int.to_string
-    "HH" ->
-      time
-      |> get_hour
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "h" ->
-      time
-      |> get_hour
-      |> fn(hour) {
-        case hour {
-          _ if hour == 0 -> 12
-          _ if hour > 12 -> hour - 12
-          _ -> hour
-        }
-      }
-      |> int.to_string
-    "hh" ->
-      time
-      |> get_hour
-      |> fn(hour) {
-        case hour {
-          _ if hour == 0 -> 12
-          _ if hour > 12 -> hour - 12
-          _ -> hour
-        }
-      }
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "a" ->
-      time
-      |> get_hour
-      |> fn(hour) {
-        case hour >= 12 {
-          True -> "pm"
-          False -> "am"
-        }
-      }
-    "A" ->
-      time
-      |> get_hour
-      |> fn(hour) {
-        case hour >= 12 {
-          True -> "PM"
-          False -> "AM"
-        }
-      }
-    "m" -> time |> get_minute |> int.to_string
-    "mm" ->
-      time
-      |> get_minute
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "s" -> time |> get_second |> int.to_string
-    "ss" ->
-      time
-      |> get_second
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "SSS" ->
-      time
-      |> get_nanosecond
-      |> fn(nano) { nano / 1_000_000 }
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 3)
-    "SSSS" ->
-      time
-      |> get_nanosecond
-      |> fn(nano) { nano / 1000 }
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 6)
-    "SSSSS" ->
-      time
-      |> get_nanosecond
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 9)
-    _ -> content
-  }
 }
 
 /// Gets the UTC time value of a unix timestamp. If the local time is needed,
@@ -796,13 +672,7 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Time {
 /// instead and get the time from there if they need it.
 @internal
 pub fn from_unix_nano_utc(unix_ts: Int) -> tempo.Time {
-  // Subtract the nanoseconds that are responsible for the date.
-  {
-    unix_ts
-    - { date.to_unix_micro_utc(date.from_unix_micro_utc(unix_ts / 1000)) }
-    * 1000
-  }
-  |> tempo.time_from_nanoseconds
+  tempo.time_from_unix_nano_utc(unix_ts)
 }
 
 /// Returns a time value as a tuple of hours, minutes, and seconds. Useful 
@@ -956,38 +826,7 @@ pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
 /// // -> order.Lt
 /// ```
 pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
-  case a |> tempo.time_get_hour == b |> tempo.time_get_hour {
-    True ->
-      case a |> tempo.time_get_minute == b |> tempo.time_get_minute {
-        True ->
-          case a |> tempo.time_get_second == b |> tempo.time_get_second {
-            True ->
-              case a |> tempo.time_get_nano == b |> tempo.time_get_nano {
-                True -> order.Eq
-                False ->
-                  case a |> tempo.time_get_nano < b |> tempo.time_get_nano {
-                    True -> order.Lt
-                    False -> order.Gt
-                  }
-              }
-            False ->
-              case a |> tempo.time_get_second < b |> tempo.time_get_second {
-                True -> order.Lt
-                False -> order.Gt
-              }
-          }
-        False ->
-          case a |> tempo.time_get_minute < b |> tempo.time_get_minute {
-            True -> order.Lt
-            False -> order.Gt
-          }
-      }
-    False ->
-      case a |> tempo.time_get_hour < b |> tempo.time_get_hour {
-        True -> order.Lt
-        False -> order.Gt
-      }
-  }
+  tempo.time_compare(a, to: b)
 }
 
 /// Checks if the first time is earlier than the second time.
@@ -1012,7 +851,7 @@ pub fn compare(a: tempo.Time, to b: tempo.Time) -> order.Order {
 /// // -> False
 /// ```
 pub fn is_earlier(a: tempo.Time, than b: tempo.Time) -> Bool {
-  compare(a, b) == order.Lt
+  tempo.time_is_earlier(a, than: b)
 }
 
 /// Checks if the first time is earlier or equal to the second time.
@@ -1036,7 +875,7 @@ pub fn is_earlier(a: tempo.Time, than b: tempo.Time) -> Bool {
 /// |> time.is_earlier_or_equal(to: time.literal("07:42:12"))
 /// // -> False
 pub fn is_earlier_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
-  compare(a, b) == order.Lt || compare(a, b) == order.Eq
+  tempo.time_is_earlier_or_equal(a, to: b)
 }
 
 /// Checks if the first time is equal to the second time.
@@ -1055,7 +894,7 @@ pub fn is_earlier_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
 /// // -> False
 /// ```
 pub fn is_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
-  compare(a, b) == order.Eq
+  tempo.time_is_equal(a, to: b)
 }
 
 /// Checks if the first time is later than the second time.
@@ -1080,7 +919,7 @@ pub fn is_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
 /// // -> False
 /// ```
 pub fn is_later(a: tempo.Time, than b: tempo.Time) -> Bool {
-  compare(a, b) == order.Gt
+  tempo.time_is_later(a, than: b)
 }
 
 /// Checks if the first time is earlier or equal to the second time.
@@ -1104,7 +943,7 @@ pub fn is_later(a: tempo.Time, than b: tempo.Time) -> Bool {
 /// // -> False
 /// ```
 pub fn is_later_or_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
-  compare(a, b) == order.Gt || compare(a, b) == order.Eq
+  tempo.time_is_later_or_equal(a, to: b)
 }
 
 pub type Boundary {
@@ -1291,7 +1130,7 @@ pub fn until(time: tempo.Time, until: tempo.Time) -> tempo.Duration {
 /// |> duration.as_milliseconds
 /// // -> 0
 /// ```
-pub fn since(time: tempo.Time, since: tempo.Time) -> tempo.Duration {
+pub fn since(time time: tempo.Time, since since: tempo.Time) -> tempo.Duration {
   let dur = time |> difference(from: since)
 
   case dur |> duration.is_negative {

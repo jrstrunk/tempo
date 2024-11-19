@@ -14,7 +14,7 @@
 ////   |> date.to_string
 ////   // -> "2024-06-21"
 //// 
-////   date.now_local()
+////   date.current_local()
 ////   |> date.to_string
 ////   // -> "2024-10-09"
 //// }
@@ -33,7 +33,6 @@
 //// }
 //// ```
 
-import gleam/bool
 import gleam/dynamic
 import gleam/int
 import gleam/list
@@ -45,8 +44,6 @@ import gleam/string
 import gleam/string_builder
 import tempo
 import tempo/month
-import tempo/offset
-import tempo/year
 
 /// A named day of the week.
 pub type DayOfWeek {
@@ -129,7 +126,7 @@ pub fn literal(date: String) -> tempo.Date {
 /// // -> "2024-06-13"
 /// ```
 pub fn current_local() {
-  { tempo.now_utc() + offset.local_nano() } / 1_000_000_000
+  { tempo.now_utc_ffi() + tempo.offset_local_nano() } / 1_000_000_000
   |> from_unix_utc
 }
 
@@ -143,7 +140,7 @@ pub fn current_local() {
 /// // -> "2024-06-14"
 /// ```
 pub fn current_utc() {
-  tempo.now_utc() / 1_000_000_000
+  tempo.now_utc_ffi() / 1_000_000_000
   |> from_unix_utc
 }
 
@@ -376,7 +373,7 @@ pub fn format(date: tempo.Date, in fmt: String) -> String {
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-      regex.Match(content, []) -> [replace_format(content, date), ..acc]
+      regex.Match(content, []) -> [tempo.date_replace_format(content, date), ..acc]
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.
@@ -388,69 +385,6 @@ pub fn format(date: tempo.Date, in fmt: String) -> String {
     }
   })
   |> string.join("")
-}
-
-@internal
-pub fn replace_format(content: String, date) -> String {
-  case content {
-    "YY" ->
-      date
-      |> get_year
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-      |> string.slice(at_index: -2, length: 2)
-    "YYYY" ->
-      date
-      |> get_year
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 4)
-    "M" ->
-      date
-      |> get_month
-      |> month.to_int
-      |> int.to_string
-    "MM" ->
-      date
-      |> get_month
-      |> month.to_int
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "MMM" ->
-      date
-      |> get_month
-      |> month.to_short_string
-    "MMMM" ->
-      date
-      |> get_month
-      |> month.to_long_string
-    "D" ->
-      date
-      |> get_day
-      |> int.to_string
-    "DD" ->
-      date
-      |> get_day
-      |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
-    "d" ->
-      date
-      |> to_day_of_week_number
-      |> int.to_string
-    "dd" ->
-      date
-      |> to_day_of_week
-      |> day_of_week_to_short_string
-      |> string.slice(at_index: 0, length: 2)
-    "ddd" ->
-      date
-      |> to_day_of_week
-      |> day_of_week_to_short_string
-    "dddd" ->
-      date
-      |> to_day_of_week
-      |> day_of_week_to_long_string
-    _ -> content
-  }
 }
 
 /// Returns a date value from a tuple of ints if the values represent the 
@@ -563,30 +497,7 @@ pub fn from_dynamic_string(
 /// instead and get the date from there if they need it.
 @internal
 pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
-  let z = unix_ts / 86_400 + 719_468
-  let era =
-    case z >= 0 {
-      True -> z
-      False -> z - 146_096
-    }
-    / 146_097
-  let doe = z - era * 146_097
-  let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
-  let y = yoe + era * 400
-  let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
-  let mp = { 5 * doy + 2 } / 153
-  let d = doy - { 153 * mp + 2 } / 5 + 1
-  let m =
-    mp
-    + case mp < 10 {
-      True -> 3
-      False -> -9
-    }
-  let y = y + bool.to_int(m <= 2)
-
-  let assert Ok(month) = month.from_int(m)
-
-  tempo.date(y, month, d)
+  tempo.date_from_unix_utc(unix_ts)
 }
 
 /// Returns the UTC unix timestamp of a date, assuming the time on that date 
@@ -606,44 +517,7 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
 /// instead and get the date from there if they need it.
 @internal
 pub fn to_unix_utc(date: tempo.Date) -> Int {
-  let full_years_since_epoch = tempo.date_get_year(date) - 1970
-  // Offset the year by one to cacluate the number of leap years since the
-  // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
-  // so when the date is 1972, the elpased leap years (1972 has not elapsed
-  // yet) is equal to (2 + 1) / 4, which is 0. When the date is 1973, the
-  // elapsed leap years is equal to (3 + 1) / 4, which is 1, because one leap
-  // year, 1972, has fully elapsed.
-  let full_elapsed_leap_years_since_epoch = { full_years_since_epoch + 1 } / 4
-  let full_elapsed_non_leap_years_since_epoch =
-    full_years_since_epoch - full_elapsed_leap_years_since_epoch
-
-  let year_sec =
-    { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
-    + { full_elapsed_leap_years_since_epoch * 31_622_400 }
-
-  let feb_milli = case year.is_leap_year(date |> tempo.date_get_year) {
-    True -> 2_505_600
-    False -> 2_419_200
-  }
-
-  let month_sec = case date |> tempo.date_get_month {
-    tempo.Jan -> 0
-    tempo.Feb -> 2_678_400
-    tempo.Mar -> 2_678_400 + feb_milli
-    tempo.Apr -> 5_356_800 + feb_milli
-    tempo.May -> 7_948_800 + feb_milli
-    tempo.Jun -> 10_627_200 + feb_milli
-    tempo.Jul -> 13_219_200 + feb_milli
-    tempo.Aug -> 15_897_600 + feb_milli
-    tempo.Sep -> 18_576_000 + feb_milli
-    tempo.Oct -> 21_168_000 + feb_milli
-    tempo.Nov -> 23_846_400 + feb_milli
-    tempo.Dec -> 26_438_400 + feb_milli
-  }
-
-  let day_sec = { tempo.date_get_day(date) - 1 } * 86_400
-
-  year_sec + month_sec + day_sec
+  tempo.date_to_unix_utc(date)
 }
 
 /// Returns the UTC date of a unix timestamp in milliseconds. If the local 
@@ -705,7 +579,7 @@ pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
 /// instead and get the date from there if they need it.
 @internal
 pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Date {
-  from_unix_utc(unix_ts / 1_000_000)
+  tempo.date_from_unix_micro_utc(unix_ts)
 }
 
 /// Returns the UTC unix timestamp in microseconds of a date, assuming the
@@ -725,7 +599,7 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Date {
 /// instead and get the date from there if they need it.
 @internal
 pub fn to_unix_micro_utc(date: tempo.Date) -> Int {
-  to_unix_utc(date) * 1_000_000
+  tempo.date_to_unix_micro_utc(date)
 }
 
 /// Compares two dates.
@@ -769,7 +643,7 @@ pub fn compare(a: tempo.Date, to b: tempo.Date) -> order.Order {
 /// // -> False
 /// ```
 pub fn is_earlier(a: tempo.Date, than b: tempo.Date) -> Bool {
-  compare(a, b) == order.Lt
+  tempo.date_is_earlier(a, than: b)
 }
 
 /// Checks if the first date is earlier than or equal to the second date.
@@ -800,7 +674,7 @@ pub fn is_earlier_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
 /// // -> True
 /// ```
 pub fn is_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
-  compare(a, b) == order.Eq
+  tempo.date_is_equal(a, to: b)
 }
 
 /// Checks if the first date is later than the second date.
@@ -819,7 +693,7 @@ pub fn is_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
 /// // -> False
 /// ```
 pub fn is_later(a: tempo.Date, than b: tempo.Date) -> Bool {
-  compare(a, b) == order.Gt
+  tempo.date_is_later(a, than: b)
 }
 
 /// Checks if the first date is later than or equal to the second date.
@@ -838,7 +712,7 @@ pub fn is_later(a: tempo.Date, than b: tempo.Date) -> Bool {
 /// // -> False
 /// ```
 pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
-  compare(a, b) == order.Gt || compare(a, b) == order.Eq
+  tempo.date_is_later_or_equal(a, to: b)
 }
 
 /// Gets the difference between two dates.
@@ -931,54 +805,7 @@ pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
 /// // -> 5
 /// ```
 pub fn to_day_of_week_number(date: tempo.Date) -> Int {
-  let year_code =
-    tempo.date_get_year(date) % 100
-    |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
-
-  let month_code = case date |> tempo.date_get_month {
-    tempo.Jan -> 0
-    tempo.Feb -> 3
-    tempo.Mar -> 3
-    tempo.Apr -> 6
-    tempo.May -> 1
-    tempo.Jun -> 4
-    tempo.Jul -> 6
-    tempo.Aug -> 2
-    tempo.Sep -> 5
-    tempo.Oct -> 0
-    tempo.Nov -> 3
-    tempo.Dec -> 5
-  }
-
-  let century_code = case date |> tempo.date_get_year {
-    year if year < 1752 -> 0
-    year if year < 1800 -> 4
-    year if year < 1900 -> 2
-    year if year < 2000 -> 0
-    year if year < 2100 -> 6
-    year if year < 2200 -> 4
-    year if year < 2300 -> 2
-    year if year < 2400 -> 4
-    _ -> 0
-  }
-
-  let leap_year_code = case year.is_leap_year(date |> tempo.date_get_year) {
-    True ->
-      case date |> tempo.date_get_month {
-        tempo.Jan | tempo.Feb -> 1
-        _ -> 0
-      }
-    False -> 0
-  }
-
-  {
-    year_code
-    + month_code
-    + century_code
-    + tempo.date_get_day(date)
-    - leap_year_code
-  }
-  % 7
+  tempo.date_to_day_of_week_number(date)
 }
 
 /// Returns the day of week a date falls on.
