@@ -17,7 +17,7 @@
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regex
+import gleam/regexp
 import gleam/result
 import gleam/string
 import tempo
@@ -348,13 +348,13 @@ pub fn parse_any(
 /// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
-  let assert Ok(re) = regex.from_string(tempo.format_regex)
+  let assert Ok(re) = regexp.from_string(tempo.format_regexp)
 
-  regex.scan(re, fmt)
+  regexp.scan(re, fmt)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-      regex.Match(content, []) -> [
+      regexp.Match(content, []) -> [
         content
           |> date.replace_format(naive_datetime |> get_date)
           |> time.replace_format(naive_datetime |> get_time),
@@ -363,11 +363,11 @@ pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.
-      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
 
       // This case is not expected, not really sure what to do with it 
       // so just prepend whatever was found
-      regex.Match(content, _) -> [content, ..acc]
+      regexp.Match(content, _) -> [content, ..acc]
     }
   })
   |> string.join("")

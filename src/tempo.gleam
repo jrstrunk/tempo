@@ -3,13 +3,13 @@
 
 import gleam/bool
 import gleam/int
-import gleam/iterator
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regex
+import gleam/regexp
 import gleam/result
 import gleam/string
+import gleam/yielder
 import gtempo/internal as unit
 
 // This is a big file. The contents are generally ordered by:
@@ -1333,23 +1333,23 @@ pub fn period_contains_naive_datetime(
 }
 
 @internal
-pub fn period_comprising_dates(period: Period) -> iterator.Iterator(Date) {
+pub fn period_comprising_dates(period: Period) -> yielder.Yielder(Date) {
   let #(start_date, end_date): #(Date, Date) = case period {
     DatePeriod(start, end) -> #(start, end)
     NaiveDateTimePeriod(start, end) -> #(start.date, end.date)
     DateTimePeriod(start, end) -> #(start.naive.date, end.naive.date)
   }
 
-  iterator.unfold(from: start_date, with: fn(date) {
+  yielder.unfold(from: start_date, with: fn(date) {
     case date |> date_is_earlier_or_equal(to: end_date) {
-      True -> iterator.Next(date, date |> date_add(days: 1))
-      False -> iterator.Done
+      True -> yielder.Next(date, date |> date_add(days: 1))
+      False -> yielder.Done
     }
   })
 }
 
 @internal
-pub fn period_comprising_months(period: Period) -> iterator.Iterator(MonthYear) {
+pub fn period_comprising_months(period: Period) -> yielder.Yielder(MonthYear) {
   let #(start_date, end_date) = case period {
     DatePeriod(start, end) -> #(start, end)
     NaiveDateTimePeriod(start, end) -> #(
@@ -1362,7 +1362,7 @@ pub fn period_comprising_months(period: Period) -> iterator.Iterator(MonthYear) 
     )
   }
 
-  iterator.unfold(
+  yielder.unfold(
     from: MonthYear(start_date.month, start_date.year),
     with: fn(miy: MonthYear) {
       case
@@ -1370,14 +1370,14 @@ pub fn period_comprising_months(period: Period) -> iterator.Iterator(MonthYear) 
         |> date_is_earlier_or_equal(to: end_date)
       {
         True ->
-          iterator.Next(
+          yielder.Next(
             miy,
             MonthYear(miy.month |> month_next, case miy.month == Dec {
               True -> miy.year + 1
               False -> miy.year
             }),
           )
-        False -> iterator.Done
+        False -> yielder.Done
       }
     },
   )
@@ -1508,7 +1508,7 @@ pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
 }
 
 @internal
-pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
+pub const format_regexp = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
@@ -1558,48 +1558,48 @@ pub fn parse_any(
   let empty_result = #(None, None, None)
 
   use serial_re <- result_guard(
-    when_error: regex.from_string("\\d{9,}"),
+    when_error: regexp.from_string("\\d{9,}"),
     return: empty_result,
   )
 
-  use <- bool.guard(when: regex.check(serial_re, str), return: empty_result)
+  use <- bool.guard(when: regexp.check(serial_re, str), return: empty_result)
 
   use date_re <- result_guard(
-    when_error: regex.from_string(
+    when_error: regexp.from_string(
       "(\\d{4})[-_/\\.\\s,]{0,2}(\\d{1,2})[-_/\\.\\s,]{0,2}(\\d{1,2})",
     ),
     return: empty_result,
   )
 
   use date_human_re <- result_guard(
-    when_error: regex.from_string(
+    when_error: regexp.from_string(
       "(\\d{1,2}|January|Jan|january|jan|February|Feb|february|feb|March|Mar|march|mar|April|Apr|april|apr|May|may|June|Jun|june|jun|July|Jul|july|jul|August|Aug|august|aug|September|Sep|september|sep|October|Oct|october|oct|November|Nov|november|nov|December|Dec|december|dec)[-_/\\.\\s,]{0,2}(\\d{1,2})(?:st|nd|rd|th)?[-_/\\.\\s,]{0,2}(\\d{4})",
     ),
     return: empty_result,
   )
 
   use time_re <- result_guard(
-    when_error: regex.from_string(
+    when_error: regexp.from_string(
       "(\\d{1,2})[:_\\.\\s]{0,1}(\\d{1,2})[:_\\.\\s]{0,1}(\\d{0,2})[\\.]{0,1}(\\d{0,9})\\s*(AM|PM|am|pm)?",
     ),
     return: empty_result,
   )
 
   use offset_re <- result_guard(
-    when_error: regex.from_string("([-+]\\d{2}):{0,1}(\\d{1,2})?"),
+    when_error: regexp.from_string("([-+]\\d{2}):{0,1}(\\d{1,2})?"),
     return: empty_result,
   )
 
   use offset_char_re <- result_guard(
-    when_error: regex.from_string("(?<![a-zA-Z])[Zz](?![a-zA-Z])"),
+    when_error: regexp.from_string("(?<![a-zA-Z])[Zz](?![a-zA-Z])"),
     return: empty_result,
   )
 
   let unconsumed = str
 
   let #(date, unconsumed): #(option.Option(Date), String) = {
-    case regex.scan(date_re, unconsumed) {
-      [regex.Match(content, [Some(year), Some(month), Some(day)]), ..] ->
+    case regexp.scan(date_re, unconsumed) {
+      [regexp.Match(content, [Some(year), Some(month), Some(day)]), ..] ->
         case int.parse(year), int.parse(month), int.parse(day) {
           Ok(year), Ok(month), Ok(day) ->
             case new_date(year, month, day) {
@@ -1619,8 +1619,8 @@ pub fn parse_any(
     case date {
       Some(d) -> #(Some(d), unconsumed)
       None ->
-        case regex.scan(date_human_re, unconsumed) {
-          [regex.Match(content, [Some(month), Some(day), Some(year)]), ..] ->
+        case regexp.scan(date_human_re, unconsumed) {
+          [regexp.Match(content, [Some(month), Some(day), Some(year)]), ..] ->
             case
               int.parse(year),
               // Parse an int month or a written month
@@ -1651,8 +1651,8 @@ pub fn parse_any(
   }
 
   let #(offset, unconsumed): #(option.Option(Offset), String) = {
-    case regex.scan(offset_re, unconsumed) {
-      [regex.Match(content, [Some(hours), Some(minutes)]), ..] ->
+    case regexp.scan(offset_re, unconsumed) {
+      [regexp.Match(content, [Some(hours), Some(minutes)]), ..] ->
         case int.parse(hours), int.parse(minutes) {
           Ok(hour), Ok(minute) ->
             case new_offset(hour * 60 + minute) {
@@ -1675,8 +1675,8 @@ pub fn parse_any(
     case offset {
       Some(o) -> #(Some(o), unconsumed)
       None ->
-        case regex.scan(offset_char_re, unconsumed) {
-          [regex.Match(content, _), ..] -> #(
+        case regexp.scan(offset_char_re, unconsumed) {
+          [regexp.Match(content, _), ..] -> #(
             Some(utc),
             string.replace(unconsumed, content, ""),
           )
@@ -1687,22 +1687,22 @@ pub fn parse_any(
   }
 
   let #(time, _): #(option.Option(Time), String) = {
-    let scan_results = regex.scan(time_re, unconsumed)
+    let scan_results = regexp.scan(time_re, unconsumed)
 
     let adj_hour = case scan_results {
-      [regex.Match(_, [_, _, _, _, Some("PM")]), ..] -> adjust_12_hour_to_24_hour(
+      [regexp.Match(_, [_, _, _, _, Some("PM")]), ..] -> adjust_12_hour_to_24_hour(
         _,
         am: False,
       )
-      [regex.Match(_, [_, _, _, _, Some("pm")]), ..] -> adjust_12_hour_to_24_hour(
+      [regexp.Match(_, [_, _, _, _, Some("pm")]), ..] -> adjust_12_hour_to_24_hour(
         _,
         am: False,
       )
-      [regex.Match(_, [_, _, _, _, Some("AM")]), ..] -> adjust_12_hour_to_24_hour(
+      [regexp.Match(_, [_, _, _, _, Some("AM")]), ..] -> adjust_12_hour_to_24_hour(
         _,
         am: True,
       )
-      [regex.Match(_, [_, _, _, _, Some("am")]), ..] -> adjust_12_hour_to_24_hour(
+      [regexp.Match(_, [_, _, _, _, Some("am")]), ..] -> adjust_12_hour_to_24_hour(
         _,
         am: True,
       )
@@ -1710,7 +1710,7 @@ pub fn parse_any(
     }
 
     case scan_results {
-      [regex.Match(content, [Some(h), Some(m), Some(s), Some(d), ..]), ..] ->
+      [regexp.Match(content, [Some(h), Some(m), Some(s), Some(d), ..]), ..] ->
         case int.parse(h), int.parse(m), int.parse(s) {
           Ok(hour), Ok(minute), Ok(second) ->
             case string.length(d), int.parse(d) {
@@ -1749,7 +1749,7 @@ pub fn parse_any(
           _, _, _ -> #(None, unconsumed)
         }
 
-      [regex.Match(content, [Some(h), Some(m), Some(s), ..]), ..] ->
+      [regexp.Match(content, [Some(h), Some(m), Some(s), ..]), ..] ->
         case int.parse(h), int.parse(m), int.parse(s) {
           Ok(hour), Ok(minute), Ok(second) ->
             case adj_hour(hour) |> new_time(minute, second) {
@@ -1761,7 +1761,7 @@ pub fn parse_any(
           _, _, _ -> #(None, unconsumed)
         }
 
-      [regex.Match(content, [Some(h), Some(m), ..]), ..] ->
+      [regexp.Match(content, [Some(h), Some(m), ..]), ..] ->
         case int.parse(h), int.parse(m) {
           Ok(hour), Ok(minute) ->
             case adj_hour(hour) |> new_time(minute, 0) {
@@ -1801,28 +1801,28 @@ pub type DatetimePart {
 @internal
 pub fn consume_format(str: String, in fmt: String) {
   let assert Ok(re) =
-    regex.from_string(
+    regexp.from_string(
       "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS{3,5}|.",
     )
 
-  regex.scan(re, fmt)
+  regexp.scan(re, fmt)
   |> list.fold(from: Ok(#([], str)), with: fn(acc, match) {
     case acc {
       Ok(acc) -> {
         let #(consumed, input) = acc
 
         let res = case match {
-          regex.Match(content, []) -> consume_part(content, input)
+          regexp.Match(content, []) -> consume_part(content, input)
 
           // If there is a non-empty subpattern, then the escape 
           // character "[ ... ]" matched, so we should not change anything here.
-          regex.Match(_, [Some(sub)]) ->
-            Ok(#(Passthrough, string.drop_left(input, string.length(sub))))
+          regexp.Match(_, [Some(sub)]) ->
+            Ok(#(Passthrough, string.drop_start(input, string.length(sub))))
 
           // This case is not expected, not really sure what to do with it 
           // so just pass through whatever was found
-          regex.Match(content, _) ->
-            Ok(#(Passthrough, string.drop_left(input, string.length(content))))
+          regexp.Match(content, _) ->
+            Ok(#(Passthrough, string.drop_start(input, string.length(content))))
         }
 
         case res {
@@ -1850,9 +1850,9 @@ fn consume_part(fmt, from str) {
       case val > current_two_year_date {
         True -> #(
           Year({ current_century - 100 } + val),
-          string.drop_left(str, 2),
+          string.drop_start(str, 2),
         )
-        False -> #(Year(current_century + val), string.drop_left(str, 2))
+        False -> #(Year(current_century + val), string.drop_start(str, 2))
       }
     }
     "YYYY" -> {
@@ -1860,7 +1860,7 @@ fn consume_part(fmt, from str) {
         string.slice(str, at_index: 0, length: 4) |> int.parse,
       )
 
-      #(Year(year), string.drop_left(str, 4))
+      #(Year(year), string.drop_start(str, 4))
     }
     "M" -> consume_one_or_two_digits(str, Month)
     "MM" -> consume_two_digits(str, Month)
@@ -1927,21 +1927,21 @@ fn consume_part(fmt, from str) {
         string.slice(str, at_index: 0, length: 3) |> int.parse,
       )
 
-      #(Millisecond(milli), string.drop_left(str, 3))
+      #(Millisecond(milli), string.drop_start(str, 3))
     }
     "SSSS" -> {
       use micro <- result.map(
         string.slice(str, at_index: 0, length: 6) |> int.parse,
       )
 
-      #(Microsecond(micro), string.drop_left(str, 6))
+      #(Microsecond(micro), string.drop_start(str, 6))
     }
     "SSSSS" -> {
       use nano <- result.map(
         string.slice(str, at_index: 0, length: 9) |> int.parse,
       )
 
-      #(Nanosecond(nano), string.drop_left(str, 9))
+      #(Nanosecond(nano), string.drop_start(str, 9))
     }
     "z" -> {
       // Offsets can be 1, 3, 5, or 6 characters long. Try parsing from
@@ -1951,16 +1951,16 @@ fn consume_part(fmt, from str) {
         string.slice(str, at_index: 0, length: 6)
         |> fn(offset) {
           use re <- result.try(
-            regex.from_string("[-+]\\d\\d:\\d\\d") |> result.nil_error,
+            regexp.from_string("[-+]\\d\\d:\\d\\d") |> result.replace_error(Nil),
           )
 
-          case regex.check(re, offset) {
+          case regexp.check(re, offset) {
             True -> Ok(offset)
             False -> Error(Nil)
           }
         }
         |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_left(str, 6))
+          #(OffsetStr(offset), string.drop_start(str, 6))
         }),
       )
 
@@ -1968,16 +1968,16 @@ fn consume_part(fmt, from str) {
         string.slice(str, at_index: 0, length: 5)
         |> fn(offset) {
           use re <- result.try(
-            regex.from_string("[-+]\\d\\d\\d\\d") |> result.nil_error,
+            regexp.from_string("[-+]\\d\\d\\d\\d") |> result.replace_error(Nil),
           )
 
-          case regex.check(re, offset) {
+          case regexp.check(re, offset) {
             True -> Ok(offset)
             False -> Error(Nil)
           }
         }
         |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_left(str, 5))
+          #(OffsetStr(offset), string.drop_start(str, 5))
         }),
       )
 
@@ -1985,16 +1985,16 @@ fn consume_part(fmt, from str) {
         string.slice(str, at_index: 0, length: 3)
         |> fn(offset) {
           use re <- result.try(
-            regex.from_string("[-+]\\d\\d") |> result.nil_error,
+            regexp.from_string("[-+]\\d\\d") |> result.replace_error(Nil),
           )
 
-          case regex.check(re, offset) {
+          case regexp.check(re, offset) {
             True -> Ok(offset)
             False -> Error(Nil)
           }
         }
         |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_left(str, 3))
+          #(OffsetStr(offset), string.drop_start(str, 3))
         }),
       )
 
@@ -2007,7 +2007,7 @@ fn consume_part(fmt, from str) {
           }
         }
         |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_left(str, 1))
+          #(OffsetStr(offset), string.drop_start(str, 1))
         }),
       )
 
@@ -2016,13 +2016,13 @@ fn consume_part(fmt, from str) {
     "Z" -> {
       Ok(#(
         OffsetStr(string.slice(str, at_index: 0, length: 6)),
-        string.drop_left(str, 6),
+        string.drop_start(str, 6),
       ))
     }
     "ZZ" -> {
       Ok(#(
         OffsetStr(string.slice(str, at_index: 0, length: 5)),
-        string.drop_left(str, 5),
+        string.drop_start(str, 5),
       ))
     }
     passthrough -> {
@@ -2030,7 +2030,7 @@ fn consume_part(fmt, from str) {
       let str_slice = string.slice(str, at_index: 0, length: fmt_length)
 
       case str_slice == passthrough {
-        True -> Ok(#(Passthrough, string.drop_left(str, fmt_length)))
+        True -> Ok(#(Passthrough, string.drop_start(str, fmt_length)))
         False -> Error(Nil)
       }
     }
@@ -2040,10 +2040,10 @@ fn consume_part(fmt, from str) {
 
 fn consume_one_or_two_digits(str, constructor) {
   case string.slice(str, at_index: 0, length: 2) |> int.parse {
-    Ok(val) -> Ok(#(constructor(val), string.drop_left(str, 2)))
+    Ok(val) -> Ok(#(constructor(val), string.drop_start(str, 2)))
     Error(_) ->
       case string.slice(str, at_index: 0, length: 1) |> int.parse {
-        Ok(val) -> Ok(#(constructor(val), string.drop_left(str, 1)))
+        Ok(val) -> Ok(#(constructor(val), string.drop_start(str, 1)))
         Error(_) -> Error(Nil)
       }
   }
@@ -2052,7 +2052,7 @@ fn consume_one_or_two_digits(str, constructor) {
 fn consume_two_digits(str, constructor) {
   use val <- result.map(string.slice(str, at_index: 0, length: 2) |> int.parse)
 
-  #(constructor(val), string.drop_left(str, 2))
+  #(constructor(val), string.drop_start(str, 2))
 }
 
 @internal

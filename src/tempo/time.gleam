@@ -41,10 +41,10 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regex
+import gleam/regexp
 import gleam/result
 import gleam/string
-import gleam/string_builder
+import gleam/string_tree
 import gtempo/internal as unit
 import tempo
 import tempo/date
@@ -391,29 +391,29 @@ pub fn get_nanosecond(time: tempo.Time) -> Int {
 /// // -> "21:53:03.534"
 /// ```
 pub fn to_string(time: tempo.Time) -> String {
-  string_builder.from_strings([
+  string_tree.from_strings([
     time
       |> tempo.time_get_hour
       |> int.to_string
-      |> string.pad_left(2, with: "0"),
+      |> string.pad_start(2, with: "0"),
     ":",
     time
       |> tempo.time_get_minute
       |> int.to_string
-      |> string.pad_left(2, with: "0"),
+      |> string.pad_start(2, with: "0"),
     ":",
     time
       |> tempo.time_get_second
       |> int.to_string
-      |> string.pad_left(2, with: "0"),
+      |> string.pad_start(2, with: "0"),
   ])
-  |> string_builder.append(".")
-  |> string_builder.append(
+  |> string_tree.append(".")
+  |> string_tree.append(
     { tempo.time_get_nano(time) / 1_000_000 }
     |> int.to_string
-    |> string.pad_left(3, with: "0"),
+    |> string.pad_start(3, with: "0"),
   )
-  |> string_builder.to_string
+  |> string_tree.to_string
 }
 
 /// Converts a string to a time value. Accepted formats are `hh:mm:ss.s`, 
@@ -475,7 +475,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
         len if len <= 3 ->
           case
             int.parse(second),
-            int.parse(second_fraction |> string.pad_right(3, with: "0"))
+            int.parse(second_fraction |> string.pad_end(3, with: "0"))
           {
             Ok(second), Ok(milli) ->
               Ok(tempo.time(hour, minute, second, milli * 1_000_000, None, None))
@@ -487,7 +487,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
         len if len <= 6 ->
           case
             int.parse(second),
-            int.parse(second_fraction |> string.pad_right(6, with: "0"))
+            int.parse(second_fraction |> string.pad_end(6, with: "0"))
           {
             Ok(second), Ok(micro) ->
               Ok(tempo.time(hour, minute, second, micro * 1000, None, None))
@@ -499,7 +499,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
         len if len <= 9 ->
           case
             int.parse(second),
-            int.parse(second_fraction |> string.pad_right(9, with: "0"))
+            int.parse(second_fraction |> string.pad_end(9, with: "0"))
           {
             Ok(second), Ok(nano) ->
               Ok(tempo.time(hour, minute, second, nano, None, None))
@@ -617,21 +617,21 @@ pub fn parse_any(str: String) -> Result(tempo.Time, Nil) {
 /// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(time: tempo.Time, in fmt: String) -> String {
-  let assert Ok(re) = regex.from_string(tempo.format_regex)
+  let assert Ok(re) = regexp.from_string(tempo.format_regexp)
 
-  regex.scan(re, fmt)
+  regexp.scan(re, fmt)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-      regex.Match(content, []) -> [replace_format(content, time), ..acc]
+      regexp.Match(content, []) -> [replace_format(content, time), ..acc]
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.
-      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
 
       // This case is not expected, not really sure what to do with it 
       // so just prepend whatever was found
-      regex.Match(content, _) -> [content, ..acc]
+      regexp.Match(content, _) -> [content, ..acc]
     }
   })
   |> string.join("")
@@ -645,7 +645,7 @@ pub fn replace_format(content: String, time) -> String {
       time
       |> get_hour
       |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
+      |> string.pad_start(with: "0", to: 2)
     "h" ->
       time
       |> get_hour
@@ -668,7 +668,7 @@ pub fn replace_format(content: String, time) -> String {
         }
       }
       |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
+      |> string.pad_start(with: "0", to: 2)
     "a" ->
       time
       |> get_hour
@@ -692,30 +692,30 @@ pub fn replace_format(content: String, time) -> String {
       time
       |> get_minute
       |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
+      |> string.pad_start(with: "0", to: 2)
     "s" -> time |> get_second |> int.to_string
     "ss" ->
       time
       |> get_second
       |> int.to_string
-      |> string.pad_left(with: "0", to: 2)
+      |> string.pad_start(with: "0", to: 2)
     "SSS" ->
       time
       |> get_nanosecond
       |> fn(nano) { nano / 1_000_000 }
       |> int.to_string
-      |> string.pad_left(with: "0", to: 3)
+      |> string.pad_start(with: "0", to: 3)
     "SSSS" ->
       time
       |> get_nanosecond
       |> fn(nano) { nano / 1000 }
       |> int.to_string
-      |> string.pad_left(with: "0", to: 6)
+      |> string.pad_start(with: "0", to: 6)
     "SSSSS" ->
       time
       |> get_nanosecond
       |> int.to_string
-      |> string.pad_left(with: "0", to: 9)
+      |> string.pad_start(with: "0", to: 9)
     _ -> content
   }
 }

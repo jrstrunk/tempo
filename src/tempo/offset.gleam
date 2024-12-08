@@ -85,19 +85,19 @@ pub fn to_string(offset: tempo.Offset) -> String {
   case is_negative, hours, mins {
     _, 0, 0 -> "-00:00"
 
-    _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_left(2, with: "0")
+    _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_start(2, with: "0")
 
     True, h, m ->
       "-"
-      <> int.to_string(h) |> string.pad_left(2, with: "0")
+      <> int.to_string(h) |> string.pad_start(2, with: "0")
       <> ":"
-      <> int.to_string(m) |> string.pad_left(2, with: "0")
+      <> int.to_string(m) |> string.pad_start(2, with: "0")
 
     False, h, m ->
       "+"
-      <> int.to_string(h) |> string.pad_left(2, with: "0")
+      <> int.to_string(h) |> string.pad_start(2, with: "0")
       <> ":"
-      <> int.to_string(m) |> string.pad_left(2, with: "0")
+      <> int.to_string(m) |> string.pad_start(2, with: "0")
   }
 }
 
