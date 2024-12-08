@@ -76,7 +76,7 @@ pub fn format_as(
     decimal
     |> float.to_string
     |> string.slice(at_index: 2, length: decimals)
-    |> string.pad_right(to: decimals, with: "0")
+    |> string.pad_end(to: decimals, with: "0")
 
   let whole =
     float.truncate(in_unit)

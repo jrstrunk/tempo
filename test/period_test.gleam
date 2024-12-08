@@ -1,4 +1,4 @@
-import gleam/iterator
+import gleam/yielder
 import gleeunit/should
 import tempo
 import tempo/date
@@ -513,7 +513,7 @@ pub fn comprising_dates_test() {
     end: datetime.literal("2024-06-21T00:16:12+01:00"),
   )
   |> period.comprising_dates
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal([
     date.literal("2024-06-19"),
     date.literal("2024-06-20"),
@@ -527,7 +527,7 @@ pub fn comprising_dates_one_day_test() {
     end: datetime.literal("2024-06-21T02:16:12Z"),
   )
   |> period.comprising_dates
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal([date.literal("2024-06-21")])
 }
 
@@ -537,7 +537,7 @@ pub fn comprising_dates_month_boundary_test() {
     end: naive_datetime.literal("2024-07-04T07:16:12"),
   )
   |> period.comprising_dates
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal([
     date.literal("2024-06-21"),
     date.literal("2024-06-22"),
@@ -562,7 +562,7 @@ pub fn comprising_dates_year_boundary_test() {
     end: naive_datetime.literal("2025-01-04T07:16:12"),
   )
   |> period.comprising_dates
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal([
     date.literal("2024-12-25"),
     date.literal("2024-12-26"),
@@ -584,7 +584,7 @@ pub fn comprising_months_one_month_test() {
     end: datetime.literal("2024-06-21T00:16:12+01:00"),
   )
   |> period.comprising_months
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal([tempo.MonthYear(tempo.Jun, 2024)])
 }
 
@@ -594,7 +594,7 @@ pub fn comprising_months_multiple_months_test() {
     end: datetime.literal("2024-09-21T00:16:12+01:00"),
   )
   |> period.comprising_months
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal([
     tempo.MonthYear(tempo.Jun, 2024),
     tempo.MonthYear(tempo.Jul, 2024),
@@ -609,7 +609,7 @@ pub fn comprising_months_year_boundary_test() {
     end: datetime.literal("2025-04-30T23:59:59-04:00"),
   )
   |> period.comprising_months
-  |> iterator.to_list
+  |> yielder.to_list
   |> should.equal([
     tempo.MonthYear(tempo.Oct, 2024),
     tempo.MonthYear(tempo.Nov, 2024),

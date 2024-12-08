@@ -38,10 +38,10 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regex
+import gleam/regexp
 import gleam/result
 import gleam/string
-import gleam/string_builder
+import gleam/string_tree
 import tempo
 import tempo/month
 
@@ -253,16 +253,16 @@ fn split_int_tuple(
 /// // -> "2024-06-13"
 /// ```
 pub fn to_string(date: tempo.Date) -> String {
-  string_builder.from_strings([
+  string_tree.from_strings([
     int.to_string(date |> tempo.date_get_year),
     "-",
     month.to_int(date |> tempo.date_get_month)
       |> int.to_string
-      |> string.pad_left(2, with: "0"),
+      |> string.pad_start(2, with: "0"),
     "-",
-    int.to_string(date |> tempo.date_get_day) |> string.pad_left(2, with: "0"),
+    int.to_string(date |> tempo.date_get_day) |> string.pad_start(2, with: "0"),
   ])
-  |> string_builder.to_string
+  |> string_tree.to_string
 }
 
 /// Parses a date string in the provided format. Always prefer using
@@ -367,21 +367,21 @@ pub fn parse_any(str: String) -> Result(tempo.Date, Nil) {
 /// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(date: tempo.Date, in fmt: String) -> String {
-  let assert Ok(re) = regex.from_string(tempo.format_regex)
+  let assert Ok(re) = regexp.from_string(tempo.format_regex)
 
-  regex.scan(re, fmt)
+  regexp.scan(re, fmt)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-      regex.Match(content, []) -> [tempo.date_replace_format(content, date), ..acc]
+      regexp.Match(content, []) -> [tempo.date_replace_format(content, date), ..acc]
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.
-      regex.Match(_, [Some(sub)]) -> [sub, ..acc]
+      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
 
       // This case is not expected, not really sure what to do with it 
       // so just prepend whatever was found
-      regex.Match(content, _) -> [content, ..acc]
+      regexp.Match(content, _) -> [content, ..acc]
     }
   })
   |> string.join("")
