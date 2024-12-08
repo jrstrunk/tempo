@@ -50,7 +50,7 @@ import gleam/dynamic
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
-import gleam/string_builder
+import gleam/string_tree
 import tempo
 import tempo/date
 import tempo/month
@@ -283,19 +283,19 @@ pub fn serialize(datetime: tempo.DateTime) -> String {
   let t = get_time(datetime)
   let o = get_offset(datetime)
 
-  string_builder.from_strings([
-    date.get_year(d) |> int.to_string |> string.pad_left(4, with: "0"),
+  string_tree.from_strings([
+    date.get_year(d) |> int.to_string |> string.pad_start(4, with: "0"),
     date.get_month(d)
       |> month.to_int
       |> int.to_string
-      |> string.pad_left(2, with: "0"),
-    date.get_day(d) |> int.to_string |> string.pad_left(2, with: "0"),
+      |> string.pad_start(2, with: "0"),
+    date.get_day(d) |> int.to_string |> string.pad_start(2, with: "0"),
     "T",
-    time.get_hour(t) |> int.to_string |> string.pad_left(2, with: "0"),
-    time.get_minute(t) |> int.to_string |> string.pad_left(2, with: "0"),
-    time.get_second(t) |> int.to_string |> string.pad_left(2, with: "0"),
+    time.get_hour(t) |> int.to_string |> string.pad_start(2, with: "0"),
+    time.get_minute(t) |> int.to_string |> string.pad_start(2, with: "0"),
+    time.get_second(t) |> int.to_string |> string.pad_start(2, with: "0"),
     ".",
-    time.get_nanosecond(t) |> int.to_string |> string.pad_left(9, with: "0"),
+    time.get_nanosecond(t) |> int.to_string |> string.pad_start(9, with: "0"),
     case o |> tempo.offset_get_minutes {
       0 -> "Z"
       _ -> {
@@ -308,7 +308,7 @@ pub fn serialize(datetime: tempo.DateTime) -> String {
       }
     },
   ])
-  |> string_builder.to_string
+  |> string_tree.to_string
 }
 
 /// Parses a datetime string in the provided format. Always prefer using
