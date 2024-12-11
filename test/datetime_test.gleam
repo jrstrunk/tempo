@@ -127,33 +127,33 @@ pub fn parse_escape_test() {
 
 pub fn to_string_test() {
   datetime.literal("20240613T134211.314-04")
-  |> datetime.to_text
-  |> should.equal("2024-06-13T13:42:11.314-04:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-13T13:42:11.314000-04:00")
 }
 
 pub fn date_to_string_test() {
   datetime.literal("20240613")
-  |> datetime.to_text
-  |> should.equal("2024-06-13T00:00:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-13T00:00:00.000000Z")
 }
 
 pub fn format_pad_test() {
-  datetime.literal("2024-06-03T09:02:01.014920202-04:00")
+  datetime.literal("2024-06-03T09:02:01.014920-04:00")
   |> datetime.format(
-    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ z",
+    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS Z ZZ z",
   )
   |> should.equal(
-    "24 2024 6 06 Jun June 3 03 1 Mo Mon Monday 9 09 9 09 am AM 2 02 1 01 014 014920 014920202 -04:00 -0400 -04",
+    "24 2024 6 06 Jun June 3 03 1 Mo Mon Monday 9 09 9 09 am AM 2 02 1 01 014 014920 -04:00 -0400 -04",
   )
 }
 
 pub fn format_no_pad_test() {
-  datetime.literal("2001-12-25T22:52:21.914920202-00:00")
+  datetime.literal("2001-12-25T22:52:21.914920-00:00")
   |> datetime.format(
-    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS SSSSS Z ZZ z",
+    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS Z ZZ z",
   )
   |> should.equal(
-    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 914920202 -00:00 -0000 Z",
+    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 -00:00 -0000 Z",
   )
 }
 
@@ -214,107 +214,107 @@ pub fn get_offset_test() {
 pub fn add_time_test() {
   datetime.literal("2024-06-13T03:42:01+10:00")
   |> datetime.add(duration.seconds(4))
-  |> datetime.to_text
-  |> should.equal("2024-06-13T03:42:05.000+10:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-13T03:42:05.000000+10:00")
 }
 
 pub fn add_time_day_boundary_test() {
   datetime.literal("2024-06-13T23:50:10Z")
   |> datetime.add(duration.minutes(13))
-  |> datetime.to_text
-  |> should.equal("2024-06-14T00:03:10.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-14T00:03:10.000000Z")
 }
 
 pub fn add_time_multiple_day_boundary_test() {
   datetime.literal("2024-06-13T03:50:10Z")
   |> datetime.add(duration.days(3))
   |> datetime.add(duration.minutes(13))
-  |> datetime.to_text
-  |> should.equal("2024-06-16T04:03:10.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-16T04:03:10.000000Z")
 }
 
 pub fn add_negative_time_test() {
   datetime.literal("2024-06-13T03:42:05+10:00")
   |> datetime.add(duration.seconds(-4))
-  |> datetime.to_text
-  |> should.equal("2024-06-13T03:42:01.000+10:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-13T03:42:01.000000+10:00")
 }
 
 pub fn add_negative_time_day_boundary_test() {
   datetime.literal("2024-06-13T00:03:10Z")
   |> datetime.add(duration.minutes(-13))
-  |> datetime.to_text
-  |> should.equal("2024-06-12T23:50:10.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-12T23:50:10.000000Z")
 }
 
 pub fn subtract_time_test() {
   datetime.literal("2024-06-13T03:42:05+10:00")
   |> datetime.subtract(duration.seconds(4))
-  |> datetime.to_text
-  |> should.equal("2024-06-13T03:42:01.000+10:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-13T03:42:01.000000+10:00")
 }
 
 pub fn subtract_time_day_boundary_test() {
   datetime.literal("2024-06-13T00:03:00Z")
   |> datetime.subtract(duration.minutes(13))
-  |> datetime.to_text
-  |> should.equal("2024-06-12T23:50:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-12T23:50:00.000000Z")
 }
 
 pub fn subtract_time_multiple_day_boundary_test() {
   datetime.literal("2024-06-13T03:50:00Z")
   |> datetime.subtract(duration.days(3))
   |> datetime.subtract(duration.minutes(13))
-  |> datetime.to_text
-  |> should.equal("2024-06-10T03:37:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-10T03:37:00.000000Z")
 }
 
 pub fn subtract_negative_time_test() {
   datetime.literal("2024-06-13T03:42:05Z")
   |> datetime.subtract(duration.seconds(-4))
-  |> datetime.to_text
-  |> should.equal("2024-06-13T03:42:09.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-13T03:42:09.000000Z")
 }
 
 pub fn subtract_negative_time_day_boundary_test() {
   datetime.literal("2024-06-12T23:47:00.000Z")
   |> datetime.subtract(duration.minutes(-13))
-  |> datetime.to_text
-  |> should.equal("2024-06-13T00:00:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-13T00:00:00.000000Z")
 }
 
 pub fn to_utc_from_utc_test() {
-  datetime.literal("2024-06-21T03:47:00.000Z")
-  |> datetime.to_text
-  |> should.equal("2024-06-21T03:47:00.000Z")
+  datetime.literal("2024-06-21T03:47:00.000000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-21T03:47:00.000000Z")
 }
 
 pub fn to_utc_negative_offset_test() {
   datetime.literal("2024-06-21T03:47:00.000-04:00")
   |> datetime.to_utc
-  |> datetime.to_text
-  |> should.equal("2024-06-21T07:47:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-21T07:47:00.000000Z")
 }
 
 pub fn to_utc_positive_offset_test() {
   datetime.literal("2024-06-21T08:52:00.000+05:05")
   |> datetime.to_utc
-  |> datetime.to_text
-  |> should.equal("2024-06-21T03:47:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-21T03:47:00.000000Z")
 }
 
 pub fn to_utc_negative_day_boundary_test() {
   datetime.literal("2024-06-15T23:03:00.000-04:00")
   |> datetime.to_utc
-  |> datetime.to_text
-  |> should.equal("2024-06-16T03:03:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-16T03:03:00.000000Z")
 }
 
 pub fn to_utc_positive_day_boundary_test() {
   datetime.literal("2024-06-16T01:03:00.000+03:00")
   |> datetime.to_utc
-  |> datetime.to_text
-  |> should.equal("2024-06-15T22:03:00.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-15T22:03:00.000000Z")
 }
 
 pub fn to_local_test() {
@@ -326,50 +326,50 @@ pub fn to_local_test() {
 pub fn to_offset_test() {
   datetime.literal("2024-06-21T03:47:00.000-04:00")
   |> datetime.to_offset(offset.literal("-01:00"))
-  |> datetime.to_text
-  |> should.equal("2024-06-21T06:47:00.000-01:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-21T06:47:00.000000-01:00")
 }
 
 pub fn to_offset_different_sign_test() {
   datetime.literal("2024-06-21T12:47:00.000+05:00")
   |> datetime.to_offset(offset.literal("-01:00"))
-  |> datetime.to_text
-  |> should.equal("2024-06-21T06:47:00.000-01:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-21T06:47:00.000000-01:00")
 }
 
 pub fn to_offset_large_different_sign_test() {
   datetime.literal("2024-06-21T05:36:11.195-04:00")
   |> datetime.to_offset(offset.literal("+10:00"))
-  |> datetime.to_text
-  |> should.equal("2024-06-21T19:36:11.195+10:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-21T19:36:11.195000+10:00")
 }
 
 pub fn to_offset_negative_upper_day_boundary_test() {
   datetime.literal("2024-06-15T23:03:00.000-04:00")
   |> datetime.to_offset(offset.literal("-01:00"))
-  |> datetime.to_text
-  |> should.equal("2024-06-16T02:03:00.000-01:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-16T02:03:00.000000-01:00")
 }
 
 pub fn to_offset_negative_lower_day_boundary_test() {
   datetime.literal("2024-06-15T01:03:00.000-04:00")
   |> datetime.to_offset(offset.literal("-08:00"))
-  |> datetime.to_text
-  |> should.equal("2024-06-14T21:03:00.000-08:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-14T21:03:00.000000-08:00")
 }
 
 pub fn to_offset_positive_lower_day_boundary_test() {
   datetime.literal("2024-06-16T01:03:00.000+05:00")
   |> datetime.to_offset(offset.literal("+01:00"))
-  |> datetime.to_text
-  |> should.equal("2024-06-15T21:03:00.000+01:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-15T21:03:00.000000+01:00")
 }
 
 pub fn to_offset_positive_upper_day_boundary_test() {
   datetime.literal("2024-06-16T22:03:00.000+01:00")
   |> datetime.to_offset(offset.literal("+08:00"))
-  |> datetime.to_text
-  |> should.equal("2024-06-17T05:03:00.000+08:00")
+  |> datetime.to_string
+  |> should.equal("2024-06-17T05:03:00.000000+08:00")
 }
 
 pub fn compare_eq_test() {
@@ -434,32 +434,32 @@ pub fn compare_gt_time_different_offset_test() {
 
 pub fn from_unix_epoch_utc_test() {
   datetime.from_unix_utc(0)
-  |> datetime.to_text
-  |> should.equal("1970-01-01T00:00:00.000Z")
+  |> datetime.to_string
+  |> should.equal("1970-01-01T00:00:00.000000Z")
 }
 
 pub fn to_unix_epoch_utc_test() {
-  datetime.literal("1970-01-01T00:00:00.000Z")
+  datetime.literal("1970-01-01T00:00:00.000000Z")
   |> datetime.to_unix_utc
   |> should.equal(0)
 }
 
 pub fn from_unix_utc_time_test() {
   datetime.from_unix_utc(1_718_629_191)
-  |> datetime.to_text
-  |> should.equal("2024-06-17T12:59:51.000Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-17T12:59:51.000000Z")
 }
 
 pub fn to_unix_utc_time_test() {
-  datetime.literal("2024-06-17T12:59:51.000Z")
+  datetime.literal("2024-06-17T12:59:51.000000Z")
   |> datetime.to_unix_utc
   |> should.equal(1_718_629_191)
 }
 
 pub fn from_unix_utc_time_milli_test() {
   datetime.from_unix_milli_utc(1_718_629_314_334)
-  |> datetime.to_text
-  |> should.equal("2024-06-17T13:01:54.334Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-17T13:01:54.334000Z")
 }
 
 pub fn to_unix_utc_time_milli_test() {
@@ -470,8 +470,8 @@ pub fn to_unix_utc_time_milli_test() {
 
 pub fn from_unix_utc_time_micro_test() {
   datetime.from_unix_micro_utc(1_718_629_314_334_734)
-  |> datetime.to_text
-  |> should.equal("2024-06-17T13:01:54.334Z")
+  |> datetime.to_string
+  |> should.equal("2024-06-17T13:01:54.334734Z")
 }
 
 pub fn to_unix_utc_time_micro_test() {
@@ -484,21 +484,21 @@ pub fn apply_offset_utc_test() {
   datetime.literal("2024-06-17T13:01:54.334-00:00")
   |> datetime.apply_offset
   |> naive_datetime.to_string
-  |> should.equal("2024-06-17T13:01:54.334")
+  |> should.equal("2024-06-17T13:01:54.334000")
 }
 
 pub fn apply_negative_offset_test() {
   datetime.literal("2024-06-17T13:01:54.334-06:20")
   |> datetime.apply_offset
   |> naive_datetime.to_string
-  |> should.equal("2024-06-17T19:21:54.334")
+  |> should.equal("2024-06-17T19:21:54.334000")
 }
 
 pub fn apply_positive_offset_test() {
   datetime.literal("2024-06-17T13:15:54.334+05:15")
   |> datetime.apply_offset
   |> naive_datetime.to_string
-  |> should.equal("2024-06-17T08:00:54.334")
+  |> should.equal("2024-06-17T08:00:54.334000")
 }
 
 pub fn now_test() {
@@ -614,7 +614,7 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
 //     )
 
 //   datetime.difference(from: start, to: warped)
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.equal(400)
 // }
 
@@ -637,7 +637,7 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
 //     )
 
 //   datetime.difference(from: start, to: warped)
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.not_equal(-600)
 // }
 
@@ -659,10 +659,10 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
 //       offset: tempo.utc,
 //     )
 
-//   datetime.add(start, duration: duration.nanoseconds(500))
+//   datetime.add(start, duration: duration.microseconds(500))
 //   |> datetime.as_period(start: warped)
 //   |> period.as_duration
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.equal(100)
 // }
 
@@ -684,10 +684,10 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
 //       offset: tempo.utc,
 //     )
 
-//   datetime.subtract(warped, duration: duration.nanoseconds(200))
+//   datetime.subtract(warped, duration: duration.microseconds(200))
 //   |> datetime.as_period(start:)
 //   |> period.as_duration
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.equal(200)
 // }
 
@@ -769,7 +769,7 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
 //       tempo.utc,
 //     )
 
-//   datetime.add(warped, duration: duration.nanoseconds(500))
+//   datetime.add(warped, duration: duration.microseconds(500))
 //   |> datetime.compare(to: start)
 //   |> should.equal(order.Lt)
 // }
@@ -792,7 +792,7 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
 //       tempo.utc,
 //     )
 
-//   datetime.subtract(warped, duration: duration.nanoseconds(500))
+//   datetime.subtract(warped, duration: duration.microseconds(500))
 //   |> datetime.compare(to: start)
 //   |> should.equal(order.Lt)
 // }
@@ -800,7 +800,7 @@ pub fn from_dynamic_unix_micro_utc_error_test() {
 pub fn datetime_difference_no_test() {
   datetime.literal("2024-06-21T23:17:00Z")
   |> datetime.difference(from: datetime.literal("2024-06-21T23:17:00Z"))
-  |> should.equal(duration.nanoseconds(0))
+  |> should.equal(duration.microseconds(0))
 }
 
 pub fn datetime_difference_time_test() {
@@ -831,21 +831,12 @@ pub fn datetime_difference_negative_test() {
   |> should.equal(-2)
 }
 
-pub fn serialize_format_test() {
-  let assert Ok(t) = time.new_nano(23, 17, 7, 3752)
+pub fn to_string_lossless_equality_test() {
+  let assert Ok(t) = time.new_micro(23, 17, 7, 3752)
   let dt = datetime.new(date.literal("2024-06-21"), t, offset.literal("+05:00"))
 
   dt
-  |> datetime.serialize
-  |> should.equal("20240621T231707.000003752+05")
-}
-
-pub fn serialize_lossless_test() {
-  let assert Ok(t) = time.new_nano(23, 17, 7, 3752)
-  let dt = datetime.new(date.literal("2024-06-21"), t, offset.literal("+05:00"))
-
-  dt
-  |> datetime.serialize
+  |> datetime.to_string
   |> dynamic.from
   |> datetime.from_dynamic_string
   |> should.equal(Ok(dt))

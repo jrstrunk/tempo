@@ -33,34 +33,34 @@ import gtempo/internal as unit
 // -------------------------------------------------------------------------- //
 
 pub fn now_local() -> Moment {
-  let monotonic_ns = now_monotonic_ffi()
+  let monotonic_microsecond = now_monotonic_ffi()
 
   Moment(
-    timestamp_ns: now_utc_ffi(),
-    offset_ns: offset_local_nano(),
-    monotonic_ns:,
+    timestamp_microsecond: now_utc_ffi(),
+    offset_microsecond: offset_local_micro(),
+    monotonic_microsecond:,
     unique: now_unique_ffi(),
   )
 }
 
 pub fn now_utc() -> Moment {
-  let monotonic_ns = now_monotonic_ffi()
+  let monotonic_microsecond = now_monotonic_ffi()
 
   Moment(
-    timestamp_ns: now_utc_ffi(),
-    offset_ns: 0,
-    monotonic_ns:,
+    timestamp_microsecond: now_utc_ffi(),
+    offset_microsecond: 0,
+    monotonic_microsecond:,
     unique: now_unique_ffi(),
   )
 }
 
 pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
-  let new_ts = now_utc().timestamp_ns + duration.nanoseconds
+  let new_ts = now_utc().timestamp_microsecond + duration.microseconds
 
   DateTime(
     NaiveDateTime(
-      date_from_unix_utc(new_ts / 1_000_000_000),
-      time_from_unix_nano_utc(new_ts),
+      date_from_unix_utc(new_ts / 1_000_000),
+      time_from_unix_micro_utc(new_ts),
     ),
     offset: utc,
   )
@@ -75,7 +75,12 @@ pub fn now_formatted(in format: String) -> String {
 // -------------------------------------------------------------------------- //
 
 pub opaque type Moment {
-  Moment(timestamp_ns: Int, offset_ns: Int, monotonic_ns: Int, unique: Int)
+  Moment(
+    timestamp_microsecond: Int,
+    offset_microsecond: Int,
+    monotonic_microsecond: Int,
+    unique: Int,
+  )
 }
 
 @internal
@@ -85,18 +90,18 @@ pub fn moment_as_datetime(moment: Moment) -> DateTime {
       date: moment_as_date(moment),
       time: moment_as_time(moment),
     ),
-    offset: Offset(moment.offset_ns / 60_000_000_000),
+    offset: Offset(moment.offset_microsecond / 60_000_000),
   )
 }
 
 @internal
 pub fn moment_as_unix_utc(moment: Moment) -> Int {
-  moment.timestamp_ns / 1_000_000_000
+  moment.timestamp_microsecond / 1_000_000
 }
 
 @internal
 pub fn moment_as_unix_milli_utc(moment: Moment) -> Int {
-  moment.timestamp_ns / 1_000_000
+  moment.timestamp_microsecond / 1000
 }
 
 @internal
@@ -106,12 +111,16 @@ pub fn moment_serialize_as_datetime(moment: Moment) -> String {
 
 @internal
 pub fn moment_as_date(moment: Moment) -> Date {
-  date_from_unix_utc({ moment.timestamp_ns + moment.offset_ns } / 1_000_000_000)
+  date_from_unix_utc(
+    { moment.timestamp_microsecond + moment.offset_microsecond } / 1_000_000,
+  )
 }
 
 @internal
 pub fn moment_as_time(moment: Moment) -> Time {
-  time_from_unix_nano_utc(moment.timestamp_ns + moment.offset_ns)
+  time_from_unix_micro_utc(
+    moment.timestamp_microsecond + moment.offset_microsecond,
+  )
 }
 
 pub fn is_earlier(than datetime: DateTime) -> Bool {
@@ -242,15 +251,14 @@ pub fn moment_is_later_or_equal(a: Moment, to b: Moment) {
 
 @internal
 pub fn moment_difference(from a: Moment, to b: Moment) -> Duration {
-  { b.monotonic_ns } - { a.monotonic_ns }
-  |> Duration
+  Duration(b.monotonic_microsecond - a.monotonic_microsecond)
 }
 
 @internal
 pub fn moment_since(to moment: Moment, since start: Moment) -> String {
   let dur = moment |> moment_difference(from: start)
 
-  int.absolute_value(dur.nanoseconds)
+  int.absolute_value(dur.microseconds)
   |> unit.format
 }
 
@@ -346,7 +354,7 @@ pub fn datetime_serialize(datetime: DateTime) -> String {
     t.minute |> int.to_string |> string.pad_start(2, with: "0"),
     t.second |> int.to_string |> string.pad_start(2, with: "0"),
     ".",
-    t.nanosecond |> int.to_string |> string.pad_start(9, with: "0"),
+    t.microsecond |> int.to_string |> string.pad_start(6, with: "0"),
     case o |> offset_get_minutes {
       0 -> "Z"
       _ -> {
@@ -586,7 +594,7 @@ pub fn naive_datetime_add(
   // Positive date overflows are only handled in this function, while negative
   // date overflows are only handled in the subtract function -- so if the 
   // duration is negative, we can just subtract the absolute value of it.
-  use <- bool.lazy_guard(when: duration_to_add.nanoseconds < 0, return: fn() {
+  use <- bool.lazy_guard(when: duration_to_add.microseconds < 0, return: fn() {
     datetime |> naive_datetime_subtract(duration_absolute(duration_to_add))
   })
 
@@ -594,23 +602,26 @@ pub fn naive_datetime_add(
   let time_to_add: Duration =
     duration_decrease(duration_to_add, by: duration_days(days_to_add))
 
-  let new_time_as_ns =
+  let new_time_as_micro =
     datetime.time
     |> time_to_duration
     |> duration_increase(by: time_to_add)
-    |> duration_as_nanoseconds
+    |> duration_as_microseconds
 
   // If the time to add crossed a day boundary, add an extra day to the 
   // number of days to add and adjust the time to add.
-  let #(new_time_as_ns, days_to_add): #(Int, Int) = case
-    new_time_as_ns >= unit.imprecise_day_nanoseconds
+  let #(new_time_as_micro, days_to_add): #(Int, Int) = case
+    new_time_as_micro >= unit.imprecise_day_microseconds
   {
-    True -> #(new_time_as_ns - unit.imprecise_day_nanoseconds, days_to_add + 1)
-    False -> #(new_time_as_ns, days_to_add)
+    True -> #(
+      new_time_as_micro - unit.imprecise_day_microseconds,
+      days_to_add + 1,
+    )
+    False -> #(new_time_as_micro, days_to_add)
   }
 
   let time_to_add =
-    Duration(new_time_as_ns - time_to_nanoseconds(datetime.time))
+    Duration(new_time_as_micro - time_to_microseconds(datetime.time))
 
   let new_date = datetime.date |> date_add(days: days_to_add)
   let new_time = datetime.time |> time_add(duration: time_to_add)
@@ -627,7 +638,7 @@ pub fn naive_datetime_subtract(
   // date overflows are only handled in the add function -- so if the 
   // duration is negative, we can just add the absolute value of it.
   use <- bool.lazy_guard(
-    when: duration_to_subtract.nanoseconds < 0,
+    when: duration_to_subtract.microseconds < 0,
     return: fn() {
       datetime |> naive_datetime_add(duration_absolute(duration_to_subtract))
     },
@@ -637,21 +648,24 @@ pub fn naive_datetime_subtract(
   let time_to_sub: Duration =
     duration_decrease(duration_to_subtract, by: duration_days(days_to_sub))
 
-  let new_time_as_ns =
+  let new_time_as_micro =
     datetime.time
     |> time_to_duration
     |> duration_decrease(by: time_to_sub)
-    |> duration_as_nanoseconds
+    |> duration_as_microseconds
 
   // If the time to subtract crossed a day boundary, add an extra day to the 
   // number of days to subtract and adjust the time to subtract.
-  let #(new_time_as_ns, days_to_sub) = case new_time_as_ns < 0 {
-    True -> #(new_time_as_ns + unit.imprecise_day_nanoseconds, days_to_sub + 1)
-    False -> #(new_time_as_ns, days_to_sub)
+  let #(new_time_as_micro, days_to_sub) = case new_time_as_micro < 0 {
+    True -> #(
+      new_time_as_micro + unit.imprecise_day_microseconds,
+      days_to_sub + 1,
+    )
+    False -> #(new_time_as_micro, days_to_sub)
   }
 
   let time_to_sub =
-    Duration(time_to_nanoseconds(datetime.time) - new_time_as_ns)
+    Duration(time_to_microseconds(datetime.time) - new_time_as_micro)
 
   // Using the proper subtract functions here to modify the date and time
   // values instead of declaring a new date is important for perserving date 
@@ -797,7 +811,7 @@ pub fn validate_offset(offset: Offset) -> Result(Offset, Nil) {
 
 @internal
 pub fn offset_to_duration(offset: Offset) -> Duration {
-  -offset.minutes * 60_000_000_000 |> Duration
+  -offset.minutes * 60_000_000 |> Duration
 }
 
 // -------------------------------------------------------------------------- //
@@ -1479,16 +1493,15 @@ pub fn year_days(of year: Int) -> Int {
 // -------------------------------------------------------------------------- //
 
 /// A time of day value. It represents a specific time on an unspecified date.
-/// It cannot be greater than 24 hours or less than 0 hours. It can have 
-/// different precisions between second and nanosecond, depending on what 
-/// your application needs.
+/// It cannot be greater than 24 hours or less than 0 hours. It has microsecond
+/// precision.
 pub opaque type Time {
-  Time(hour: Int, minute: Int, second: Int, nanosecond: Int)
+  Time(hour: Int, minute: Int, second: Int, microsecond: Int)
 }
 
 @internal
-pub fn time(hour hour, minute minute, second second, nano nanosecond) {
-  Time(hour:, minute:, second:, nanosecond:)
+pub fn time(hour hour, minute minute, second second, micro microsecond) {
+  Time(hour:, minute:, second:, microsecond:)
 }
 
 @internal
@@ -1507,13 +1520,8 @@ pub fn time_get_second(time: Time) {
 }
 
 @internal
-pub fn time_get_nano(time: Time) {
-  time.nanosecond
-}
-
-@internal
-pub fn time_set_mono(time: Time) {
-  Time(time.hour, time.minute, time.second, time.nanosecond)
+pub fn time_get_micro(time: Time) {
+  time.microsecond
 }
 
 @internal
@@ -1532,7 +1540,7 @@ pub fn new_time_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, millisecond * 1_000_000)
+  Time(hour, minute, second, millisecond * 1000)
   |> validate_time
 }
 
@@ -1543,18 +1551,8 @@ pub fn new_time_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, microsecond * 1000)
+  Time(hour, minute, second, microsecond)
   |> validate_time
-}
-
-@internal
-pub fn new_time_nano(
-  hour: Int,
-  minute: Int,
-  second: Int,
-  nanosecond: Int,
-) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, nanosecond) |> validate_time
 }
 
 @internal
@@ -1573,17 +1571,17 @@ pub fn validate_time(time: Time) -> Result(Time, TimeOutOfBoundsError) {
       time.hour == 24
       && time.minute == 0
       && time.second == 0
-      && time.nanosecond == 0
+      && time.microsecond == 0
     }
     // For leap seconds https://en.wikipedia.org/wiki/Leap_second. Leap seconds
     // are not fully supported by this package, but can be parsed from ISO 8601
     // dates.
-    || { time.minute == 59 && time.second == 60 && time.nanosecond == 0 }
+    || { time.minute == 59 && time.second == 60 && time.microsecond == 0 }
   {
     True ->
-      case time.nanosecond <= 999_999_999 {
+      case time.microsecond <= 999_999 {
         True -> Ok(time)
-        False -> Error(TimeNanoSecondOutOfBounds)
+        False -> Error(TimeMicroSecondOutOfBounds)
       }
     False ->
       case time.hour, time.minute, time.second {
@@ -1638,19 +1636,13 @@ pub fn time_replace_format(content: String, time: Time) -> String {
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
     "SSS" ->
-      time.nanosecond
-      |> fn(nano) { nano / 1_000_000 }
+      { time.microsecond / 1000 }
       |> int.to_string
       |> string.pad_start(with: "0", to: 3)
     "SSSS" ->
-      time.nanosecond
-      |> fn(nano) { nano / 1000 }
+      { time.microsecond }
       |> int.to_string
       |> string.pad_start(with: "0", to: 6)
-    "SSSSS" ->
-      time.nanosecond
-      |> int.to_string
-      |> string.pad_start(with: "0", to: 9)
     _ -> content
   }
 }
@@ -1667,60 +1659,49 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
 
 @internal
 pub fn time_difference(from a: Time, to b: Time) -> Duration {
-  time_to_nanoseconds(b) - time_to_nanoseconds(a) |> Duration
+  time_to_microseconds(b) - time_to_microseconds(a) |> Duration
 }
 
 @internal
-pub fn time_from_unix_nano_utc(unix_ts: Int) -> Time {
-  // Subtract the nanoseconds that are responsible for the date.
-  {
-    unix_ts
-    - { date_to_unix_micro_utc(date_from_unix_micro_utc(unix_ts / 1000)) }
-    * 1000
-  }
-  |> time_from_nanoseconds
+pub fn time_to_microseconds(time: Time) -> Int {
+  { time.hour * unit.hour_microseconds }
+  + { time.minute * unit.minute_microseconds }
+  + { time.second * unit.second_microseconds }
+  + { time.microsecond }
 }
 
 @internal
-pub fn time_to_nanoseconds(time: Time) -> Int {
-  { time.hour * unit.hour_nanoseconds }
-  + { time.minute * unit.minute_nanoseconds }
-  + { time.second * unit.second_nanoseconds }
-  + time.nanosecond
-}
+pub fn time_from_microseconds(microseconds: Int) -> Time {
+  let in_range_micro = microseconds % unit.imprecise_day_microseconds
 
-@internal
-pub fn time_from_nanoseconds(nanoseconds: Int) -> Time {
-  let in_range_ns = nanoseconds % unit.imprecise_day_nanoseconds
-
-  let adj_ns = case in_range_ns < 0 {
-    True -> in_range_ns + unit.imprecise_day_nanoseconds
-    False -> in_range_ns
+  let adj_micro = case in_range_micro < 0 {
+    True -> in_range_micro + unit.imprecise_day_microseconds
+    False -> in_range_micro
   }
 
-  let hours = adj_ns / 3_600_000_000_000
+  let hour = adj_micro / 3_600_000_000
 
-  let minutes = { adj_ns - hours * 3_600_000_000_000 } / 60_000_000_000
+  let minute = { adj_micro - hour * 3_600_000_000 } / 60_000_000
 
-  let seconds =
-    { adj_ns - hours * 3_600_000_000_000 - minutes * 60_000_000_000 }
-    / 1_000_000_000
+  let second =
+    { adj_micro - hour * 3_600_000_000 - minute * 60_000_000 } / 1_000_000
 
-  let nanoseconds =
-    adj_ns
-    - hours
-    * 3_600_000_000_000
-    - minutes
-    * 60_000_000_000
-    - seconds
-    * 1_000_000_000
+  let microsecond =
+    adj_micro - hour * 3_600_000_000 - minute * 60_000_000 - second * 1_000_000
 
-  Time(hours, minutes, seconds, nanoseconds)
+  Time(hour:, minute:, second:, microsecond:)
+}
+
+@internal
+pub fn time_from_unix_micro_utc(unix_ts: Int) -> Time {
+  // Subtract the microseconds that are responsible for the date.
+  { unix_ts - { date_to_unix_micro_utc(date_from_unix_micro_utc(unix_ts)) } }
+  |> time_from_microseconds
 }
 
 @internal
 pub fn time_to_duration(time: Time) -> Duration {
-  time_to_nanoseconds(time) |> Duration
+  time_to_microseconds(time) |> Duration
 }
 
 @internal
@@ -1731,10 +1712,10 @@ pub fn time_compare(a: Time, to b: Time) -> order.Order {
         True ->
           case a.second == b.second {
             True ->
-              case a.nanosecond == b.nanosecond {
+              case a.microsecond == b.microsecond {
                 True -> order.Eq
                 False ->
-                  case a.nanosecond < b.nanosecond {
+                  case a.microsecond < b.microsecond {
                     True -> order.Lt
                     False -> order.Gt
                   }
@@ -1786,12 +1767,12 @@ pub fn time_is_later_or_equal(a: Time, to b: Time) -> Bool {
 
 @internal
 pub fn time_add(a: Time, duration b: Duration) -> Time {
-  time_to_nanoseconds(a) + b.nanoseconds |> time_from_nanoseconds
+  time_to_microseconds(a) + b.microseconds |> time_from_microseconds
 }
 
 @internal
 pub fn time_subtract(a: Time, duration b: Duration) -> Time {
-  time_to_nanoseconds(a) - b.nanoseconds |> time_from_nanoseconds
+  time_to_microseconds(a) - b.microseconds |> time_from_microseconds
 }
 
 // -------------------------------------------------------------------------- //
@@ -1806,17 +1787,17 @@ pub fn time_subtract(a: Time, duration b: Duration) -> Time {
 /// It is also used as the basis for specifying how to increase or decrease
 /// a datetime or time value.
 pub opaque type Duration {
-  Duration(nanoseconds: Int)
+  Duration(microseconds: Int)
 }
 
 @internal
-pub fn duration(nanoseconds nanoseconds) {
-  Duration(nanoseconds)
+pub fn duration(microseconds microseconds) {
+  Duration(microseconds)
 }
 
 @internal
-pub fn duration_get_ns(duration: Duration) {
-  duration.nanoseconds
+pub fn duration_get_microseconds(duration: Duration) -> Int {
+  duration.microseconds
 }
 
 @internal
@@ -1826,30 +1807,30 @@ pub fn duration_days(days: Int) -> Duration {
 
 @internal
 pub fn duration_increase(a: Duration, by b: Duration) -> Duration {
-  Duration(a.nanoseconds + b.nanoseconds)
+  Duration(a.microseconds + b.microseconds)
 }
 
 @internal
 pub fn duration_decrease(a: Duration, by b: Duration) -> Duration {
-  Duration(a.nanoseconds - b.nanoseconds)
+  Duration(a.microseconds - b.microseconds)
 }
 
 @internal
 pub fn duration_absolute(duration: Duration) -> Duration {
-  case duration.nanoseconds < 0 {
-    True -> -{ duration.nanoseconds } |> Duration
+  case duration.microseconds < 0 {
+    True -> -{ duration.microseconds } |> Duration
     False -> duration
   }
 }
 
 @internal
 pub fn duration_as_days(duration: Duration) -> Int {
-  duration.nanoseconds |> unit.as_days_imprecise
+  duration.microseconds |> unit.as_days_imprecise
 }
 
 @internal
-pub fn duration_as_nanoseconds(duration: Duration) -> Int {
-  duration.nanoseconds
+pub fn duration_as_microseconds(duration: Duration) -> Int {
+  duration.microseconds
 }
 
 // -------------------------------------------------------------------------- //
@@ -2022,7 +2003,7 @@ pub type TimeOutOfBoundsError {
   TimeHourOutOfBounds
   TimeMinuteOutOfBounds
   TimeSecondOutOfBounds
-  TimeNanoSecondOutOfBounds
+  TimeMicroSecondOutOfBounds
 }
 
 pub type DateParseError {
@@ -2126,7 +2107,7 @@ pub type UncertainConversion(a) {
 /// datetime.literal("2024-06-21T23:17:00Z")
 /// |> datetime.to_local
 /// |> tempo.accept_imprecision
-/// |> datetime.to_text
+/// |> datetime.to_string
 /// // -> "2024-06-21T19:17:00-04:00"
 /// ```
 pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {
@@ -2380,16 +2361,6 @@ pub fn parse_any(
                   _ -> #(None, unconsumed)
                 }
 
-              9, Ok(nano) ->
-                case adj_hour(hour) |> new_time_nano(minute, second, nano) {
-                  Ok(date) -> #(
-                    Some(date),
-                    string.replace(unconsumed, content, ""),
-                  )
-
-                  _ -> #(None, unconsumed)
-                }
-
               _, _ -> #(None, unconsumed)
             }
 
@@ -2437,7 +2408,6 @@ pub type DatetimePart {
   Second(Int)
   Millisecond(Int)
   Microsecond(Int)
-  Nanosecond(Int)
   OffsetStr(String)
   TwelveHour(Int)
   AMPeriod
@@ -2582,13 +2552,6 @@ fn consume_part(fmt, from str) {
       )
 
       #(Microsecond(micro), string.drop_start(str, 6))
-    }
-    "SSSSS" -> {
-      use nano <- result.map(
-        string.slice(str, at_index: 0, length: 9) |> int.parse,
-      )
-
-      #(Nanosecond(nano), string.drop_start(str, 9))
     }
     "z" -> {
       // Offsets can be 1, 3, 5, or 6 characters long. Try parsing from
@@ -2821,19 +2784,10 @@ pub fn find_time(in parts) {
       }
     })
 
-  let nanosecond =
-    list.find_map(parts, fn(p) {
-      case p {
-        Nanosecond(n) -> Ok(n)
-        _ -> Error(Nil)
-      }
-    })
-
-  case nanosecond, microsecond, millisecond {
-    Ok(nano), _, _ -> new_time_nano(hour, minute, second, nano)
-    _, Ok(micro), _ -> new_time_micro(hour, minute, second, micro)
-    _, _, Ok(milli) -> new_time_milli(hour, minute, second, milli)
-    _, _, _ -> new_time(hour, minute, second)
+  case microsecond, millisecond {
+    Ok(micro), _ -> new_time_micro(hour, minute, second, micro)
+    _, Ok(milli) -> new_time_milli(hour, minute, second, milli)
+    _, _ -> new_time(hour, minute, second)
   }
   |> result.map_error(fn(e) { TimeOutOfBounds(e) })
 }
@@ -2880,8 +2834,8 @@ pub fn now_monotonic_ffi() -> Int
 pub fn now_unique_ffi() -> Int
 
 @internal
-pub fn offset_local_nano() -> Int {
-  offset_local_minutes() * 60_000_000_000
+pub fn offset_local_micro() -> Int {
+  offset_local_minutes() * 60_000_000
 }
 
 @external(erlang, "tempo_ffi", "local_offset")

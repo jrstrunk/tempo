@@ -1,5 +1,5 @@
 export function now() {
-  return Date.now() * 1000000;
+  return Date.now() * 1000;
 }
 
 export function local_offset() {
@@ -11,7 +11,7 @@ export function current_year() {
 }
 
 export function now_monotonic() {
-  return Math.trunc(performance.now() * 1000000);
+  return Math.trunc(performance.now() * 1000);
 }
 
 var unique = 1;

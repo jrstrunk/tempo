@@ -126,7 +126,7 @@ pub fn literal(date: String) -> tempo.Date {
 /// // -> "2024-06-13"
 /// ```
 pub fn current_local() {
-  { tempo.now_utc_ffi() + tempo.offset_local_nano() } / 1_000_000_000
+  { tempo.now_utc_ffi() + tempo.offset_local_micro() } / 1_000_000
   |> from_unix_utc
 }
 
@@ -140,7 +140,7 @@ pub fn current_local() {
 /// // -> "2024-06-14"
 /// ```
 pub fn current_utc() {
-  tempo.now_utc_ffi() / 1_000_000_000
+  tempo.now_utc_ffi() / 1_000_000
   |> from_unix_utc
 }
 
@@ -326,8 +326,7 @@ pub fn parse_any(str: String) -> Result(tempo.Date, Nil) {
 
 /// Formats a datetime value into a string using the provided format string.
 /// Implements the same formatting directives as the great Day.js 
-/// library: https://day.js.org/docs/en/display/format, plus short timezones
-/// and nanosecond precision.
+/// library: https://day.js.org/docs/en/display/format, plus short timezones.
 /// 
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
 /// 
@@ -338,7 +337,7 @@ pub fn parse_any(str: String) -> Result(tempo.Date, Nil) {
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 /// 
 /// ## Example
@@ -373,7 +372,10 @@ pub fn format(date: tempo.Date, in fmt: String) -> String {
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-      regexp.Match(content, []) -> [tempo.date_replace_format(content, date), ..acc]
+      regexp.Match(content, []) -> [
+        tempo.date_replace_format(content, date),
+        ..acc
+      ]
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.

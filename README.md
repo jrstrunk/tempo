@@ -66,7 +66,7 @@ pub fn main() {
   // -> True
 
   let assert Ok(faulty_external_dt) =
-    datetime.to_text(my_dt)
+    datetime.to_string(my_dt)
     // send somewhere external, then retrieve it
     |> dynamic.from
     |> datetime.from_dynamic_string
@@ -86,14 +86,14 @@ pub fn main() {
 
   datetime.from_unix_utc(1_729_257_776)
   |> datetime.to_timezone(local_tz)
-  |> datetime.to_text
+  |> datetime.to_string
   |> io.println
 
   let assert Ok(tz) = gtz.timezone("America/New_York")
 
   datetime.literal("2024-01-03T05:30:02.334Z")
   |> datetime.to_timezone(tz)
-  |> datetime.to_text
+  |> datetime.to_string
   |> io.println
 }
 // -> "2024-10-18T14:22:56.000+01:00"
@@ -215,7 +215,7 @@ pub fn main() {
 
   datetime.literal("2024-01-03T05:30:02.334Z")
   |> datetime.to_timezone(tz)
-  |> datetime.to_text
+  |> datetime.to_string
   // -> "2024-06-12T06:47:00.000-04:00"
 }
 ```

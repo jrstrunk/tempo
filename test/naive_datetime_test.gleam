@@ -37,7 +37,7 @@ pub fn from_bad_string_test() {
 pub fn to_string_test() {
   naive_datetime.literal("2024-06-13T13:42:11")
   |> naive_datetime.to_string
-  |> should.equal("2024-06-13T13:42:11.000")
+  |> should.equal("2024-06-13T13:42:11.000000")
 }
 
 pub fn to_tuple_test() {
@@ -68,14 +68,14 @@ pub fn add_time_test() {
   naive_datetime.literal("2024-06-13T03:42:01")
   |> naive_datetime.add(duration.seconds(4))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-13T03:42:05.000")
+  |> should.equal("2024-06-13T03:42:05.000000")
 }
 
 pub fn add_time_day_boundary_test() {
   naive_datetime.literal("2024-06-13T23:50:10")
   |> naive_datetime.add(duration.minutes(13))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-14T00:03:10.000")
+  |> should.equal("2024-06-14T00:03:10.000000")
 }
 
 pub fn add_time_multiple_day_boundary_test() {
@@ -83,35 +83,35 @@ pub fn add_time_multiple_day_boundary_test() {
   |> naive_datetime.add(duration.days(3))
   |> naive_datetime.add(duration.minutes(13))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-16T04:03:10.000")
+  |> should.equal("2024-06-16T04:03:10.000000")
 }
 
 pub fn add_negative_time_test() {
   naive_datetime.literal("2024-06-13T03:42:05")
   |> naive_datetime.add(duration.seconds(-4))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-13T03:42:01.000")
+  |> should.equal("2024-06-13T03:42:01.000000")
 }
 
 pub fn add_negative_time_day_boundary_test() {
   naive_datetime.literal("2024-06-13T00:03:10")
   |> naive_datetime.add(duration.minutes(-13))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-12T23:50:10.000")
+  |> should.equal("2024-06-12T23:50:10.000000")
 }
 
 pub fn subtract_time_test() {
   naive_datetime.literal("2024-06-13T03:42:05")
   |> naive_datetime.subtract(duration.seconds(4))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-13T03:42:01.000")
+  |> should.equal("2024-06-13T03:42:01.000000")
 }
 
 pub fn subtract_time_day_boundary_test() {
   naive_datetime.literal("2024-06-13T00:03:00")
   |> naive_datetime.subtract(duration.minutes(13))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-12T23:50:00.000")
+  |> should.equal("2024-06-12T23:50:00.000000")
 }
 
 pub fn subtract_time_multiple_day_boundary_test() {
@@ -119,21 +119,21 @@ pub fn subtract_time_multiple_day_boundary_test() {
   |> naive_datetime.subtract(duration.days(3))
   |> naive_datetime.subtract(duration.minutes(13))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-10T03:37:00.000")
+  |> should.equal("2024-06-10T03:37:00.000000")
 }
 
 pub fn subtract_negative_time_test() {
   naive_datetime.literal("2024-06-13T03:42:05")
   |> naive_datetime.subtract(duration.seconds(-4))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-13T03:42:09.000")
+  |> should.equal("2024-06-13T03:42:09.000000")
 }
 
 pub fn subtract_negative_time_day_boundary_test() {
   naive_datetime.literal("2024-06-12T23:47:00.000")
   |> naive_datetime.subtract(duration.minutes(-13))
   |> naive_datetime.to_string
-  |> should.equal("2024-06-13T00:00:00.000")
+  |> should.equal("2024-06-13T00:00:00.000000")
 }
 
 pub fn compare_eq_test() {
@@ -188,7 +188,6 @@ pub fn large_time_left_in_day_test() {
   |> naive_datetime.time_left_in_day
   |> should.equal(time.literal("15:54:40"))
 }
-
 // pub fn monotonic_difference_override_test() {
 //   let start =
 //     tempo.naive_datetime(
@@ -203,7 +202,7 @@ pub fn large_time_left_in_day_test() {
 
 //   naive_datetime.as_period(start:, end: warped)
 //   |> period.as_duration
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.equal(400)
 // }
 
@@ -221,7 +220,7 @@ pub fn large_time_left_in_day_test() {
 
 //   naive_datetime.as_period(end: warped, start:)
 //   |> period.as_duration
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.not_equal(-600)
 // }
 
@@ -237,10 +236,10 @@ pub fn large_time_left_in_day_test() {
 //       time: tempo.time(8, 30, 12, 600, Some(1000), Some(0)),
 //     )
 
-//   naive_datetime.add(start, duration: duration.nanoseconds(500))
+//   naive_datetime.add(start, duration: duration.microseconds(500))
 //   |> naive_datetime.as_period(start: warped)
 //   |> period.as_duration
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.equal(100)
 // }
 
@@ -256,10 +255,10 @@ pub fn large_time_left_in_day_test() {
 //       time: tempo.time(8, 30, 12, 600, Some(1000), Some(0)),
 //     )
 
-//   naive_datetime.subtract(warped, duration: duration.nanoseconds(200))
+//   naive_datetime.subtract(warped, duration: duration.microseconds(200))
 //   |> naive_datetime.as_period(start:)
 //   |> period.as_duration
-//   |> duration.as_nanoseconds
+//   |> duration.as_microseconds
 //   |> should.equal(200)
 // }
 
@@ -323,7 +322,7 @@ pub fn large_time_left_in_day_test() {
 //       time: tempo.time(8, 30, 12, 600, Some(1000), Some(2)),
 //     )
 
-//   naive_datetime.add(warped, duration: duration.nanoseconds(500))
+//   naive_datetime.add(warped, duration: duration.microseconds(500))
 //   |> naive_datetime.compare(to: start)
 //   |> should.equal(order.Lt)
 // }
@@ -340,7 +339,7 @@ pub fn large_time_left_in_day_test() {
 //       time: tempo.time(8, 30, 12, 600, Some(1000), Some(2)),
 //     )
 
-//   naive_datetime.subtract(warped, duration: duration.nanoseconds(500))
+//   naive_datetime.subtract(warped, duration: duration.microseconds(500))
 //   |> naive_datetime.compare(to: start)
 //   |> should.equal(order.Lt)
 // }

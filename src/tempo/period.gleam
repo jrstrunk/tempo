@@ -88,7 +88,6 @@ pub type Unit {
   Second
   Millisecond
   Microsecond
-  Nanosecond
 }
 
 /// Returns the number of seconds in the period.
@@ -175,15 +174,15 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
         start_time
         |> time.left_in_day
         |> time.to_duration
-        |> duration.as_nanoseconds,
+        |> duration.as_microseconds,
       )
-      /. int.to_float(unit.imprecise_day_nanoseconds)
+      /. int.to_float(unit.imprecise_day_microseconds)
       +. int.to_float(
         end_time
         |> time.to_duration
-        |> duration.as_nanoseconds,
+        |> duration.as_microseconds,
       )
-      /. int.to_float(unit.imprecise_day_nanoseconds)
+      /. int.to_float(unit.imprecise_day_microseconds)
 
     // The time between the start and end times divided by the total number 
     // of seconds in the end day.
@@ -196,9 +195,9 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
         False ->
           int.to_float(
             time.difference(from: start_time, to: end_time)
-            |> duration.as_nanoseconds,
+            |> duration.as_microseconds,
           )
-          /. int.to_float(unit.imprecise_day_nanoseconds)
+          /. int.to_float(unit.imprecise_day_microseconds)
       }
   }
 }
@@ -234,10 +233,7 @@ pub fn as_duration(period: tempo.Period) -> tempo.Duration {
 /// ```
 pub fn from_month(month: tempo.Month, year: Int) -> tempo.Period {
   let start =
-    tempo.naive_datetime(
-      tempo.date(year, month, 1),
-      tempo.time(0, 0, 0, 0),
-    )
+    tempo.naive_datetime(tempo.date(year, month, 1), tempo.time(0, 0, 0, 0))
 
   let end =
     tempo.naive_datetime(

@@ -11,7 +11,7 @@
 ////   // -> "Fri @ 6:00 AM, +05:00"
 //// 
 ////   datetime.parse("06:21:2024 23:17:07.123Z", "MM:DD:YYYY HH:mm:ss.SSSZ")
-////   |> datetime.to_text
+////   |> datetime.to_string
 ////   // -> "2024-06-21T23:17:07.123Z"
 //// 
 ////   datetime.now_local()
@@ -47,14 +47,11 @@
 
 import gleam/bool
 import gleam/dynamic
-import gleam/int
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
-import gleam/string_tree
 import tempo
 import tempo/date
-import tempo/month
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -90,7 +87,7 @@ pub fn new(
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-13T23:04:00.009+10:00")
-/// |> datetime.to_text
+/// |> datetime.to_string
 /// // -> "2024-06-13T23:04:00.009+10:00"
 /// ```
 pub fn literal(datetime: String) -> tempo.DateTime {
@@ -119,11 +116,11 @@ pub fn literal(datetime: String) -> tempo.DateTime {
 /// ```
 pub fn now_local() -> String {
   let now_utc = {
-    let now_ts_nano = tempo.now_utc_ffi()
+    let now_ts_micro = tempo.now_utc_ffi()
 
     new(
-      date.from_unix_utc(now_ts_nano / 1_000_000_000),
-      time.from_unix_nano_utc(now_ts_nano),
+      date.from_unix_utc(now_ts_micro / 1_000_000),
+      time.from_unix_micro_utc(now_ts_micro),
       tempo.utc,
     )
   }
@@ -133,7 +130,7 @@ pub fn now_local() -> String {
     tempo.Precise(datetime) -> datetime
     tempo.Imprecise(datetime) -> datetime
   }
-  |> to_text
+  |> to_string
 }
 
 /// Gets the current UTC datetime of the host as an ISO-8601 formatted string. 
@@ -148,14 +145,14 @@ pub fn now_local() -> String {
 /// // -> "2024-06-14T08:19:20.056Z"
 /// ```
 pub fn now_utc() -> String {
-  let now_ts_nano = tempo.now_utc_ffi()
+  let now_ts_micro = tempo.now_utc_ffi()
 
   new(
-    date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano),
+    date.from_unix_utc(now_ts_micro / 1_000_000),
+    time.from_unix_micro_utc(now_ts_micro),
     tempo.utc,
   )
-  |> to_text
+  |> to_string
 }
 
 /// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
@@ -234,66 +231,15 @@ fn split_time_and_offset(time_with_offset: String) {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.to_text(my_datetime)
-/// // -> "2024-06-21T05:22:22.009Z" 
+/// datetime.to_string(my_datetime)
+/// // -> "2024-06-21T05:22:22.009534Z" 
 /// ```
-pub fn to_text(datetime: tempo.DateTime) -> String {
+pub fn to_string(datetime: tempo.DateTime) -> String {
   datetime |> tempo.datetime_get_naive |> naive_datetime.to_string
   <> case datetime |> tempo.datetime_get_offset |> tempo.offset_get_minutes {
     0 -> "Z"
     _ -> datetime |> tempo.datetime_get_offset |> offset.to_string
   }
-}
-
-/// Serializes a datetime value to a string in the compact, precise format  
-/// `YYYYMMDDTHHmmss.SSSSSz`. Useful for sending a complete datetime value
-/// outside of Gleam then parsing it back into a datetime value later.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// let my_dt = datetime.literal("2024-06-21T23:17:07.3752Z")
-///
-/// let recovered_dt = 
-///   datetime.serialize(my_dt)
-///   |> dynamic.from
-///   // store in a database, then retrieve it
-///   |> datetime.from_dynamic_string
-/// 
-/// my_dt == recovered_dt
-/// // -> True
-/// ```
-pub fn serialize(datetime: tempo.DateTime) -> String {
-  let d = get_date(datetime)
-  let t = get_time(datetime)
-  let o = get_offset(datetime)
-
-  string_tree.from_strings([
-    date.get_year(d) |> int.to_string |> string.pad_start(4, with: "0"),
-    date.get_month(d)
-      |> month.to_int
-      |> int.to_string
-      |> string.pad_start(2, with: "0"),
-    date.get_day(d) |> int.to_string |> string.pad_start(2, with: "0"),
-    "T",
-    time.get_hour(t) |> int.to_string |> string.pad_start(2, with: "0"),
-    time.get_minute(t) |> int.to_string |> string.pad_start(2, with: "0"),
-    time.get_second(t) |> int.to_string |> string.pad_start(2, with: "0"),
-    ".",
-    time.get_nanosecond(t) |> int.to_string |> string.pad_start(9, with: "0"),
-    case o |> tempo.offset_get_minutes {
-      0 -> "Z"
-      _ -> {
-        let str_offset = o |> offset.to_string
-
-        case str_offset |> string.split(":") {
-          [hours, "00"] -> hours
-          _ -> str_offset
-        }
-      }
-    },
-  ])
-  |> string_tree.to_string
 }
 
 /// Parses a datetime string in the provided format. Always prefer using
@@ -309,7 +255,7 @@ pub fn serialize(datetime: tempo.DateTime) -> String {
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 /// 
 /// ## Example
@@ -383,8 +329,7 @@ pub fn parse_any(
 
 /// Formats a datetime value into a string using the provided format string.
 /// Implements the same formatting directives as the great Day.js 
-/// library: https://day.js.org/docs/en/display/format, plus short timezones
-/// and nanosecond precision.
+/// library: https://day.js.org/docs/en/display/format, plus short timezones.
 /// 
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
 /// 
@@ -395,7 +340,7 @@ pub fn parse_any(
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 /// 
 /// ## Examples
@@ -453,8 +398,8 @@ pub fn to_unix_utc(datetime: tempo.DateTime) -> Int {
 
   date.to_unix_utc(utc_dt |> tempo.naive_datetime_get_date)
   + {
-    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time)
-    / 1_000_000_000
+    tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time)
+    / 1_000_000
   }
 }
 
@@ -488,8 +433,7 @@ pub fn to_unix_milli_utc(datetime: tempo.DateTime) -> Int {
 
   date.to_unix_milli_utc(utc_dt |> tempo.naive_datetime_get_date)
   + {
-    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time)
-    / 1_000_000
+    tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000
   }
 }
 
@@ -522,9 +466,7 @@ pub fn to_unix_micro_utc(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
   date.to_unix_micro_utc(utc_dt |> tempo.naive_datetime_get_date)
-  + {
-    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000
-  }
+  + { tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time) }
 }
 
 /// Checks if a dynamic value is a valid datetime string, and returns the
@@ -574,7 +516,7 @@ pub fn from_dynamic_string(
               tempo.TimeSecondOutOfBounds,
             )) -> "Invalid time second value: "
             tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeNanoSecondOutOfBounds,
+              tempo.TimeMicroSecondOutOfBounds,
             )) -> "Invalid time subsecond value: "
             tempo.DateTimeDateParseError(tempo.DateInvalidFormat(_)) ->
               "Invalid date format: "
@@ -950,7 +892,7 @@ pub fn to_local_date(
 /// let assert Ok(tz) = gtz.timezone("America/New_York")
 /// datetime.literal("2024-06-21T06:30:02.334Z")
 /// |> datetime.to_timezone(tz)
-/// |> datetime.to_text
+/// |> datetime.to_string
 /// // -> "2024-01-03T02:30:02.334-04:00"
 /// ```
 /// 
@@ -959,7 +901,7 @@ pub fn to_local_date(
 /// let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
 /// datetime.from_unix_utc(1_729_257_776)
 /// |> datetime.to_timezone(local_tz)
-/// |> datetime.to_text
+/// |> datetime.to_string
 /// // -> "2024-10-18T14:22:56.000+01:00"
 /// ```
 pub fn to_timezone(

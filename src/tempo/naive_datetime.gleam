@@ -76,7 +76,7 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
       tempo.TimeSecondOutOfBounds,
     ))) -> panic as "Invalid second value in naive datetime literal"
     Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeNanoSecondOutOfBounds,
+      tempo.TimeMicroSecondOutOfBounds,
     ))) -> panic as "Invalid subsecond value in naive datetime literal"
     Error(tempo.NaiveDateTimeDateParseError(tempo.DateInvalidFormat(_))) ->
       panic as "Invalid date format in naive datetime literal"
@@ -205,7 +205,7 @@ pub fn to_tuple(
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), A (AM/PM), a (am/pm).
+/// A (AM/PM), a (am/pm).
 /// 
 /// ## Example
 /// 
@@ -283,7 +283,7 @@ pub fn parse_any(
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), A (AM/PM), a (am/pm).
+/// A (AM/PM), a (am/pm).
 /// 
 /// ## Example
 /// 
