@@ -103,18 +103,18 @@ pub fn literal(datetime: String) -> tempo.DateTime {
   }
 }
 
-/// Gets the current local datetime of the host as an ISO-8601 formatted string. 
-/// To record the current time (including monotonic and unique), use 
-/// `tempo.now_utc`. To get the current datetime for other purposes,
-/// use `tempo.now_utc |> moment.as_datetime`.
+/// Gets the current local datetime of the host as an ISO-8601 formatted 
+/// string with millisecond precision. To record the current time (including 
+/// monotonic and unique), use `tempo.now_utc`. To get the current datetime
+/// for other purposes, use `tempo.now_utc |> moment.as_datetime`.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.now_local()
+/// datetime.now_local_string()
 /// // -> "2024-06-14T04:19:20.086-04:00"
 /// ```
-pub fn now_local() -> String {
+pub fn now_local_string() -> String {
   let now_utc = {
     let now_ts_micro = tempo.now_utc_ffi()
 
@@ -130,21 +130,21 @@ pub fn now_local() -> String {
     tempo.Precise(datetime) -> datetime
     tempo.Imprecise(datetime) -> datetime
   }
-  |> to_string
+  |> format(in: "YYYY-MM-DDTHH:mm:ss.SSSZ")
 }
 
-/// Gets the current UTC datetime of the host as an ISO-8601 formatted string. 
-/// To record the current time (including monotonic and unique), use 
-/// `tempo.now_utc`. To get the current datetime for other purposes,
-/// use `tempo.now_utc |> moment.as_datetime`.
+/// Gets the current UTC datetime of the host as an ISO-8601 formatted string
+/// with millisecond precision. To record the current time (including 
+/// monotonic and unique), use `tempo.now_utc`. To get the current datetime 
+/// for other purposes, use `tempo.now_utc |> moment.as_datetime`.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.now_utc()
+/// datetime.now_utc_string()
 /// // -> "2024-06-14T08:19:20.056Z"
 /// ```
-pub fn now_utc() -> String {
+pub fn now_utc_string() -> String {
   let now_ts_micro = tempo.now_utc_ffi()
 
   new(
@@ -152,7 +152,7 @@ pub fn now_utc() -> String {
     time.from_unix_micro_utc(now_ts_micro),
     tempo.utc,
   )
-  |> to_string
+  |> format(in: "YYYY-MM-DDTHH:mm:ss.SSSZ")
 }
 
 /// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
@@ -235,11 +235,7 @@ fn split_time_and_offset(time_with_offset: String) {
 /// // -> "2024-06-21T05:22:22.009534Z" 
 /// ```
 pub fn to_string(datetime: tempo.DateTime) -> String {
-  datetime |> tempo.datetime_get_naive |> naive_datetime.to_string
-  <> case datetime |> tempo.datetime_get_offset |> tempo.offset_get_minutes {
-    0 -> "Z"
-    _ -> datetime |> tempo.datetime_get_offset |> offset.to_string
-  }
+  tempo.datetime_to_string(datetime)
 }
 
 /// Parses a datetime string in the provided format. Always prefer using

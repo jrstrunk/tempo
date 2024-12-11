@@ -41,7 +41,6 @@ import gleam/order
 import gleam/regexp
 import gleam/result
 import gleam/string
-import gleam/string_tree
 import tempo
 import tempo/month
 
@@ -253,16 +252,7 @@ fn split_int_tuple(
 /// // -> "2024-06-13"
 /// ```
 pub fn to_string(date: tempo.Date) -> String {
-  string_tree.from_strings([
-    int.to_string(date |> tempo.date_get_year),
-    "-",
-    month.to_int(date |> tempo.date_get_month)
-      |> int.to_string
-      |> string.pad_start(2, with: "0"),
-    "-",
-    int.to_string(date |> tempo.date_get_day) |> string.pad_start(2, with: "0"),
-  ])
-  |> string_tree.to_string
+  tempo.date_to_string(date)
 }
 
 /// Parses a date string in the provided format. Always prefer using

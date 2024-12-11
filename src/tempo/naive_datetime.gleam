@@ -155,13 +155,7 @@ pub fn from_string(
 /// // -> "2024-06-21T23:17:00.000"
 /// ```
 pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
-  datetime
-  |> get_date
-  |> date.to_string
-  <> "T"
-  <> datetime
-  |> get_time
-  |> time.to_string
+  tempo.naive_datetime_to_string(datetime)
 }
 
 /// Returns a tuple of the date and time values in the format used in Erlang.

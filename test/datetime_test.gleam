@@ -502,8 +502,8 @@ pub fn apply_positive_offset_test() {
 }
 
 pub fn now_test() {
-  datetime.now_local()
-  datetime.now_utc()
+  datetime.now_local_string()
+  datetime.now_utc_string()
   // Just should not crash or anything, not really much to validate
 }
 

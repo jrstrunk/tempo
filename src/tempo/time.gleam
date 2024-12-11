@@ -144,22 +144,22 @@ pub fn literal(time: String) -> tempo.Time {
   }
 }
 
-/// Gets the UTC wall time of the host as a string. To time events, use the
-/// `tempo.now_utc` function. To get the current time for other purposes,
-/// use `tempo.now_utc |> moment.as_time`.
+/// Gets the UTC wall time of the host as a string with millisecond precision. 
+/// To time events, use the `tempo.now_utc` function. To get the current 
+/// time for other purposes, use `tempo.now_utc |> moment.as_time`.
 ///
 /// ## Example
 /// 
 /// ```gleam
 /// case 
-///   time.now_utc() 
+///   time.now_utc_string() 
 ///   |> time.is_later(than: time.literal("11:50:00")) 
 /// { 
 ///   True -> "We are all late!"
 ///   False -> "No rush :)"
 /// }
 /// ```
-pub fn now_utc() -> String {
+pub fn now_utc_string() -> String {
   let now_ts_micro = tempo.now_utc_ffi()
   let date_ts_micro =
     { date.to_unix_utc(date.from_unix_utc(now_ts_micro / 1_000_000)) }
@@ -168,25 +168,25 @@ pub fn now_utc() -> String {
   // Subtract the microseconds that are responsible for the date and the local
   // offset microseconds.
   tempo.time_from_microseconds(now_ts_micro - date_ts_micro)
-  |> to_string
+  |> format(in: "HH:mm:ss.SSSZ")
 }
 
-/// Gets the local wall time of the host as a string. To time events, use the
-/// `tempo.now_local` function. To get the current time for other purposes,
-/// use `tempo.now_local |> moment.as_time`.
+/// Gets the local wall time of the host as a string with milisecond precision. 
+/// To time events, use the `tempo.now_local` function. To get the current 
+/// time for other purposes, use `tempo.now_local |> moment.as_time`.
 /// 
 /// ## Example
 /// 
 /// ```gleam
 /// case 
-///   time.now_local() 
+///   time.now_local_string() 
 ///   |> time.is_later(than: time.literal("11:50:00")) 
 /// { 
 ///   True -> "We are late!"
 ///   False -> "No rush :)"
 /// }
 /// ```
-pub fn now_local() -> String {
+pub fn now_local_string() -> String {
   let now_ts_micro = tempo.now_utc_ffi()
   let date_ts_micro =
     { date.to_unix_utc(date.from_unix_utc(now_ts_micro / 1_000_000)) }
@@ -197,7 +197,7 @@ pub fn now_local() -> String {
   tempo.time_from_microseconds(
     now_ts_micro - date_ts_micro + tempo.offset_local_micro(),
   )
-  |> to_string
+  |> format(in: "HH:mm:ss.SSSZ")
 }
 
 /// Early on these were part of the public API and used in a lot of tests, 

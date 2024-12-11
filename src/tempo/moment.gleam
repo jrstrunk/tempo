@@ -2,6 +2,10 @@ import gleam/order
 import tempo
 import tempo/datetime
 
+pub fn to_string(moment: tempo.Moment) -> String {
+  tempo.moment_to_string(moment)
+}
+
 pub fn as_datetime(moment: tempo.Moment) -> tempo.DateTime {
   tempo.moment_as_datetime(moment)
 }
@@ -28,10 +32,6 @@ pub fn format(moment: tempo.Moment, in format: String) -> String {
 
 pub fn difference(from a: tempo.Moment, to b: tempo.Moment) -> tempo.Duration {
   tempo.moment_difference(from: a, to: b)
-}
-
-pub fn since(to moment: tempo.Moment, since start: tempo.Moment) -> String {
-  tempo.moment_since(to: moment, since: start)
 }
 
 pub fn compare(a: tempo.Moment, b: tempo.Moment) -> order.Order {

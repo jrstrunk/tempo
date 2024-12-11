@@ -66,61 +66,21 @@ pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
   )
 }
 
-pub fn now_formatted(in format: String) -> String {
+pub fn now_utc_formatted(in format: String) -> String {
   now_utc() |> moment_as_datetime |> datetime_format(format)
 }
 
-// -------------------------------------------------------------------------- //
-//                             Moment Logic                                   //
-// -------------------------------------------------------------------------- //
-
-pub opaque type Moment {
-  Moment(
-    timestamp_microsecond: Int,
-    offset_microsecond: Int,
-    monotonic_microsecond: Int,
-    unique: Int,
-  )
+pub fn now_local_formatted(in format: String) -> String {
+  now_local() |> moment_as_datetime |> datetime_format(format)
 }
 
-@internal
-pub fn moment_as_datetime(moment: Moment) -> DateTime {
-  DateTime(
-    naive: NaiveDateTime(
-      date: moment_as_date(moment),
-      time: moment_as_time(moment),
-    ),
-    offset: Offset(moment.offset_microsecond / 60_000_000),
-  )
+pub fn since(start start: Moment) -> Duration {
+  now_utc() |> moment_difference(from: start) |> duration_absolute
 }
 
-@internal
-pub fn moment_as_unix_utc(moment: Moment) -> Int {
-  moment.timestamp_microsecond / 1_000_000
-}
-
-@internal
-pub fn moment_as_unix_milli_utc(moment: Moment) -> Int {
-  moment.timestamp_microsecond / 1000
-}
-
-@internal
-pub fn moment_serialize_as_datetime(moment: Moment) -> String {
-  moment |> moment_as_datetime |> datetime_serialize
-}
-
-@internal
-pub fn moment_as_date(moment: Moment) -> Date {
-  date_from_unix_utc(
-    { moment.timestamp_microsecond + moment.offset_microsecond } / 1_000_000,
-  )
-}
-
-@internal
-pub fn moment_as_time(moment: Moment) -> Time {
-  time_from_unix_micro_utc(
-    moment.timestamp_microsecond + moment.offset_microsecond,
-  )
+pub fn since_formatted(start start: Moment) -> String {
+  let dur = since(start:)
+  unit.format(dur.microseconds)
 }
 
 pub fn is_earlier(than datetime: DateTime) -> Bool {
@@ -187,14 +147,14 @@ pub fn difference(from start: DateTime) -> Duration {
   now_utc() |> moment_as_datetime |> datetime_difference(from: start)
 }
 
-pub fn since(start start: DateTime) -> Duration {
+pub fn since_datetime(start start: DateTime) -> Duration {
   case difference(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
 }
 
-pub fn until(end end: DateTime) -> Duration {
+pub fn until_datetime(end end: DateTime) -> Duration {
   case now_utc() |> moment_as_datetime |> datetime_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
@@ -217,6 +177,59 @@ pub fn until_time(end end: Time) -> Duration {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
+}
+
+// -------------------------------------------------------------------------- //
+//                             Moment Logic                                   //
+// -------------------------------------------------------------------------- //
+
+pub opaque type Moment {
+  Moment(
+    timestamp_microsecond: Int,
+    offset_microsecond: Int,
+    monotonic_microsecond: Int,
+    unique: Int,
+  )
+}
+
+@internal
+pub fn moment_as_datetime(moment: Moment) -> DateTime {
+  DateTime(
+    naive: NaiveDateTime(
+      date: moment_as_date(moment),
+      time: moment_as_time(moment),
+    ),
+    offset: Offset(moment.offset_microsecond / 60_000_000),
+  )
+}
+
+@internal
+pub fn moment_as_unix_utc(moment: Moment) -> Int {
+  moment.timestamp_microsecond / 1_000_000
+}
+
+@internal
+pub fn moment_as_unix_milli_utc(moment: Moment) -> Int {
+  moment.timestamp_microsecond / 1000
+}
+
+@internal
+pub fn moment_to_string(moment: Moment) -> String {
+  moment |> moment_as_datetime |> datetime_to_string
+}
+
+@internal
+pub fn moment_as_date(moment: Moment) -> Date {
+  date_from_unix_utc(
+    { moment.timestamp_microsecond + moment.offset_microsecond } / 1_000_000,
+  )
+}
+
+@internal
+pub fn moment_as_time(moment: Moment) -> Time {
+  time_from_unix_micro_utc(
+    moment.timestamp_microsecond + moment.offset_microsecond,
+  )
 }
 
 @internal
@@ -252,14 +265,6 @@ pub fn moment_is_later_or_equal(a: Moment, to b: Moment) {
 @internal
 pub fn moment_difference(from a: Moment, to b: Moment) -> Duration {
   Duration(b.monotonic_microsecond - a.monotonic_microsecond)
-}
-
-@internal
-pub fn moment_since(to moment: Moment, since start: Moment) -> String {
-  let dur = moment |> moment_difference(from: start)
-
-  int.absolute_value(dur.microseconds)
-  |> unit.format
 }
 
 // -------------------------------------------------------------------------- //
@@ -336,6 +341,16 @@ pub fn datetime_get_tz(datetime: DateTime) -> option.Option(String) {
   }
 }
 
+@internal
+pub fn datetime_to_string(datetime: DateTime) -> String {
+  datetime.naive |> naive_datetime_to_string
+  <> case datetime.offset.minutes {
+    0 -> "Z"
+    _ -> datetime.offset |> offset_to_string
+  }
+}
+
+@deprecated("Use `datetime.to_string` instead")
 @internal
 pub fn datetime_serialize(datetime: DateTime) -> String {
   let d = datetime.naive.date
@@ -540,6 +555,15 @@ pub fn naive_datetime_set_offset(
   offset: Offset,
 ) -> DateTime {
   DateTime(naive: datetime, offset: offset)
+}
+
+@internal
+pub fn naive_datetime_to_string(datetime: NaiveDateTime) -> String {
+  datetime.date
+  |> date_to_string
+  <> "T"
+  <> datetime.time
+  |> time_to_string
 }
 
 @internal
@@ -851,6 +875,20 @@ pub fn new_date(
   day day: Int,
 ) -> Result(Date, DateOutOfBoundsError) {
   date_from_tuple(#(year, month, day))
+}
+
+@internal
+pub fn date_to_string(date: Date) -> String {
+  string_tree.from_strings([
+    int.to_string(date.year),
+    "-",
+    month_to_int(date.month) 
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    "-",
+    int.to_string(date.day) |> string.pad_start(2, with: "0"),
+  ])
+  |> string_tree.to_string
 }
 
 @internal
@@ -1590,6 +1628,30 @@ pub fn validate_time(time: Time) -> Result(Time, TimeOutOfBoundsError) {
         _, _, _ -> Error(TimeHourOutOfBounds)
       }
   }
+}
+
+@internal
+pub fn time_to_string(time: Time) -> String {
+  string_tree.from_strings([
+    time.hour
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    ":",
+    time.minute
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    ":",
+    time.second
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+  ])
+  |> string_tree.append(".")
+  |> string_tree.append(
+    time.microsecond
+    |> int.to_string
+    |> string.pad_start(6, with: "0"),
+  )
+  |> string_tree.to_string
 }
 
 @internal

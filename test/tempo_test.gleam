@@ -1,9 +1,20 @@
+import tempo/datetime
+import gleam/io
 import gleam/option.{None, Some}
 import gleeunit/should
 import tempo
 import tempo/date
 import tempo/offset
 import tempo/time
+
+pub fn main() {
+  datetime.now_local_string() |> io.debug
+  datetime.now_utc_string() |> io.debug
+  time.now_local_string() |> io.debug
+  time.now_utc_string() |> io.debug
+  date.current_local() |> io.debug
+  date.current_utc() |> io.debug
+}
 
 pub fn parse_any_all_test() {
   tempo.parse_any("2024/06/22 at 13:42:11.314 in +05:00")
