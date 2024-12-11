@@ -125,11 +125,7 @@ pub fn literal(date: String) -> tempo.Date {
 /// // -> "2024-06-13"
 /// ```
 pub fn current_local() {
-<<<<<<< HEAD
   { tempo.now_utc_ffi() + tempo.offset_local_micro() } / 1_000_000
-=======
-  { tempo.now_utc_ffi() + tempo.offset_local_nano() } / 1_000_000_000
->>>>>>> 09bc1fb (Add moment module and change `now` functions to return strings)
   |> from_unix_utc
 }
 
@@ -143,11 +139,7 @@ pub fn current_local() {
 /// // -> "2024-06-14"
 /// ```
 pub fn current_utc() {
-<<<<<<< HEAD
   tempo.now_utc_ffi() / 1_000_000
-=======
-  tempo.now_utc_ffi() / 1_000_000_000
->>>>>>> 09bc1fb (Add moment module and change `now` functions to return strings)
   |> from_unix_utc
 }
 
@@ -370,14 +362,10 @@ pub fn format(date: tempo.Date, in fmt: String) -> String {
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
-<<<<<<< HEAD
       regexp.Match(content, []) -> [
         tempo.date_replace_format(content, date),
         ..acc
       ]
-=======
-      regexp.Match(content, []) -> [tempo.date_replace_format(content, date), ..acc]
->>>>>>> 09bc1fb (Add moment module and change `now` functions to return strings)
 
       // If there is a non-empty subpattern, then the escape 
       // character "[ ... ]" matched, so we should not change anything here.
