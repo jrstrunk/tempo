@@ -841,3 +841,16 @@ pub fn to_string_lossless_equality_test() {
   |> datetime.from_dynamic_string
   |> should.equal(Ok(dt))
 }
+
+pub fn difference_dec_test() {
+  let test_datetime = datetime.literal("2024-12-11T08:55:32.424420Z")
+  datetime.difference(test_datetime, test_datetime)
+  |> duration.as_seconds
+  |> should.equal(0)
+}
+
+pub fn date_period_dec_test() {
+  let test_date = date.literal("2024-12-11")
+
+  date.difference(test_date, test_date) |> should.equal(0)
+}

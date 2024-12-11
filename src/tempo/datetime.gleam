@@ -234,28 +234,8 @@ fn split_time_and_offset(time_with_offset: String) {
 /// datetime.to_string(my_datetime)
 /// // -> "2024-06-21T05:22:22.009534Z" 
 /// ```
-@deprecated("Use `to_text` for the same functionality, or `serialize` for sending datetime values outside of Gleam to later be parsed by this library.")
 pub fn to_string(datetime: tempo.DateTime) -> String {
   tempo.datetime_to_string(datetime)
-}
-
-/// Returns a string representation of a datetime value in the ISO 8601
-/// format with millisecond precision. If a different precision is needed, 
-/// use the `format` function. If serializing to send outside of Gleam and then
-/// parse back into a datetime value, use the `serialize` function.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.to_text(my_datetime)
-/// // -> "2024-06-21T05:22:22.009Z" 
-/// ```
-pub fn to_string(datetime: tempo.DateTime) -> String {
-  datetime |> tempo.datetime_get_naive |> naive_datetime.to_string
-  <> case datetime |> tempo.datetime_get_offset |> tempo.offset_get_minutes {
-    0 -> "Z"
-    _ -> datetime |> tempo.datetime_get_offset |> offset.to_string
-  }
 }
 
 /// Parses a datetime string in the provided format. Always prefer using

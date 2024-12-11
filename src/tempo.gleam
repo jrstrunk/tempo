@@ -1443,41 +1443,6 @@ pub fn month_year_to_int(month_year: MonthYear) -> Int {
   month_year.year * 100 + month_to_int(month_year.month)
 }
 
-pub fn month_to_short_string(month: Month) -> String {
-  case month {
-    Jan -> "Jan"
-    Feb -> "Feb"
-    Mar -> "Mar"
-    Apr -> "Apr"
-    May -> "May"
-    Jun -> "Jun"
-    Jul -> "Jul"
-    Aug -> "Aug"
-    Sep -> "Sep"
-    Oct -> "Oct"
-    Nov -> "Nov"
-    Dec -> "Dec"
-  }
-}
-
-@internal
-pub fn month_to_long_string(month: Month) -> String {
-  case month {
-    Jan -> "January"
-    Feb -> "February"
-    Mar -> "March"
-    Apr -> "April"
-    May -> "May"
-    Jun -> "June"
-    Jul -> "July"
-    Aug -> "August"
-    Sep -> "September"
-    Oct -> "October"
-    Nov -> "November"
-    Dec -> "December"
-  }
-}
-
 @internal
 pub fn month_days_of(month: Month, in year: Int) -> Int {
   case month {
