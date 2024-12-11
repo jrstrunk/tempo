@@ -4,6 +4,7 @@ import gleeunit/should
 import tempo
 import tempo/date
 import tempo/datetime
+import tempo/duration
 import tempo/naive_datetime
 import tempo/period
 
@@ -624,4 +625,17 @@ pub fn comprising_months_year_boundary_test() {
     tempo.MonthYear(tempo.Mar, 2025),
     tempo.MonthYear(tempo.Apr, 2025),
   ])
+}
+
+pub fn tempo_datetime_period_test() {
+  let test_datetime = datetime.literal("2024-12-11T08:55:32.424420250Z")
+  datetime.difference(test_datetime, test_datetime)
+  |> duration.as_seconds
+  |> should.equal(0)
+}
+
+pub fn tempo_date_period_test() {
+  let test_date = date.literal("2024-12-11")
+
+  date.difference(test_date, test_date) |> should.equal(0)
 }

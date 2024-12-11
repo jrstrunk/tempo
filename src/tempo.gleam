@@ -620,15 +620,17 @@ fn date_days_apart_positive(from start_date: Date, to end_date: Date) {
 
 fn exclusive_months_between_days(from: Date, to: Date) {
   use <- bool.guard(
-    when: to |> date_get_year == from |> date_get_year
+    when: {
+      to.year == from.year
       && {
-      to |> date_get_month |> month_prior |> month_to_int
-      < from |> date_get_month |> month_next |> month_to_int
+        month_year_prior(MonthYear(to.month, to.year)) |> month_year_to_int
+        < month_year_next(MonthYear(from.month, from.year)) |> month_year_to_int
+      }
     },
     return: 0,
   )
 
-  case to |> date_get_year == from |> date_get_year {
+  case to.year == from.year {
     True ->
       list.range(
         month_to_int(from |> date_get_month |> month_next),
@@ -798,6 +800,11 @@ pub fn month_to_int(month: Month) -> Int {
 }
 
 @internal
+pub fn month_year_to_int(month_year: MonthYear) -> Int {
+  month_year.year * 100 + month_to_int(month_year.month)
+}
+
+@internal
 pub fn month_days_of(month: Month, in year: Int) -> Int {
   case month {
     Jan -> 31
@@ -841,6 +848,14 @@ pub fn month_next(month: Month) -> Month {
 }
 
 @internal
+pub fn month_year_prior(month_year: MonthYear) -> MonthYear {
+  case month_year.month {
+    Jan -> MonthYear(Dec, month_year.year - 1)
+    month -> MonthYear(month_prior(month), month_year.year)
+  }
+}
+
+@internal
 pub fn month_prior(month: Month) -> Month {
   case month {
     Jan -> Dec
@@ -855,6 +870,14 @@ pub fn month_prior(month: Month) -> Month {
     Oct -> Sep
     Nov -> Oct
     Dec -> Nov
+  }
+}
+
+@internal
+pub fn month_year_next(month_year: MonthYear) -> MonthYear {
+  case month_year.month {
+    Dec -> MonthYear(Jan, month_year.year + 1)
+    month -> MonthYear(month_next(month), month_year.year)
   }
 }
 
