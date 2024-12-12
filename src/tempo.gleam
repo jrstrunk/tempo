@@ -208,12 +208,12 @@ pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
   time_is_later_or_equal(now() |> moment_as_local_time, to: time)
 }
 
-pub fn difference(from start: DateTime) -> Duration {
+pub fn difference_from(from start: DateTime) -> Duration { 
   now() |> moment_as_utc_datetime |> datetime_difference(from: start)
 }
 
 pub fn since_datetime(start start: DateTime) -> Duration {
-  case difference(from: start) {
+  case difference_from(start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
@@ -226,23 +226,23 @@ pub fn until_datetime(end end: DateTime) -> Duration {
   }
 }
 
-pub fn difference_utc_time(from start: Time) -> Duration {
+pub fn difference_from_utc_time(from start: Time) -> Duration {
   now() |> moment_as_utc_time |> time_difference(from: start)
 }
 
-pub fn difference_local_time(from start: Time) -> Duration {
+pub fn difference_from_local_time(from start: Time) -> Duration {
   now() |> moment_as_utc_time |> time_difference(from: start)
 }
 
 pub fn since_utc_time(start start: Time) -> Duration {
-  case difference_utc_time(from: start) {
+  case difference_from_utc_time(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
 }
 
 pub fn since_local_time(start start: Time) -> Duration {
-  case difference_local_time(from: start) {
+  case difference_from_local_time(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
@@ -262,23 +262,23 @@ pub fn until_local_time(end end: Time) -> Duration {
   }
 }
 
-pub fn difference_utc_date(from start: Date) -> Int {
+pub fn difference_from_utc_date(from start: Date) -> Int {
   now() |> moment_as_utc_date |> date_days_apart(from: start)
 }
 
-pub fn difference_local_date(from start: Date) -> Int {
+pub fn difference_from_local_date(from start: Date) -> Int {
   now() |> moment_as_local_date |> date_days_apart(from: start)
 }
 
 pub fn since_utc_date(start start: Date) -> Int {
-  case difference_utc_date(from: start) {
+  case difference_from_utc_date(from: start) {
     diff if diff > 0 -> diff
     _ -> 0
   }
 }
 
 pub fn since_local_date(start start: Date) -> Int {
-  case difference_local_date(from: start) {
+  case difference_from_local_date(from: start) {
     diff if diff > 0 -> diff
     _ -> 0
   }
