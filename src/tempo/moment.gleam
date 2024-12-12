@@ -38,6 +38,10 @@ pub fn as_utc_time(moment: tempo.Moment) -> tempo.Time {
   tempo.moment_as_utc_time(moment)
 }
 
+pub fn as_local_time(moment: tempo.Moment) -> tempo.Time {
+  tempo.moment_as_local_time(moment)
+}
+
 pub fn format_utc(moment: tempo.Moment, in format: String) -> String {
   tempo.moment_as_utc_datetime(moment) |> datetime.format(in: format)
 }
