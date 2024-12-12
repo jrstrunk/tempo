@@ -32,30 +32,19 @@ import gtempo/internal as unit
 //                              Now Logic                                     //
 // -------------------------------------------------------------------------- //
 
-pub fn now_local() -> Moment {
-  let monotonic_microsecond = now_monotonic_ffi()
+pub fn now() -> Moment {
+  let monotonic_us = now_monotonic_ffi()
 
   Moment(
-    timestamp_microsecond: now_utc_ffi(),
-    offset_microsecond: offset_local_micro(),
-    monotonic_microsecond:,
-    unique: now_unique_ffi(),
-  )
-}
-
-pub fn now_utc() -> Moment {
-  let monotonic_microsecond = now_monotonic_ffi()
-
-  Moment(
-    timestamp_microsecond: now_utc_ffi(),
-    offset_microsecond: 0,
-    monotonic_microsecond:,
+    timestamp_utc_us: now_utc_ffi(),
+    offset_local_us: offset_local_micro(),
+    monotonic_us:,
     unique: now_unique_ffi(),
   )
 }
 
 pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
-  let new_ts = now_utc().timestamp_microsecond + duration.microseconds
+  let new_ts = now().timestamp_utc_us + duration.microseconds
 
   DateTime(
     NaiveDateTime(
@@ -67,15 +56,15 @@ pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
 }
 
 pub fn now_utc_formatted(in format: String) -> String {
-  now_utc() |> moment_as_datetime |> datetime_format(format)
+  now() |> moment_as_utc_datetime |> datetime_format(format)
 }
 
 pub fn now_local_formatted(in format: String) -> String {
-  now_local() |> moment_as_datetime |> datetime_format(format)
+  now() |> moment_as_local_datetime |> datetime_format(format)
 }
 
 pub fn since(start start: Moment) -> Duration {
-  now_utc() |> moment_difference(from: start) |> duration_absolute
+  now() |> moment_difference(from: start) |> duration_absolute
 }
 
 pub fn since_formatted(start start: Moment) -> String {
@@ -83,68 +72,144 @@ pub fn since_formatted(start start: Moment) -> String {
   unit.format(dur.microseconds)
 }
 
-pub fn is_earlier(than datetime: DateTime) -> Bool {
-  datetime_is_earlier(now_utc() |> moment_as_datetime, than: datetime)
+pub fn compare_utc(datetime: DateTime) -> order.Order {
+  datetime_compare(now() |> moment_as_utc_datetime, to: datetime)
 }
 
-pub fn is_earlier_or_equal(to datetime: DateTime) -> Bool {
-  datetime_is_earlier_or_equal(now_utc() |> moment_as_datetime, to: datetime)
+pub fn compare_local(datetime: DateTime) -> order.Order {
+  datetime_compare(now() |> moment_as_local_datetime, to: datetime)
 }
 
-pub fn is_equal(to datetime: DateTime) -> Bool {
-  datetime_is_equal(now_utc() |> moment_as_datetime, to: datetime)
+pub fn is_utc_earlier(than datetime: DateTime) -> Bool {
+  datetime_is_earlier(now() |> moment_as_utc_datetime, than: datetime)
 }
 
-pub fn is_later(than datetime: DateTime) -> Bool {
-  datetime_is_later(now_utc() |> moment_as_datetime, than: datetime)
+pub fn is_local_earlier(than datetime: DateTime) -> Bool {
+  datetime_is_earlier(now() |> moment_as_local_datetime, than: datetime)
 }
 
-pub fn is_later_or_equal(to datetime: DateTime) -> Bool {
-  datetime_is_later_or_equal(now_utc() |> moment_as_datetime, to: datetime)
+pub fn is_utc_earlier_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_earlier_or_equal(now() |> moment_as_utc_datetime, to: datetime)
 }
 
-pub fn is_date_earlier(than date: Date) -> Bool {
-  date_is_earlier(now_utc() |> moment_as_date, than: date)
+pub fn is_local_earlier_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_earlier_or_equal(now() |> moment_as_local_datetime, to: datetime)
 }
 
-pub fn is_date_earlier_or_equal(to date: Date) -> Bool {
-  date_is_earlier_or_equal(now_utc() |> moment_as_date, to: date)
+pub fn is_utc_equal(to datetime: DateTime) -> Bool {
+  datetime_is_equal(now() |> moment_as_utc_datetime, to: datetime)
 }
 
-pub fn is_date_equal(to date: Date) -> Bool {
-  date_is_equal(now_utc() |> moment_as_date, to: date)
+pub fn is_local_equal(to datetime: DateTime) -> Bool {
+  datetime_is_equal(now() |> moment_as_local_datetime, to: datetime)
 }
 
-pub fn is_date_later(than date: Date) -> Bool {
-  date_is_later(now_utc() |> moment_as_date, than: date)
+pub fn is_utc_later(than datetime: DateTime) -> Bool {
+  datetime_is_later(now() |> moment_as_utc_datetime, than: datetime)
 }
 
-pub fn is_date_later_or_equal(to date: Date) -> Bool {
-  date_is_later_or_equal(now_utc() |> moment_as_date, to: date)
+pub fn is_local_later(than datetime: DateTime) -> Bool {
+  datetime_is_later(now() |> moment_as_local_datetime, than: datetime)
 }
 
-pub fn is_time_earlier(than time: Time) -> Bool {
-  time_is_earlier(now_utc() |> moment_as_time, than: time)
+pub fn is_utc_later_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_later_or_equal(now() |> moment_as_utc_datetime, to: datetime)
 }
 
-pub fn is_time_earlier_or_equal(to time: Time) -> Bool {
-  time_is_earlier_or_equal(now_utc() |> moment_as_time, to: time)
+pub fn is_local_later_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_later_or_equal(now() |> moment_as_local_datetime, to: datetime)
 }
 
-pub fn is_time_equal(to time: Time) -> Bool {
-  time_is_equal(now_utc() |> moment_as_time, to: time)
+pub fn compare_utc_date(date: Date) -> order.Order {
+  now() |> moment_as_utc_date |> date_compare(to: date)
 }
 
-pub fn is_time_later(than time: Time) -> Bool {
-  time_is_later(now_utc() |> moment_as_time, than: time)
+pub fn compare_local_date(date: Date) -> order.Order {
+  now() |> moment_as_local_date |> date_compare(to: date)
 }
 
-pub fn is_time_later_or_equal(to time: Time) -> Bool {
-  time_is_later_or_equal(now_utc() |> moment_as_time, to: time)
+pub fn is_utc_date_earlier(than date: Date) -> Bool {
+  date_is_earlier(now() |> moment_as_utc_date, than: date)
+}
+
+pub fn is_local_date_earlier(than date: Date) -> Bool {
+  date_is_earlier(now() |> moment_as_local_date, than: date)
+}
+
+pub fn is_utc_date_earlier_or_equal(to date: Date) -> Bool {
+  date_is_earlier_or_equal(now() |> moment_as_utc_date, to: date)
+}
+
+pub fn is_local_date_earlier_or_equal(to date: Date) -> Bool {
+  date_is_earlier_or_equal(now() |> moment_as_local_date, to: date)
+}
+
+pub fn is_utc_date_equal(to date: Date) -> Bool {
+  date_is_equal(now() |> moment_as_utc_date, to: date)
+}
+
+pub fn is_local_date_equal(to date: Date) -> Bool {
+  date_is_equal(now() |> moment_as_local_date, to: date)
+}
+
+pub fn is_utc_date_later(than date: Date) -> Bool {
+  date_is_later(now() |> moment_as_utc_date, than: date)
+}
+
+pub fn is_local_date_later(than date: Date) -> Bool {
+  date_is_later(now() |> moment_as_local_date, than: date)
+}
+
+pub fn is_utc_date_later_or_equal(to date: Date) -> Bool {
+  date_is_later_or_equal(now() |> moment_as_utc_date, to: date)
+}
+
+pub fn is_local_date_later_or_equal(to date: Date) -> Bool {
+  date_is_later_or_equal(now() |> moment_as_local_date, to: date)
+}
+
+pub fn is_utc_time_earlier(than time: Time) -> Bool {
+  time_is_earlier(now() |> moment_as_utc_time, than: time)
+}
+
+pub fn is_local_time_earlier(than time: Time) -> Bool {
+  time_is_earlier(now() |> moment_as_local_time, than: time)
+}
+
+pub fn is_utc_time_earlier_or_equal(to time: Time) -> Bool {
+  time_is_earlier_or_equal(now() |> moment_as_utc_time, to: time)
+}
+
+pub fn is_local_time_earlier_or_equal(to time: Time) -> Bool {
+  time_is_earlier_or_equal(now() |> moment_as_local_time, to: time)
+}
+
+pub fn is_utc_time_equal(to time: Time) -> Bool {
+  time_is_equal(now() |> moment_as_utc_time, to: time)
+}
+
+pub fn is_local_time_equal(to time: Time) -> Bool {
+  time_is_equal(now() |> moment_as_local_time, to: time)
+}
+
+pub fn is_utc_time_later(than time: Time) -> Bool {
+  time_is_later(now() |> moment_as_utc_time, than: time)
+}
+
+pub fn is_local_time_later(than time: Time) -> Bool {
+  time_is_later(now() |> moment_as_local_time, than: time)
+}
+
+pub fn is_utc_time_later_or_equal(to time: Time) -> Bool {
+  time_is_later_or_equal(now() |> moment_as_utc_time, to: time)
+}
+
+pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
+  time_is_later_or_equal(now() |> moment_as_local_time, to: time)
 }
 
 pub fn difference(from start: DateTime) -> Duration {
-  now_utc() |> moment_as_datetime |> datetime_difference(from: start)
+  now() |> moment_as_utc_datetime |> datetime_difference(from: start)
 }
 
 pub fn since_datetime(start start: DateTime) -> Duration {
@@ -155,27 +220,81 @@ pub fn since_datetime(start start: DateTime) -> Duration {
 }
 
 pub fn until_datetime(end end: DateTime) -> Duration {
-  case now_utc() |> moment_as_datetime |> datetime_difference(to: end) {
+  case now() |> moment_as_utc_datetime |> datetime_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
 }
 
-pub fn difference_time(from start: Time) -> Duration {
-  now_utc() |> moment_as_time |> time_difference(from: start)
+pub fn difference_utc_time(from start: Time) -> Duration {
+  now() |> moment_as_utc_time |> time_difference(from: start)
 }
 
-pub fn since_time(start start: Time) -> Duration {
-  case difference_time(from: start) {
+pub fn difference_local_time(from start: Time) -> Duration {
+  now() |> moment_as_utc_time |> time_difference(from: start)
+}
+
+pub fn since_utc_time(start start: Time) -> Duration {
+  case difference_utc_time(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
 }
 
-pub fn until_time(end end: Time) -> Duration {
-  case now_utc() |> moment_as_time |> time_difference(to: end) {
+pub fn since_local_time(start start: Time) -> Duration {
+  case difference_local_time(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
+  }
+}
+
+pub fn until_utc_time(end end: Time) -> Duration {
+  case now() |> moment_as_utc_time |> time_difference(to: end) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+pub fn until_local_time(end end: Time) -> Duration {
+  case now() |> moment_as_local_time |> time_difference(to: end) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+pub fn difference_utc_date(from start: Date) -> Int {
+  now() |> moment_as_utc_date |> date_days_apart(from: start)
+}
+
+pub fn difference_local_date(from start: Date) -> Int {
+  now() |> moment_as_local_date |> date_days_apart(from: start)
+}
+
+pub fn since_utc_date(start start: Date) -> Int {
+  case difference_utc_date(from: start) {
+    diff if diff > 0 -> diff
+    _ -> 0
+  }
+}
+
+pub fn since_local_date(start start: Date) -> Int {
+  case difference_local_date(from: start) {
+    diff if diff > 0 -> diff
+    _ -> 0
+  }
+}
+
+pub fn until_utc_date(end end: Date) -> Int {
+  case now() |> moment_as_utc_date |> date_days_apart(to: end) {
+    diff if diff > 0 -> diff
+    _ -> 0
+  }
+}
+
+pub fn until_local_date(end end: Date) -> Int {
+  case now() |> moment_as_local_date |> date_days_apart(to: end) {
+    diff if diff > 0 -> diff
+    _ -> 0
   }
 }
 
@@ -185,51 +304,75 @@ pub fn until_time(end end: Time) -> Duration {
 
 pub opaque type Moment {
   Moment(
-    timestamp_microsecond: Int,
-    offset_microsecond: Int,
-    monotonic_microsecond: Int,
+    timestamp_utc_us: Int,
+    offset_local_us: Int,
+    monotonic_us: Int,
     unique: Int,
   )
 }
 
 @internal
-pub fn moment_as_datetime(moment: Moment) -> DateTime {
+pub fn moment_as_utc_datetime(moment: Moment) -> DateTime {
   DateTime(
     naive: NaiveDateTime(
-      date: moment_as_date(moment),
-      time: moment_as_time(moment),
+      date: moment_as_utc_date(moment),
+      time: moment_as_utc_time(moment),
     ),
-    offset: Offset(moment.offset_microsecond / 60_000_000),
+    offset: utc,
+  )
+}
+
+@internal
+pub fn moment_as_local_datetime(moment: Moment) -> DateTime {
+  DateTime(
+    naive: NaiveDateTime(
+      date: moment_as_local_date(moment),
+      time: moment_as_local_time(moment),
+    ),
+    offset: Offset(moment.offset_local_us / 60_000_000),
   )
 }
 
 @internal
 pub fn moment_as_unix_utc(moment: Moment) -> Int {
-  moment.timestamp_microsecond / 1_000_000
+  moment.offset_local_us / 1_000_000
 }
 
 @internal
 pub fn moment_as_unix_milli_utc(moment: Moment) -> Int {
-  moment.timestamp_microsecond / 1000
+  moment.offset_local_us / 1000
 }
 
 @internal
-pub fn moment_to_string(moment: Moment) -> String {
-  moment |> moment_as_datetime |> datetime_to_string
+pub fn moment_to_utc_string(moment: Moment) -> String {
+  moment |> moment_as_utc_datetime |> datetime_to_string
 }
 
 @internal
-pub fn moment_as_date(moment: Moment) -> Date {
+pub fn moment_to_local_string(moment: Moment) -> String {
+  moment |> moment_as_local_datetime |> datetime_to_string
+}
+
+@internal
+pub fn moment_as_utc_date(moment: Moment) -> Date {
+  date_from_unix_utc(moment.timestamp_utc_us / 1_000_000)
+}
+
+@internal
+pub fn moment_as_local_date(moment: Moment) -> Date {
   date_from_unix_utc(
-    { moment.timestamp_microsecond + moment.offset_microsecond } / 1_000_000,
+    { moment.timestamp_utc_us + moment.offset_local_us } / 1_000_000,
   )
 }
 
 @internal
-pub fn moment_as_time(moment: Moment) -> Time {
-  time_from_unix_micro_utc(
-    moment.timestamp_microsecond + moment.offset_microsecond,
-  )
+pub fn moment_as_utc_time(moment: Moment) -> Time {
+  time_from_unix_micro_utc(moment.timestamp_utc_us)
+}
+
+@internal
+pub fn moment_as_local_time(moment: Moment) -> Time {
+  time_from_unix_micro_utc(moment.timestamp_utc_us + moment.offset_local_us)
 }
 
 @internal
@@ -264,7 +407,7 @@ pub fn moment_is_later_or_equal(a: Moment, to b: Moment) {
 
 @internal
 pub fn moment_difference(from a: Moment, to b: Moment) -> Duration {
-  Duration(b.monotonic_microsecond - a.monotonic_microsecond)
+  Duration(b.monotonic_us - a.monotonic_us)
 }
 
 // -------------------------------------------------------------------------- //
@@ -882,7 +1025,7 @@ pub fn date_to_string(date: Date) -> String {
   string_tree.from_strings([
     int.to_string(date.year),
     "-",
-    month_to_int(date.month) 
+    month_to_int(date.month)
       |> int.to_string
       |> string.pad_start(2, with: "0"),
     "-",

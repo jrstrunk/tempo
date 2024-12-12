@@ -1,9 +1,9 @@
-import tempo/datetime
 import gleam/io
 import gleam/option.{None, Some}
 import gleeunit/should
 import tempo
 import tempo/date
+import tempo/datetime
 import tempo/offset
 import tempo/time
 

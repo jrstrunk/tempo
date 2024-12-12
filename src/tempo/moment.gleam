@@ -2,12 +2,20 @@ import gleam/order
 import tempo
 import tempo/datetime
 
-pub fn to_string(moment: tempo.Moment) -> String {
-  tempo.moment_to_string(moment)
+pub fn to_utc_string(moment: tempo.Moment) -> String {
+  tempo.moment_to_utc_string(moment)
 }
 
-pub fn as_datetime(moment: tempo.Moment) -> tempo.DateTime {
-  tempo.moment_as_datetime(moment)
+pub fn to_local_string(moment: tempo.Moment) -> String {
+  tempo.moment_to_local_string(moment)
+}
+
+pub fn as_utc_datetime(moment: tempo.Moment) -> tempo.DateTime {
+  tempo.moment_as_utc_datetime(moment)
+}
+
+pub fn as_local_datetime(moment: tempo.Moment) -> tempo.DateTime {
+  tempo.moment_as_local_datetime(moment)
 }
 
 pub fn as_unix_utc(moment: tempo.Moment) -> Int {
@@ -18,16 +26,24 @@ pub fn as_unix_milli_utc(moment: tempo.Moment) -> Int {
   tempo.moment_as_unix_milli_utc(moment)
 }
 
-pub fn as_date(moment: tempo.Moment) -> tempo.Date {
-  tempo.moment_as_date(moment)
+pub fn as_utc_date(moment: tempo.Moment) -> tempo.Date {
+  tempo.moment_as_utc_date(moment)
 }
 
-pub fn as_time(moment: tempo.Moment) -> tempo.Time {
-  tempo.moment_as_time(moment)
+pub fn as_local_date(moment: tempo.Moment) -> tempo.Date {
+  tempo.moment_as_local_date(moment)
 }
 
-pub fn format(moment: tempo.Moment, in format: String) -> String {
-  tempo.moment_as_datetime(moment) |> datetime.format(in: format)
+pub fn as_utc_time(moment: tempo.Moment) -> tempo.Time {
+  tempo.moment_as_utc_time(moment)
+}
+
+pub fn format_utc(moment: tempo.Moment, in format: String) -> String {
+  tempo.moment_as_utc_datetime(moment) |> datetime.format(in: format)
+}
+
+pub fn format_local(moment: tempo.Moment, in format: String) -> String {
+  tempo.moment_as_local_datetime(moment) |> datetime.format(in: format)
 }
 
 pub fn difference(from a: tempo.Moment, to b: tempo.Moment) -> tempo.Duration {
