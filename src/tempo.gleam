@@ -10,7 +10,6 @@ import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/string_tree
-import gleam/yielder
 import gtempo/internal as unit
 
 // This is a big file. The contents are generally ordered by:
@@ -2168,23 +2167,30 @@ pub fn period_contains_naive_datetime(
 }
 
 @internal
-pub fn period_comprising_dates(period: Period) -> yielder.Yielder(Date) {
+pub fn period_comprising_dates(period: Period) -> List(Date) {
   let #(start_date, end_date): #(Date, Date) = case period {
     DatePeriod(start, end) -> #(start, end)
     NaiveDateTimePeriod(start, end) -> #(start.date, end.date)
     DateTimePeriod(start, end) -> #(start.naive.date, end.naive.date)
   }
 
-  yielder.unfold(from: start_date, with: fn(date) {
-    case date |> date_is_earlier_or_equal(to: end_date) {
-      True -> yielder.Next(date, date |> date_add(days: 1))
-      False -> yielder.Done
-    }
-  })
+  do_period_comprising_dates([], end_date, start_date)
+}
+
+fn do_period_comprising_dates(dates, date, start_date) {
+  case date |> date_is_later_or_equal(to: start_date) {
+    True ->
+      do_period_comprising_dates(
+        [date, ..dates],
+        date |> date_subtract(days: 1),
+        start_date,
+      )
+    False -> dates
+  }
 }
 
 @internal
-pub fn period_comprising_months(period: Period) -> yielder.Yielder(MonthYear) {
+pub fn period_comprising_months(period: Period) -> List(MonthYear) {
   let #(start_date, end_date) = case period {
     DatePeriod(start, end) -> #(start, end)
     NaiveDateTimePeriod(start, end) -> #(
@@ -2197,25 +2203,30 @@ pub fn period_comprising_months(period: Period) -> yielder.Yielder(MonthYear) {
     )
   }
 
-  yielder.unfold(
-    from: MonthYear(start_date.month, start_date.year),
-    with: fn(miy: MonthYear) {
-      case
-        date(miy.year, miy.month, 1)
-        |> date_is_earlier_or_equal(to: end_date)
-      {
-        True ->
-          yielder.Next(
-            miy,
-            MonthYear(miy.month |> month_next, case miy.month == Dec {
-              True -> miy.year + 1
-              False -> miy.year
-            }),
-          )
-        False -> yielder.Done
-      }
-    },
+  do_period_comprising_months(
+    [],
+    MonthYear(start_date.month, start_date.year),
+    end_date,
   )
+  |> list.reverse
+}
+
+fn do_period_comprising_months(miys, miy: MonthYear, end_date) {
+  case
+    date(miy.year, miy.month, 1)
+    |> date_is_earlier_or_equal(to: end_date)
+  {
+    True ->
+      do_period_comprising_months(
+        [miy, ..miys],
+        MonthYear(miy.month |> month_next, case miy.month == Dec {
+          True -> miy.year + 1
+          False -> miy.year
+        }),
+        end_date,
+      )
+    False -> miys
+  }
 }
 
 /// Error values that can be returned from functions in this package.
