@@ -182,6 +182,19 @@ pub fn get_day(date: tempo.Date) -> Int {
   date |> tempo.date_get_day
 }
 
+/// Gets the month value of a date.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.get_month_year
+/// // -> tempo.MonthYear(tempo.Jun, 2024)
+/// ```
+pub fn get_month_year(date: tempo.Date) -> tempo.MonthYear {
+  date |> tempo.date_get_month_year
+}
+
 /// Parses a date string in the format `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, `YYYY MM DD`,
 /// `YYYY M D`, or `YYYYMMDD`.

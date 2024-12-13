@@ -1006,6 +1006,11 @@ pub fn date_get_month(date: Date) {
 }
 
 @internal
+pub fn date_get_month_year(date: Date) {
+  MonthYear(date.month, date.year)
+}
+
+@internal
 pub fn date_get_day(date: Date) {
   date.day
 }
@@ -1264,13 +1269,9 @@ pub fn date_add(date: Date, days days: Int) -> Date {
   case days <= days_left_this_month {
     True -> Date(date.year, date.month, { date.day } + days)
     False -> {
-      let next_month = month_next(date.month)
-      let year = case next_month == Jan {
-        True -> { date.year } + 1
-        False -> date.year
-      }
+      let next_month = month_year_next(date |> date_get_month_year) 
 
-      date_add(Date(year, next_month, 1), days - days_left_this_month - 1)
+      date_add(Date(next_month.year, next_month.month, 1), days - days_left_this_month - 1)
     }
   }
 }
@@ -1280,14 +1281,14 @@ pub fn date_subtract(date: Date, days days: Int) -> Date {
   case days < date.day {
     True -> Date(date.year, date.month, { date.day } - days)
     False -> {
-      let prior_month = month_prior(date.month)
-      let year = case prior_month == Dec {
-        True -> { date.year } - 1
-        False -> date.year
-      }
+      let prior_month = month_year_prior(date |> date_get_month_year)
 
       date_subtract(
-        Date(year, prior_month, month_days_of(prior_month, in: year)),
+        Date(
+          prior_month.year,
+          prior_month.month,
+          month_year_days_of(prior_month),
+        ),
         days - date_get_day(date),
       )
     }
@@ -1362,8 +1363,8 @@ fn exclusive_months_between_days(from: Date, to: Date) {
   case to.year == from.year {
     True ->
       list.range(
-        month_to_int(from |> date_get_month |> month_next),
-        month_to_int(to |> date_get_month |> month_prior),
+        month_to_int({ from |> date_get_month_year |> month_year_next }.month),
+        month_to_int({ to |> date_get_month_year |> month_year_prior }.month),
       )
       |> list.map(fn(m) {
         let assert Ok(m) = month_from_int(m)
@@ -1373,7 +1374,12 @@ fn exclusive_months_between_days(from: Date, to: Date) {
       case to |> date_get_month == Jan {
         True -> []
         False ->
-          list.range(1, month_to_int(to |> date_get_month |> month_prior))
+          list.range(
+            1,
+            month_to_int(
+              { to |> date_get_month_year |> month_year_prior }.month,
+            ),
+          )
       }
       |> list.map(fn(m) {
         let assert Ok(m) = month_from_int(m)
@@ -1383,7 +1389,12 @@ fn exclusive_months_between_days(from: Date, to: Date) {
         case from |> date_get_month == Dec {
           True -> []
           False ->
-            list.range(month_to_int(from |> date_get_month |> month_next), 12)
+            list.range(
+              month_to_int(
+                { from |> date_get_month_year |> month_year_next }.month,
+              ),
+              12,
+            )
         }
         |> list.map(fn(m) {
           let assert Ok(m) = month_from_int(m)
@@ -1449,11 +1460,6 @@ pub fn date_is_later_or_equal(a: Date, to b: Date) -> Bool {
 //                              Month Logic                                   //
 // -------------------------------------------------------------------------- //
 
-/// A month in a specific year.
-pub type MonthYear {
-  MonthYear(month: Month, year: Int)
-}
-
 /// A specific month on the civil calendar. 
 pub type Month {
   Jan
@@ -1471,6 +1477,7 @@ pub type Month {
 }
 
 /// An ordered list of all months in the year.
+/// -> [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
 pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
 
 @internal
@@ -1584,13 +1591,63 @@ pub fn month_to_long_string(month: Month) -> String {
   }
 }
 
+@internal
+pub fn month_days_of(month: Month, in year: Int) -> Int {
+  month_year_days_of(MonthYear(month, year))
+}
+
+// -------------------------------------------------------------------------- //
+//                             Month Year Logic                               //
+// -------------------------------------------------------------------------- //
+
+/// A month in a specific year.
+pub type MonthYear {
+  MonthYear(month: Month, year: Int)
+}
+
+@internal
 pub fn month_year_to_int(month_year: MonthYear) -> Int {
   month_year.year * 100 + month_to_int(month_year.month)
 }
 
 @internal
-pub fn month_days_of(month: Month, in year: Int) -> Int {
-  case month {
+pub fn month_year_prior(month_year: MonthYear) -> MonthYear {
+  case month_year.month {
+    Jan -> MonthYear(Dec, month_year.year - 1)
+    Feb -> MonthYear(Jan, month_year.year)
+    Mar -> MonthYear(Feb, month_year.year)
+    Apr -> MonthYear(Mar, month_year.year)
+    May -> MonthYear(Apr, month_year.year)
+    Jun -> MonthYear(May, month_year.year)
+    Jul -> MonthYear(Jun, month_year.year)
+    Aug -> MonthYear(Jul, month_year.year)
+    Sep -> MonthYear(Aug, month_year.year)
+    Oct -> MonthYear(Sep, month_year.year)
+    Nov -> MonthYear(Oct, month_year.year)
+    Dec -> MonthYear(Nov, month_year.year)
+  }
+}
+
+@internal
+pub fn month_year_next(month_year: MonthYear) -> MonthYear {
+  case month_year.month {
+    Jan -> MonthYear(Feb, month_year.year)
+    Feb -> MonthYear(Mar, month_year.year)
+    Mar -> MonthYear(Apr, month_year.year)
+    Apr -> MonthYear(May, month_year.year)
+    May -> MonthYear(Jun, month_year.year)
+    Jun -> MonthYear(Jul, month_year.year)
+    Jul -> MonthYear(Aug, month_year.year)
+    Aug -> MonthYear(Sep, month_year.year)
+    Sep -> MonthYear(Oct, month_year.year)
+    Oct -> MonthYear(Nov, month_year.year)
+    Nov -> MonthYear(Dec, month_year.year)
+    Dec -> MonthYear(Jan, month_year.year + 1)
+  }
+}
+
+pub fn month_year_days_of(my: MonthYear) -> Int {
+  case my.month {
     Jan -> 31
     Mar -> 31
     May -> 31
@@ -1599,69 +1656,17 @@ pub fn month_days_of(month: Month, in year: Int) -> Int {
     Oct -> 31
     Dec -> 31
     _ ->
-      case month {
+      case my.month {
         Apr -> 30
         Jun -> 30
         Sep -> 30
         Nov -> 30
         _ ->
-          case is_leap_year(year) {
+          case is_leap_year(my.year) {
             True -> 29
             False -> 28
           }
       }
-  }
-}
-
-@internal
-pub fn month_next(month: Month) -> Month {
-  case month {
-    Jan -> Feb
-    Feb -> Mar
-    Mar -> Apr
-    Apr -> May
-    May -> Jun
-    Jun -> Jul
-    Jul -> Aug
-    Aug -> Sep
-    Sep -> Oct
-    Oct -> Nov
-    Nov -> Dec
-    Dec -> Jan
-  }
-}
-
-@internal
-pub fn month_year_prior(month_year: MonthYear) -> MonthYear {
-  case month_year.month {
-    Jan -> MonthYear(Dec, month_year.year - 1)
-    month -> MonthYear(month_prior(month), month_year.year)
-  }
-}
-
-@internal
-pub fn month_prior(month: Month) -> Month {
-  case month {
-    Jan -> Dec
-    Feb -> Jan
-    Mar -> Feb
-    Apr -> Mar
-    May -> Apr
-    Jun -> May
-    Jul -> Jun
-    Aug -> Jul
-    Sep -> Aug
-    Oct -> Sep
-    Nov -> Oct
-    Dec -> Nov
-  }
-}
-
-@internal
-pub fn month_year_next(month_year: MonthYear) -> MonthYear {
-  case month_year.month {
-    Dec -> MonthYear(Jan, month_year.year + 1)
-    month -> MonthYear(month_next(month), month_year.year)
   }
 }
 
@@ -2211,21 +2216,14 @@ pub fn period_comprising_months(period: Period) -> List(MonthYear) {
   |> list.reverse
 }
 
-fn do_period_comprising_months(miys, miy: MonthYear, end_date) {
+fn do_period_comprising_months(mys, my: MonthYear, end_date) {
   case
-    date(miy.year, miy.month, 1)
+    date(my.year, my.month, 1)
     |> date_is_earlier_or_equal(to: end_date)
   {
     True ->
-      do_period_comprising_months(
-        [miy, ..miys],
-        MonthYear(miy.month |> month_next, case miy.month == Dec {
-          True -> miy.year + 1
-          False -> miy.year
-        }),
-        end_date,
-      )
-    False -> miys
+      do_period_comprising_months([my, ..mys], month_year_next(my), end_date)
+    False -> mys
   }
 }
 
