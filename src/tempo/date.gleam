@@ -33,7 +33,6 @@
 //// }
 //// ```
 
-import gleam/bool
 import gleam/dynamic
 import gleam/int
 import gleam/list
@@ -582,7 +581,10 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
       True -> 3
       False -> -9
     }
-  let y = y + bool.to_int(m <= 2)
+  let y = case m <= 2 {
+    True -> y + 1
+    False -> y
+  }
 
   let assert Ok(month) = month.from_int(m)
 
