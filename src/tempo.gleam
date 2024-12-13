@@ -1196,7 +1196,10 @@ pub fn date_from_unix_utc(unix_ts: Int) -> Date {
       True -> 3
       False -> -9
     }
-  let y = y + bool.to_int(m <= 2)
+  let y = case m <= 2 {
+    True -> y + 1
+    False -> y
+  }
 
   let assert Ok(month) = month_from_int(m)
 
