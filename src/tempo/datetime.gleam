@@ -127,8 +127,8 @@ pub fn now_local_string() -> String {
 
   // This should always be precise because it is the current time.
   case now_utc |> to_local {
-    tempo.Precise(datetime) -> datetime
-    tempo.Imprecise(datetime) -> datetime
+    Precise(datetime) -> datetime
+    Imprecise(datetime) -> datetime
   }
   |> format(in: "YYYY-MM-DDTHH:mm:ss.SSSZ")
 }
@@ -739,6 +739,63 @@ pub fn to_offset(
   tempo.datetime_to_offset(datetime, offset)
 }
 
+
+/// The result of an uncertain conversion. Since this package does not track
+/// timezone offsets, it uses the host system's offset to convert to local
+/// time. If the datetime being converted to local time is of a different
+/// day than the current one, the offset value provided by the host may
+/// not be accurate (and could be accurate by up to the amount the offset 
+/// changes throughout the year). To account for this, when converting to 
+/// local time, a precise value is returned when the datetime being converted
+/// is in th current date, while an imprecise value is returned when it is
+/// on any other date. This allows the application logic to handle the 
+/// two cases differently: some applications may only need to convert to 
+/// local time on the current date or may only need generic time 
+/// representations, while other applications may need precise conversions 
+/// for arbitrary dates. More notes on how to plug time zones into this
+/// package to aviod uncertain conversions can be found in the README.
+pub type UncertainConversion(a) {
+  Precise(a)
+  Imprecise(a)
+}
+
+/// Accepts either a precise or imprecise value of an uncertain conversion.
+/// Useful for pipelines.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T23:17:00Z")
+/// |> datetime.to_local
+/// |> tempo.accept_imprecision
+/// |> datetime.to_string
+/// // -> "2024-06-21T19:17:00-04:00"
+/// ```
+pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {
+  case conv {
+    Precise(a) -> a
+    Imprecise(a) -> a
+  }
+}
+
+/// Either returns a precise value or an error from an uncertain conversion.
+/// Useful for pipelines. 
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T23:17:00Z")
+/// |> datetime.to_local
+/// |> tempo.error_on_imprecision
+/// |> result.try(do_important_precise_task)
+/// ```
+pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
+  case conv {
+    Precise(a) -> Ok(a)
+    Imprecise(_) -> Error(Nil)
+  }
+}
+
 /// Converts a datetime to the equivalent local datetime. The return value
 /// indicates if the conversion was precise or imprecise. Use pattern
 /// matching or the `tempo.accept_imprecision` function to handle the two cases.
@@ -769,10 +826,10 @@ pub fn to_offset(
 /// ```
 pub fn to_local(
   datetime: tempo.DateTime,
-) -> tempo.UncertainConversion(tempo.DateTime) {
+) -> UncertainConversion(tempo.DateTime) {
   use <- bool.lazy_guard(
     when: datetime |> tempo.datetime_get_offset == offset.local(),
-    return: fn() { tempo.Precise(datetime) },
+    return: fn() { Precise(datetime) },
   )
 
   let local_dt = datetime |> to_offset(offset.local())
@@ -781,8 +838,8 @@ pub fn to_local(
     local_dt |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date
     == date.current_local()
   {
-    True -> tempo.Precise(local_dt)
-    False -> tempo.Imprecise(local_dt)
+    True -> Precise(local_dt)
+    False -> Imprecise(local_dt)
   }
 }
 
@@ -816,18 +873,18 @@ pub fn to_local(
 /// ```
 pub fn to_local_time(
   datetime: tempo.DateTime,
-) -> tempo.UncertainConversion(tempo.Time) {
+) -> UncertainConversion(tempo.Time) {
   case to_local(datetime) {
-    tempo.Precise(datetime) ->
+    Precise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_time
-      |> tempo.Precise
-    tempo.Imprecise(datetime) ->
+      |> Precise
+    Imprecise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_time
-      |> tempo.Imprecise
+      |> Imprecise
   }
 }
 
@@ -861,18 +918,18 @@ pub fn to_local_time(
 /// ```
 pub fn to_local_date(
   datetime: tempo.DateTime,
-) -> tempo.UncertainConversion(tempo.Date) {
+) -> UncertainConversion(tempo.Date) {
   case to_local(datetime) {
-    tempo.Precise(datetime) ->
+    Precise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_date
-      |> tempo.Precise
-    tempo.Imprecise(datetime) ->
+      |> Precise
+    Imprecise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_date
-      |> tempo.Imprecise
+      |> Imprecise
   }
 }
 

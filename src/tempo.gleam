@@ -2318,62 +2318,6 @@ fn offset_replace_format(content: String, offset: Offset) -> String {
   }
 }
 
-/// The result of an uncertain conversion. Since this package does not track
-/// timezone offsets, it uses the host system's offset to convert to local
-/// time. If the datetime being converted to local time is of a different
-/// day than the current one, the offset value provided by the host may
-/// not be accurate (and could be accurate by up to the amount the offset 
-/// changes throughout the year). To account for this, when converting to 
-/// local time, a precise value is returned when the datetime being converted
-/// is in th current date, while an imprecise value is returned when it is
-/// on any other date. This allows the application logic to handle the 
-/// two cases differently: some applications may only need to convert to 
-/// local time on the current date or may only need generic time 
-/// representations, while other applications may need precise conversions 
-/// for arbitrary dates. More notes on how to plug time zones into this
-/// package to aviod uncertain conversions can be found in the README.
-pub type UncertainConversion(a) {
-  Precise(a)
-  Imprecise(a)
-}
-
-/// Accepts either a precise or imprecise value of an uncertain conversion.
-/// Useful for pipelines.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-21T23:17:00Z")
-/// |> datetime.to_local
-/// |> tempo.accept_imprecision
-/// |> datetime.to_string
-/// // -> "2024-06-21T19:17:00-04:00"
-/// ```
-pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {
-  case conv {
-    Precise(a) -> a
-    Imprecise(a) -> a
-  }
-}
-
-/// Either returns a precise value or an error from an uncertain conversion.
-/// Useful for pipelines. 
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-21T23:17:00Z")
-/// |> datetime.to_local
-/// |> tempo.error_on_imprecision
-/// |> result.try(do_important_precise_task)
-/// ```
-pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
-  case conv {
-    Precise(a) -> Ok(a)
-    Imprecise(_) -> Error(Nil)
-  }
-}
-
 @internal
 pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
 
