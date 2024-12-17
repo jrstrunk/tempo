@@ -406,9 +406,7 @@ pub fn comprising_dates(period: tempo.Period) -> List(tempo.Date) {
 /// //   tempo.MonthYear(tempo.Apr, 2025),
 /// // ]
 /// ```
-pub fn comprising_months(
-  period: tempo.Period,
-) -> List(tempo.MonthYear) {
+pub fn comprising_months(period: tempo.Period) -> List(tempo.MonthYear) {
   tempo.period_comprising_months(period)
 }
 

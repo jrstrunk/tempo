@@ -22,6 +22,7 @@ import gleam/result
 import gleam/string
 import tempo
 import tempo/date
+import tempo/error as tempo_error
 import tempo/month
 import tempo/offset
 import tempo/time
@@ -62,33 +63,44 @@ pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
 pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
   case from_string(naive_datetime) {
     Ok(naive_datetime) -> naive_datetime
-    Error(tempo.NaiveDateTimeInvalidFormat) ->
+    Error(tempo_error.NaiveDateTimeInvalidFormat(..)) ->
       panic as "Invalid naive datetime literal format"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeInvalidFormat(_))) ->
-      panic as "Invalid time format in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeHourOutOfBounds,
-    ))) -> panic as "Invalid hour value in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeMinuteOutOfBounds,
-    ))) -> panic as "Invalid minute value in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeSecondOutOfBounds,
-    ))) -> panic as "Invalid second value in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeMicroSecondOutOfBounds,
-    ))) -> panic as "Invalid subsecond value in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateInvalidFormat(_))) ->
-      panic as "Invalid date format in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
-      tempo.DateDayOutOfBounds,
-    ))) -> panic as "Invalid date day in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
-      tempo.DateMonthOutOfBounds,
-    ))) -> panic as "Invalid date month in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
-      tempo.DateYearOutOfBounds,
-    ))) -> panic as "Invalid date year in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeInvalidFormat(_),
+    )) -> panic as "Invalid time format in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeHourOutOfBounds(..)),
+    )) -> panic as "Invalid hour value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeMinuteOutOfBounds(..)),
+    )) -> panic as "Invalid minute value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeSecondOutOfBounds(..)),
+    )) -> panic as "Invalid second value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeMicroSecondOutOfBounds(..)),
+    )) -> panic as "Invalid subsecond value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateInvalidFormat(_),
+    )) -> panic as "Invalid date format in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateOutOfBounds(_, tempo_error.DateDayOutOfBounds(..)),
+    )) -> panic as "Invalid date day in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateOutOfBounds(_, tempo_error.DateMonthOutOfBounds(..)),
+    )) -> panic as "Invalid date month in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateOutOfBounds(_, tempo_error.DateYearOutOfBounds(..)),
+    )) -> panic as "Invalid date year in naive datetime literal"
   }
 }
 
@@ -114,7 +126,7 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
 /// ```
 pub fn from_string(
   datetime: String,
-) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseError) {
+) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   let split_dt = case string.contains(datetime, "T") {
     True -> string.split(datetime, "T")
     False -> string.split(datetime, " ")
@@ -124,22 +136,34 @@ pub fn from_string(
     [date, time] -> {
       use date: tempo.Date <- result.try(
         date.from_string(date)
-        |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+        |> result.map_error(tempo_error.NaiveDateTimeDateParseError(
+          "Unable to parse date in input: " <> datetime,
+          _,
+        )),
       )
       use time: tempo.Time <- result.map(
         time.from_string(time)
-        |> result.map_error(fn(e) { tempo.NaiveDateTimeTimeParseError(e) }),
+        |> result.map_error(tempo_error.NaiveDateTimeTimeParseError(
+          "Unable to parse time in input: " <> datetime,
+          _,
+        )),
       )
       tempo.naive_datetime(date, time)
     }
     [date] -> {
       use date: tempo.Date <- result.map(
         date.from_string(date)
-        |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+        |> result.map_error(tempo_error.NaiveDateTimeDateParseError(
+          "Unable to parse date in input: " <> datetime,
+          _,
+        )),
       )
       tempo.naive_datetime(date, tempo.time(0, 0, 0, 0))
     }
-    _ -> Error(tempo.NaiveDateTimeInvalidFormat)
+    _ ->
+      Error(tempo_error.NaiveDateTimeInvalidFormat(
+        "Unable to determine date and time delimiter in input: " <> datetime,
+      ))
   }
 }
 
@@ -220,20 +244,20 @@ pub fn to_tuple(
 pub fn parse(
   str: String,
   in fmt: String,
-) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseError) {
+) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   use #(parts, _) <- result.try(
     tempo.consume_format(str, in: fmt)
-    |> result.replace_error(tempo.NaiveDateTimeInvalidFormat),
+    |> result.map_error(tempo_error.NaiveDateTimeInvalidFormat(_)),
   )
 
   use date <- result.try(
     tempo.find_date(in: parts)
-    |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+    |> result.map_error(tempo_error.NaiveDateTimeDateParseError(str, _)),
   )
 
   use time <- result.try(
     tempo.find_time(in: parts)
-    |> result.map_error(fn(e) { tempo.NaiveDateTimeTimeParseError(e) }),
+    |> result.map_error(tempo_error.NaiveDateTimeTimeParseError(str, _)),
   )
 
   Ok(new(date, time))
@@ -256,12 +280,24 @@ pub fn parse(
 /// ```
 pub fn parse_any(
   str: String,
-) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseAnyError) {
+) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   case tempo.parse_any(str) {
     #(Some(date), Some(time), _) -> Ok(new(date, time))
-    #(_, None, _) -> Error(tempo.NaiveDateTimeMissingDate)
-    #(None, _, _) -> Error(tempo.NaiveDateTimeMissingTime)
+    #(_, None, _) ->
+      Error(tempo_error.NaiveDateTimeInvalidFormat(
+        "Unable to find date in " <> str,
+      ))
+    #(None, _, _) ->
+      Error(tempo_error.NaiveDateTimeInvalidFormat(
+        "Unable to find time in " <> str,
+      ))
   }
+}
+
+pub fn describe_parse_error(
+  error: tempo_error.NaiveDateTimeParseError,
+) -> String {
+  tempo_error.describe_naive_datetime_parse_error(error)
 }
 
 /// Formats a naive datetime value using the provided format string.

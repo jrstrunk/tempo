@@ -1,6 +1,6 @@
-import tempo
 import gleam/int
 import gleam/order
+import tempo
 
 /// Returns the next month in the civil calendar.
 /// 

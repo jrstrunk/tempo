@@ -35,6 +35,7 @@ import gtempo/internal as unit
 import tempo
 import tempo/date
 import tempo/duration
+import tempo/error as tempo_error
 
 /// Creates a new time value with second precision.
 /// 
@@ -47,13 +48,13 @@ import tempo/duration
 /// 
 /// ```gleam
 /// time.new(53, 42, 61)
-/// // -> Error(tempo.TimeOutOfBounds)
+/// // -> Error(tempo_error.TimeOutOfBounds)
 /// ```
 pub fn new(
   hour: Int,
   minute: Int,
   second: Int,
-) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
+) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
   tempo.new_time(hour, minute, second)
 }
 
@@ -73,14 +74,14 @@ pub fn new(
 /// 
 /// ```gleam
 /// time.new_milli(13, 42, 11, 7_500)
-/// // -> Error(tempo.TimeOutOfBounds)
+/// // -> Error(tempo_error.TimeOutOfBounds)
 /// ```
 pub fn new_milli(
   hour: Int,
   minute: Int,
   second: Int,
   millisecond: Int,
-) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
+) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
   tempo.new_time_milli(hour, minute, second, millisecond)
 }
 
@@ -100,15 +101,20 @@ pub fn new_milli(
 /// 
 /// ```gleam
 /// time.new_micro(13, 42, 11, 7_500_000)
-/// // -> Error(tempo.TimeOutOfBounds)
+/// |> result.map_error(time.describe_out_of_bounds_error)
+/// // -> Error("Subsecond value out of bounds in time: 13:42:11.7500000")
 /// ```
 pub fn new_micro(
   hour: Int,
   minute: Int,
   second: Int,
   microsecond: Int,
-) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
+) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
   tempo.new_time_micro(hour, minute, second, microsecond)
+}
+
+pub fn describe_out_of_bounds_error(error: tempo_error.TimeOutOfBoundsError) {
+  tempo_error.describe_time_out_of_bounds_error(error)
 }
 
 /// Creates a new time value from a string literal, but will panic if
@@ -132,15 +138,18 @@ pub fn new_micro(
 pub fn literal(time: String) -> tempo.Time {
   case from_string(time) {
     Ok(time) -> time
-    Error(tempo.TimeInvalidFormat(_)) -> panic as "Invalid time literal format"
-    Error(tempo.TimeOutOfBounds(tempo.TimeHourOutOfBounds)) ->
+    Error(tempo_error.TimeInvalidFormat(..)) ->
+      panic as "Invalid time literal format"
+    Error(tempo_error.TimeOutOfBounds(_, tempo_error.TimeHourOutOfBounds(..))) ->
       panic as "Invalid time literal hour value"
-    Error(tempo.TimeOutOfBounds(tempo.TimeMinuteOutOfBounds)) ->
+    Error(tempo_error.TimeOutOfBounds(_, tempo_error.TimeMinuteOutOfBounds(..))) ->
       panic as "Invalid time literal minute value"
-    Error(tempo.TimeOutOfBounds(tempo.TimeSecondOutOfBounds)) ->
+    Error(tempo_error.TimeOutOfBounds(_, tempo_error.TimeSecondOutOfBounds(..))) ->
       panic as "Invalid time literal second value"
-    Error(tempo.TimeOutOfBounds(tempo.TimeMicroSecondOutOfBounds)) ->
-      panic as "Invalid time literal microsecond value"
+    Error(tempo_error.TimeOutOfBounds(
+      _,
+      tempo_error.TimeMicroSecondOutOfBounds(..),
+    )) -> panic as "Invalid time literal microsecond value"
   }
 }
 
@@ -235,7 +244,9 @@ pub fn test_literal_micro(
   time
 }
 
-fn validate(time: tempo.Time) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
+fn validate(
+  time: tempo.Time,
+) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
   tempo.validate_time(time)
 }
 
@@ -339,38 +350,40 @@ pub fn to_string(time: tempo.Time) -> String {
 /// 
 /// ```gleam
 /// time.from_string("34:54:16")
-/// // -> Error(tempo.TimeOutOfBounds)
+/// // -> Error(tempo_error.TimeOutOfBounds)
 /// ```
-pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
+pub fn from_string(
+  time_str: String,
+) -> Result(tempo.Time, tempo_error.TimeParseError) {
   use #(hour, minute, second): #(String, String, String) <- result.try(
     // Parse hh:mm:ss.s or hh:mm format
-    case string.split(time, ":") {
+    case string.split(time_str, ":") {
       [hour, minute, second] -> Ok(#(hour, minute, second))
       [hour, minute] -> Ok(#(hour, minute, "0"))
       _ -> Error(Nil)
     }
     // Parse hhmmss.s or hhmm format
     |> result.try_recover(fn(_) {
-      case string.length(time), string.contains(time, ".") {
+      case string.length(time_str), string.contains(time_str, ".") {
         6, False ->
           Ok(#(
-            string.slice(time, at_index: 0, length: 2),
-            string.slice(time, at_index: 2, length: 2),
-            string.slice(time, at_index: 4, length: 2),
+            string.slice(time_str, at_index: 0, length: 2),
+            string.slice(time_str, at_index: 2, length: 2),
+            string.slice(time_str, at_index: 4, length: 2),
           ))
         4, False ->
           Ok(#(
-            string.slice(time, at_index: 0, length: 2),
-            string.slice(time, at_index: 2, length: 2),
+            string.slice(time_str, at_index: 0, length: 2),
+            string.slice(time_str, at_index: 2, length: 2),
             "0",
           ))
         l, True if l >= 7 ->
           Ok(#(
-            string.slice(time, at_index: 0, length: 2),
-            string.slice(time, at_index: 2, length: 2),
-            string.slice(time, at_index: 4, length: 12),
+            string.slice(time_str, at_index: 0, length: 2),
+            string.slice(time_str, at_index: 2, length: 2),
+            string.slice(time_str, at_index: 4, length: 12),
           ))
-        _, _ -> Error(tempo.TimeInvalidFormat(time))
+        _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
       }
     }),
   )
@@ -390,10 +403,7 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
           {
             Ok(second), Ok(milli) ->
               Ok(tempo.time(hour, minute, second, milli * 1000))
-            _, _ ->
-              Error(tempo.TimeInvalidFormat(
-                "Non-integer second or millisecond value",
-              ))
+            _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
           }
         len if len <= 6 ->
           case
@@ -401,27 +411,23 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
             int.parse(second_fraction |> string.pad_end(6, with: "0"))
           {
             Ok(second), Ok(micro) -> Ok(tempo.time(hour, minute, second, micro))
-            _, _ ->
-              Error(tempo.TimeInvalidFormat(
-                "Non-integer second or microsecond value",
-              ))
+            _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
           }
-        _ -> Error(tempo.TimeInvalidFormat("Invalid subsecond value"))
+        _ -> Error(tempo_error.TimeInvalidFormat(time_str))
       }
     }
 
     Ok(hour), Ok(minute), _ ->
       case int.parse(second) {
         Ok(second) -> Ok(tempo.time(hour, minute, second, 0))
-        _ -> Error(tempo.TimeInvalidFormat("Non-integer second value"))
+        _ -> Error(tempo_error.TimeInvalidFormat(time_str))
       }
 
-    _, _, _ ->
-      Error(tempo.TimeInvalidFormat("Non-integer hour or minute value"))
+    _, _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
   })
 
   validate(time)
-  |> result.map_error(fn(e) { tempo.TimeOutOfBounds(e) })
+  |> result.map_error(tempo_error.TimeOutOfBounds(time_str, _))
 }
 
 /// Parses a time string in the provided format. Always prefer using
@@ -443,7 +449,8 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
 /// 
 /// ```gleam
 /// time.parse("January 13, 2024", "MMMM DD, YYYY")
-/// // -> Error(tempo.ParseMissingTime)
+/// |> result.map_error(time.describe_parse_error)
+/// // -> Error("Invlid time format: January 13, 2024")
 /// ```
 /// 
 /// ```gleam
@@ -453,10 +460,10 @@ pub fn from_string(time: String) -> Result(tempo.Time, tempo.TimeParseError) {
 pub fn parse(
   str: String,
   in fmt: String,
-) -> Result(tempo.Time, tempo.TimeParseError) {
+) -> Result(tempo.Time, tempo_error.TimeParseError) {
   use #(parts, _) <- result.try(
     tempo.consume_format(str, in: fmt)
-    |> result.map_error(fn(msg) { tempo.TimeInvalidFormat(msg) }),
+    |> result.map_error(tempo_error.TimeInvalidFormat(_)),
   )
 
   tempo.find_time(in: parts)
@@ -477,11 +484,16 @@ pub fn parse(
 /// time.parse_any("2024.06.21")
 /// // -> Error(tempo.ParseMissingTime)
 /// ```
-pub fn parse_any(str: String) -> Result(tempo.Time, Nil) {
+pub fn parse_any(str: String) -> Result(tempo.Time, tempo_error.TimeParseError) {
   case tempo.parse_any(str) {
     #(_, Some(time), _) -> Ok(time)
-    #(_, None, _) -> Error(Nil)
+    #(_, None, _) ->
+      Error(tempo_error.TimeInvalidFormat("Unable to find time in " <> str))
   }
+}
+
+pub fn describe_parse_error(error: tempo_error.TimeParseError) {
+  tempo_error.describe_time_parse_error(error)
 }
 
 /// Formats a time value using the provided format string.
@@ -630,7 +642,7 @@ pub fn to_tuple(time: tempo.Time) -> #(Int, Int, Int) {
 /// ```
 pub fn from_tuple(
   time: #(Int, Int, Int),
-) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
+) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
   new(time.0, time.1, time.2)
 }
 
@@ -665,7 +677,7 @@ pub fn to_tuple_microsecond(time: tempo.Time) -> #(Int, Int, Int, Int) {
 /// ```
 pub fn from_tuple_microsecond(
   time: #(Int, Int, Int, Int),
-) -> Result(tempo.Time, tempo.TimeOutOfBoundsError) {
+) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
   new_micro(time.0, time.1, time.2, time.3)
 }
 

@@ -484,13 +484,7 @@ pub fn from_dynamic_string_int_test() {
   dynamic.from("153")
   |> date.from_dynamic_string
   |> should.equal(
-    Error([
-      dynamic.DecodeError(
-        expected: "tempo.Date",
-        found: "Invalid format: 153",
-        path: [],
-      ),
-    ]),
+    Error([dynamic.DecodeError(expected: "tempo.Date", found: "153", path: [])]),
   )
 }
 
@@ -499,11 +493,7 @@ pub fn from_dynamic_string_bad_format_test() {
   |> date.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(
-        expected: "tempo.Date",
-        found: "Invalid format: 2024,06,13",
-        path: [],
-      ),
+      dynamic.DecodeError(expected: "tempo.Date", found: "2024,06,13", path: []),
     ]),
   )
 }
@@ -513,11 +503,7 @@ pub fn from_dynamic_string_bad_values_test() {
   |> date.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(
-        expected: "tempo.Date",
-        found: "Date day out of bounds: 2024-06-35",
-        path: [],
-      ),
+      dynamic.DecodeError(expected: "tempo.Date", found: "2024-06-35", path: []),
     ]),
   )
 }

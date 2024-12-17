@@ -14,6 +14,7 @@
 //// ```
 
 import tempo
+import tempo/error as tempo_error
 
 @internal
 pub fn local() -> tempo.Offset {
@@ -50,9 +51,10 @@ pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, Nil) {
 pub fn literal(offset: String) -> tempo.Offset {
   case from_string(offset) {
     Ok(offset) -> offset
-    Error(tempo.OffsetInvalidFormat(_)) ->
+    Error(tempo_error.OffsetInvalidFormat(..)) ->
       panic as "Invalid offset literal format"
-    Error(tempo.OffsetOutOfBounds) -> panic as "Invalid offset literal value"
+    Error(tempo_error.OffsetOutOfBounds(..)) ->
+      panic as "Invalid offset literal value"
   }
 }
 
@@ -85,6 +87,10 @@ pub fn to_string(offset: tempo.Offset) -> String {
 /// ```
 pub fn from_string(
   offset: String,
-) -> Result(tempo.Offset, tempo.OffsetParseError) {
+) -> Result(tempo.Offset, tempo_error.OffsetParseError) {
   tempo.offset_from_string(offset)
+}
+
+pub fn describe_parse_error(error: tempo_error.OffsetParseError) -> String {
+  tempo_error.describe_offset_parse_error(error)
 }

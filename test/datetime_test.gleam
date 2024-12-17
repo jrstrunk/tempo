@@ -1,10 +1,10 @@
 import gleam/dynamic
 import gleam/order
 import gleeunit/should
-import tempo
 import tempo/date
 import tempo/datetime
 import tempo/duration
+import tempo/error as tempo_error
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -57,28 +57,34 @@ pub fn from_string_space_delim_test() {
 
 pub fn from_naive_string_test() {
   datetime.from_string("2024-06-13T13:42:11")
-  |> should.equal(Error(tempo.DateTimeInvalidFormat))
+  |> should.equal(
+    Error(tempo_error.DateTimeInvalidFormat("2024-06-13T13:42:11")),
+  )
 }
 
 pub fn from_date_out_of_bounds_string_test() {
   datetime.from_string("2024-06-54T13:42:11-04:00")
   |> should.equal(
-    Error(
-      tempo.DateTimeDateParseError(tempo.DateOutOfBounds(
-        tempo.DateDayOutOfBounds,
-      )),
-    ),
+    Error(tempo_error.DateTimeDateParseError(
+      "2024-06-54T13:42:11-04:00",
+      tempo_error.DateOutOfBounds(
+        "2024-06-54",
+        tempo_error.DateDayOutOfBounds("Jun 54"),
+      ),
+    )),
   )
 }
 
 pub fn from_time_out_of_bounds_string_test() {
   datetime.from_string("2024-06-21T13:99:11-04:00")
   |> should.equal(
-    Error(
-      tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-        tempo.TimeMinuteOutOfBounds,
-      )),
-    ),
+    Error(tempo_error.DateTimeTimeParseError(
+      "2024-06-21T13:99:11-04:00",
+      tempo_error.TimeOutOfBounds(
+        "13:99:11",
+        tempo_error.TimeMinuteOutOfBounds("13:99:11.000000"),
+      ),
+    )),
   )
 }
 
@@ -519,11 +525,7 @@ pub fn from_dynamic_string_int_test() {
   |> datetime.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(
-        expected: "tempo.DateTime",
-        found: "Invalid date format: 153",
-        path: [],
-      ),
+      dynamic.DecodeError(expected: "tempo.DateTime", found: "153", path: []),
     ]),
   )
 }
@@ -535,7 +537,7 @@ pub fn from_dynamic_string_bad_format_test() {
     Error([
       dynamic.DecodeError(
         expected: "tempo.DateTime",
-        found: "Invalid date format: 24-06-13,13:42:11.195",
+        found: "24-06-13,13:42:11.195",
         path: [],
       ),
     ]),
@@ -549,7 +551,7 @@ pub fn from_dynamic_string_bad_values_test() {
     Error([
       dynamic.DecodeError(
         expected: "tempo.DateTime",
-        found: "Invalid time minute value: 2024-06-21T13:99:11.195Z",
+        found: "2024-06-21T13:99:11.195Z",
         path: [],
       ),
     ]),

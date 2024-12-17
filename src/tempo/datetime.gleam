@@ -52,6 +52,7 @@ import gleam/result
 import gleam/string
 import tempo
 import tempo/date
+import tempo/error as tempo_error
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -93,11 +94,11 @@ pub fn new(
 pub fn literal(datetime: String) -> tempo.DateTime {
   case from_string(datetime) {
     Ok(datetime) -> datetime
-    Error(tempo.DateTimeInvalidFormat) ->
+    Error(tempo_error.DateTimeInvalidFormat(..)) ->
       panic as "Invalid datetime literal format"
-    Error(tempo.DateTimeDateParseError(_)) ->
+    Error(tempo_error.DateTimeDateParseError(..)) ->
       panic as "Invalid date in datetime literal value"
-    Error(tempo.DateTimeTimeParseError(_)) ->
+    Error(tempo_error.DateTimeTimeParseError(..)) ->
       panic as "Invalid time in datetime literal value"
     Error(_) -> panic as "Invalid datetime literal"
   }
@@ -169,7 +170,7 @@ pub fn now_utc_string() -> String {
 /// ```
 pub fn from_string(
   datetime: String,
-) -> Result(tempo.DateTime, tempo.DateTimeParseError) {
+) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   let split_dt = case string.contains(datetime, "T") {
     True -> string.split(datetime, "T")
     False -> string.split(datetime, " ")
@@ -179,20 +180,21 @@ pub fn from_string(
     [date, time] -> {
       use date: tempo.Date <- result.try(
         date.from_string(date)
-        |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) }),
+        |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _)),
       )
 
       use #(time, offset): #(String, String) <- result.try(
-        split_time_and_offset(time),
+        split_time_and_offset(time)
+        |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime)),
       )
 
       use time: tempo.Time <- result.try(
         time.from_string(time)
-        |> result.map_error(fn(e) { tempo.DateTimeTimeParseError(e) }),
+        |> result.map_error(tempo_error.DateTimeTimeParseError(datetime, _)),
       )
       use offset: tempo.Offset <- result.map(
         offset.from_string(offset)
-        |> result.map_error(fn(e) { tempo.DateTimeOffsetParseError(e) }),
+        |> result.map_error(tempo_error.DateTimeOffsetParseError(datetime, _)),
       )
 
       new(date, time, offset)
@@ -201,9 +203,9 @@ pub fn from_string(
     [date] ->
       date.from_string(date)
       |> result.map(new(_, tempo.time(0, 0, 0, 0), tempo.utc))
-      |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) })
+      |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _))
 
-    _ -> Error(tempo.DateTimeInvalidFormat)
+    _ -> Error(tempo_error.DateTimeInvalidFormat(datetime))
   }
 }
 
@@ -217,7 +219,7 @@ fn split_time_and_offset(time_with_offset: String) {
         _ ->
           case string.split(time_with_offset, "+") {
             [time, offset] -> #(time, "+" <> offset) |> Ok
-            _ -> Error(tempo.DateTimeInvalidFormat)
+            _ -> Error(Nil)
           }
       }
   }
@@ -273,25 +275,25 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 pub fn parse(
   str: String,
   in fmt: String,
-) -> Result(tempo.DateTime, tempo.DateTimeParseError) {
+) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   use #(parts, _) <- result.try(
     tempo.consume_format(str, in: fmt)
-    |> result.replace_error(tempo.DateTimeInvalidFormat),
+    |> result.map_error(tempo_error.DateTimeInvalidFormat(_)),
   )
 
   use date <- result.try(
     tempo.find_date(in: parts)
-    |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) }),
+    |> result.map_error(tempo_error.DateTimeDateParseError(str, _)),
   )
 
   use time <- result.try(
     tempo.find_time(in: parts)
-    |> result.map_error(fn(e) { tempo.DateTimeTimeParseError(e) }),
+    |> result.map_error(tempo_error.DateTimeTimeParseError(str, _)),
   )
 
   use offset <- result.try(
     tempo.find_offset(in: parts)
-    |> result.map_error(fn(e) { tempo.DateTimeOffsetParseError(e) }),
+    |> result.map_error(tempo_error.DateTimeOffsetParseError(str, _)),
   )
 
   Ok(new(date, time, offset))
@@ -314,13 +316,22 @@ pub fn parse(
 /// ```
 pub fn parse_any(
   str: String,
-) -> Result(tempo.DateTime, tempo.DateTimeParseAnyError) {
+) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   case tempo.parse_any(str) {
     #(Some(date), Some(time), Some(offset)) -> Ok(new(date, time, offset))
-    #(_, _, None) -> Error(tempo.DateTimeMissingOffset)
-    #(_, None, _) -> Error(tempo.DateTimeMissingTime)
-    #(None, _, _) -> Error(tempo.DateTimeMissingDate)
+    #(_, _, None) ->
+      Error(tempo_error.DateTimeInvalidFormat(
+        "Unable to find offset in " <> str,
+      ))
+    #(_, None, _) ->
+      Error(tempo_error.DateTimeInvalidFormat("Unable to find time in " <> str))
+    #(None, _, _) ->
+      Error(tempo_error.DateTimeInvalidFormat("Unable to find date in " <> str))
   }
+}
+
+pub fn describe_parse_error(error: tempo_error.DateTimeParseError) {
+  tempo_error.describe_datetime_parse_error(error)
 }
 
 /// Formats a datetime value into a string using the provided format string.
@@ -499,38 +510,11 @@ pub fn from_dynamic_string(
         dynamic.DecodeError(
           expected: "tempo.DateTime",
           found: case tempo_error {
-            tempo.DateTimeInvalidFormat -> "Invalid format: "
-            tempo.DateTimeTimeParseError(tempo.TimeInvalidFormat(_)) ->
-              "Invalid time format: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeHourOutOfBounds,
-            )) -> "Invalid time hour value: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeMinuteOutOfBounds,
-            )) -> "Invalid time minute value: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeSecondOutOfBounds,
-            )) -> "Invalid time second value: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeMicroSecondOutOfBounds,
-            )) -> "Invalid time subsecond value: "
-            tempo.DateTimeDateParseError(tempo.DateInvalidFormat(_)) ->
-              "Invalid date format: "
-            tempo.DateTimeDateParseError(tempo.DateOutOfBounds(
-              tempo.DateDayOutOfBounds,
-            )) -> "Invalid date day value: "
-            tempo.DateTimeDateParseError(tempo.DateOutOfBounds(
-              tempo.DateMonthOutOfBounds,
-            )) -> "Invalid date month value: "
-            tempo.DateTimeDateParseError(tempo.DateOutOfBounds(
-              tempo.DateYearOutOfBounds,
-            )) -> "Invalid date year value: "
-            tempo.DateTimeOffsetParseError(tempo.OffsetInvalidFormat(_)) ->
-              "Invalid offset format: "
-            tempo.DateTimeOffsetParseError(tempo.OffsetOutOfBounds) ->
-              "Invalid offset value: "
-          }
-            <> dt,
+            tempo_error.DateTimeInvalidFormat(msg) -> msg
+            tempo_error.DateTimeTimeParseError(msg, _) -> msg
+            tempo_error.DateTimeDateParseError(msg, _) -> msg
+            tempo_error.DateTimeOffsetParseError(msg, _) -> msg
+          },
           path: [],
         ),
       ])
@@ -739,7 +723,6 @@ pub fn to_offset(
   tempo.datetime_to_offset(datetime, offset)
 }
 
-
 /// The result of an uncertain conversion. Since this package does not track
 /// timezone offsets, it uses the host system's offset to convert to local
 /// time. If the datetime being converted to local time is of a different
@@ -824,9 +807,7 @@ pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
 /// |> datetime.to_local
 /// // -> tempo.Imprecise(datetime.literal("1998-08-23T05:57:11.195-04:00"))
 /// ```
-pub fn to_local(
-  datetime: tempo.DateTime,
-) -> UncertainConversion(tempo.DateTime) {
+pub fn to_local(datetime: tempo.DateTime) -> UncertainConversion(tempo.DateTime) {
   use <- bool.lazy_guard(
     when: datetime |> tempo.datetime_get_offset == offset.local(),
     return: fn() { Precise(datetime) },

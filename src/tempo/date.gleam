@@ -42,6 +42,7 @@ import gleam/regexp
 import gleam/result
 import gleam/string
 import tempo
+import tempo/error as tempo_error
 import tempo/month
 
 /// A named day of the week.
@@ -66,13 +67,13 @@ pub type DayOfWeek {
 /// 
 /// ```gleam
 /// date.new(2024, 6, 31)
-/// // -> Error(tempo.DateOutOfBounds)
+/// // -> Error(tempo_error.DateOutOfBounds)
 /// ```
 pub fn new(
   year year: Int,
   month month: Int,
   day day: Int,
-) -> Result(tempo.Date, tempo.DateOutOfBoundsError) {
+) -> Result(tempo.Date, tempo_error.DateOutOfBoundsError) {
   tempo.new_date(year, month, day)
 }
 
@@ -105,12 +106,13 @@ pub fn new(
 pub fn literal(date: String) -> tempo.Date {
   case from_string(date) {
     Ok(date) -> date
-    Error(tempo.DateInvalidFormat(_)) -> panic as "Invalid date literal format"
-    Error(tempo.DateOutOfBounds(tempo.DateDayOutOfBounds)) ->
+    Error(tempo_error.DateInvalidFormat(_)) ->
+      panic as "Invalid date literal format"
+    Error(tempo_error.DateOutOfBounds(_, tempo_error.DateDayOutOfBounds(..))) ->
       panic as "Invalid date literal day value"
-    Error(tempo.DateOutOfBounds(tempo.DateMonthOutOfBounds)) ->
+    Error(tempo_error.DateOutOfBounds(_, tempo_error.DateMonthOutOfBounds(..))) ->
       panic as "Invalid date literal month value"
-    Error(tempo.DateOutOfBounds(tempo.DateYearOutOfBounds)) ->
+    Error(tempo_error.DateOutOfBounds(_, tempo_error.DateYearOutOfBounds(..))) ->
       panic as "Invalid date literal year value"
   }
 }
@@ -213,9 +215,11 @@ pub fn get_month_year(date: tempo.Date) -> tempo.MonthYear {
 /// 
 /// ```gleam
 /// date.from_string("2409")
-/// // -> Error(tempo.DateInvalidFormat)
+/// // -> Error(tempo_error.DateInvalidFormat)
 /// ```
-pub fn from_string(date: String) -> Result(tempo.Date, tempo.DateParseError) {
+pub fn from_string(
+  date: String,
+) -> Result(tempo.Date, tempo_error.DateParseError) {
   use parts <- result.try({
     split_int_tuple(date, "-")
     |> result.try_recover(fn(_) { split_int_tuple(date, on: "/") })
@@ -229,20 +233,19 @@ pub fn from_string(date: String) -> Result(tempo.Date, tempo.DateParseError) {
 
       case year, month, day {
         Ok(year), Ok(month), Ok(day) -> Ok(#(year, month, day))
-        _, _, _ ->
-          Error(tempo.DateInvalidFormat("Non-integer date values found"))
+        _, _, _ -> Error(tempo_error.DateInvalidFormat(date))
       }
     })
   })
 
   from_tuple(parts)
-  |> result.map_error(fn(e) { tempo.DateOutOfBounds(e) })
+  |> result.map_error(tempo_error.DateOutOfBounds(date, _))
 }
 
 fn split_int_tuple(
   date: String,
   on delim: String,
-) -> Result(#(Int, Int, Int), tempo.DateParseError) {
+) -> Result(#(Int, Int, Int), tempo_error.DateParseError) {
   string.split(date, delim)
   |> list.map(int.parse)
   |> result.all()
@@ -252,7 +255,7 @@ fn split_int_tuple(
       _ -> Error(Nil)
     }
   })
-  |> result.replace_error(tempo.DateInvalidFormat(date))
+  |> result.replace_error(tempo_error.DateInvalidFormat(date))
 }
 
 /// Returns a string representation of a date value in the format `YYYY-MM-DD`.
@@ -296,10 +299,10 @@ pub fn to_string(date: tempo.Date) -> String {
 pub fn parse(
   str: String,
   in fmt: String,
-) -> Result(tempo.Date, tempo.DateParseError) {
+) -> Result(tempo.Date, tempo_error.DateParseError) {
   use #(parts, _) <- result.try(
     tempo.consume_format(str, in: fmt)
-    |> result.map_error(fn(msg) { tempo.DateInvalidFormat(msg) }),
+    |> result.map_error(tempo_error.DateInvalidFormat(_)),
   )
 
   tempo.find_date(in: parts)
@@ -307,7 +310,7 @@ pub fn parse(
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
-/// day in a date. Will leave off any time offset values present.
+/// day in a date. Will leave out any time or offset values present.
 /// 
 /// ## Example
 /// 
@@ -320,11 +323,16 @@ pub fn parse(
 /// date.parse_any("2024.06.21")
 /// // -> Ok(date.literal("2024-06-21"))
 /// ```
-pub fn parse_any(str: String) -> Result(tempo.Date, Nil) {
+pub fn parse_any(str: String) -> Result(tempo.Date, tempo_error.DateParseError) {
   case tempo.parse_any(str) {
     #(Some(date), _, _) -> Ok(date)
-    #(None, _, _) -> Error(Nil)
+    #(None, _, _) ->
+      Error(tempo_error.DateInvalidFormat("Unable to find date in " <> str))
   }
+}
+
+pub fn describe_parse_error(error: tempo_error.DateParseError) {
+  tempo_error.describe_date_parse_error(error)
 }
 
 /// Formats a datetime value into a string using the provided format string.
@@ -409,12 +417,16 @@ pub fn format(date: tempo.Date, in fmt: String) -> String {
 /// 
 /// ```gleam
 /// date.from_tuple(#(98, 6, 13))
-/// // -> Error(tempo.DateOutOfBounds)
+/// // -> Error(tempo_error.DateOutOfBounds)
 /// ```
 pub fn from_tuple(
   date: #(Int, Int, Int),
-) -> Result(tempo.Date, tempo.DateOutOfBoundsError) {
+) -> Result(tempo.Date, tempo_error.DateOutOfBoundsError) {
   tempo.date_from_tuple(date)
+}
+
+pub fn describe_out_of_bounds_error(error: tempo_error.DateOutOfBoundsError) {
+  tempo_error.describe_date_out_of_bounds_error(error)
 }
 
 /// Returns a tuple of ints from a date value that represent the year, month,
@@ -469,15 +481,9 @@ pub fn from_dynamic_string(
         dynamic.DecodeError(
           expected: "tempo.Date",
           found: case tempo_error {
-            tempo.DateInvalidFormat(_) -> "Invalid format: "
-            tempo.DateOutOfBounds(tempo.DateDayOutOfBounds) ->
-              "Date day out of bounds: "
-            tempo.DateOutOfBounds(tempo.DateMonthOutOfBounds) ->
-              "Date month out of bounds: "
-            tempo.DateOutOfBounds(tempo.DateYearOutOfBounds) ->
-              "Date year out of bounds: "
-          }
-            <> dt,
+            tempo_error.DateInvalidFormat(msg) -> msg
+            tempo_error.DateOutOfBounds(msg, _) -> msg
+          },
           path: [],
         ),
       ])
