@@ -74,7 +74,7 @@ pub fn new(
   time time: tempo.Time,
   offset offset: tempo.Offset,
 ) -> tempo.DateTime {
-  tempo.datetime(naive_datetime.new(date, time), offset: offset)
+  tempo.datetime(date:, time:, offset:)
 }
 
 /// Create a new datetime value from a string literal, but will panic if
@@ -673,8 +673,10 @@ pub fn drop_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
 /// // -> naive_datetime.literal("2024-06-18T00:00:00Z")
 /// ```
 pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
+  let naive = naive_datetime.drop_time(datetime |> tempo.datetime_get_naive)
   tempo.datetime(
-    naive_datetime.drop_time(datetime |> tempo.datetime_get_naive),
+    date: naive.date,
+    time: naive.time,
     offset: datetime |> tempo.datetime_get_offset,
   )
 }

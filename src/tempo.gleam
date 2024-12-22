@@ -47,10 +47,8 @@ pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
   let new_ts = now().timestamp_utc_us + duration.microseconds
 
   DateTime(
-    NaiveDateTime(
-      date_from_unix_utc(new_ts / 1_000_000),
-      time_from_unix_micro_utc(new_ts),
-    ),
+    date_from_unix_utc(new_ts / 1_000_000),
+    time_from_unix_micro_utc(new_ts),
     offset: utc,
   )
 }
@@ -314,10 +312,8 @@ pub opaque type Instant {
 @internal
 pub fn instant_as_utc_datetime(instant: Instant) -> DateTime {
   DateTime(
-    naive: NaiveDateTime(
-      date: instant_as_utc_date(instant),
-      time: instant_as_utc_time(instant),
-    ),
+    date: instant_as_utc_date(instant),
+    time: instant_as_utc_time(instant),
     offset: utc,
   )
 }
@@ -325,10 +321,8 @@ pub fn instant_as_utc_datetime(instant: Instant) -> DateTime {
 @internal
 pub fn instant_as_local_datetime(instant: Instant) -> DateTime {
   DateTime(
-    naive: NaiveDateTime(
-      date: instant_as_local_date(instant),
-      time: instant_as_local_time(instant),
-    ),
+    date: instant_as_local_date(instant),
+    time: instant_as_local_time(instant),
     offset: Offset(instant.offset_local_us / 60_000_000),
   )
 }
@@ -417,9 +411,9 @@ pub fn instant_difference(from a: Instant, to b: Instant) -> Duration {
 /// A datetime value with a timezone offset associated with it. It has the 
 /// most amount of information about a point in time, and can be compared to 
 /// all other types in this package by getting its lesser parts.
-pub opaque type DateTime {
-  DateTime(naive: NaiveDateTime, offset: Offset)
-  LocalDateTime(naive: NaiveDateTime, offset: Offset, tz: TimeZoneProvider)
+pub type DateTime {
+  DateTime(date: Date, time: Time, offset: Offset)
+  LocalDateTime(date: Date, time: Time, offset: Offset, tz: TimeZoneProvider)
 }
 
 /// A type for external packages to provide so that datetimes can be converted
@@ -433,13 +427,13 @@ pub type TimeZoneProvider {
 }
 
 @internal
-pub fn datetime(naive naive, offset offset) {
-  DateTime(naive, offset)
+pub fn datetime(date date, time time, offset offset) {
+  DateTime(date, time, offset)
 }
 
 @internal
 pub fn datetime_get_naive(datetime: DateTime) {
-  datetime.naive
+  NaiveDateTime(datetime.date, datetime.time)
 }
 
 @internal
@@ -473,20 +467,21 @@ pub fn datetime_to_tz(datetime: DateTime, tz: TimeZoneProvider) {
     datetime_to_offset(utc_dt |> naive_datetime_set_offset(utc), offset)
     |> datetime_drop_offset
 
-  LocalDateTime(naive:, offset:, tz:)
+  LocalDateTime(date: naive.date, time: naive.time, offset:, tz:)
 }
 
 @internal
 pub fn datetime_get_tz(datetime: DateTime) -> option.Option(String) {
   case datetime {
-    DateTime(_, _) -> None
-    LocalDateTime(_, _, tz:) -> Some(tz.get_name())
+    DateTime(..) -> None
+    LocalDateTime(_, _, _, tz:) -> Some(tz.get_name())
   }
 }
 
 @internal
 pub fn datetime_to_string(datetime: DateTime) -> String {
-  datetime.naive |> naive_datetime_to_string
+  NaiveDateTime(date: datetime.date, time: datetime.time)
+  |> naive_datetime_to_string
   <> case datetime.offset.minutes {
     0 -> "Z"
     _ -> datetime.offset |> offset_to_string
@@ -496,8 +491,8 @@ pub fn datetime_to_string(datetime: DateTime) -> String {
 @deprecated("Use `datetime.to_string` instead")
 @internal
 pub fn datetime_serialize(datetime: DateTime) -> String {
-  let d = datetime.naive.date
-  let t = datetime.naive.time
+  let d = datetime.date
+  let t = datetime.time
   let o = datetime.offset
 
   string_tree.from_strings([
@@ -538,8 +533,8 @@ pub fn datetime_format(datetime: DateTime, in fmt: String) -> String {
     case match {
       regexp.Match(content, []) -> [
         content
-          |> date_replace_format(datetime.naive.date)
-          |> time_replace_format(datetime.naive.time)
+          |> date_replace_format(datetime.date)
+          |> time_replace_format(datetime.time)
           |> offset_replace_format(datetime.offset),
         ..acc
       ]
@@ -609,7 +604,7 @@ pub fn datetime_apply_offset(datetime: DateTime) -> NaiveDateTime {
 
 @internal
 pub fn datetime_drop_offset(datetime: DateTime) -> NaiveDateTime {
-  datetime.naive
+  NaiveDateTime(date: datetime.date, time: datetime.time)
 }
 
 @internal
@@ -618,23 +613,28 @@ pub fn datetime_add(
   duration duration_to_add: Duration,
 ) -> DateTime {
   case datetime {
-    DateTime(naive:, offset:) ->
-      DateTime(
-        naive: naive_datetime_add(naive, duration: duration_to_add),
-        offset:,
-      )
-    LocalDateTime(_, _, tz:) -> {
+    DateTime(date:, time:, offset:) -> {
+      let NaiveDateTime(date: new_date, time: new_time) =
+        naive_datetime_add(
+          NaiveDateTime(date:, time:),
+          duration: duration_to_add,
+        )
+
+      DateTime(date: new_date, time: new_time, offset:)
+    }
+
+    LocalDateTime(_, _, _, tz:) -> {
       let utc_dt_added =
         datetime_to_utc(datetime)
         |> datetime_add(duration: duration_to_add)
 
       let offset = utc_dt_added |> datetime_drop_offset |> tz.calculate_offset
 
-      let naive =
+      let NaiveDateTime(date:, time:) =
         datetime_to_offset(utc_dt_added, offset)
         |> datetime_drop_offset
 
-      LocalDateTime(naive:, offset:, tz:)
+      LocalDateTime(date:, time:, offset:, tz:)
     }
   }
 }
@@ -645,23 +645,27 @@ pub fn datetime_subtract(
   duration duration_to_subtract: Duration,
 ) -> DateTime {
   case datetime {
-    DateTime(naive:, offset:) ->
-      DateTime(
-        naive: naive_datetime_subtract(naive, duration: duration_to_subtract),
-        offset:,
-      )
-    LocalDateTime(_, _, tz:) -> {
+    DateTime(date:, time:, offset:) -> {
+      let NaiveDateTime(date: new_date, time: new_time) =
+        naive_datetime_subtract(
+          NaiveDateTime(date:, time:),
+          duration: duration_to_subtract,
+        )
+
+      DateTime(date: new_date, time: new_time, offset:)
+    }
+    LocalDateTime(_, _, _, tz:) -> {
       let utc_dt_sub =
         datetime_to_utc(datetime)
         |> datetime_subtract(duration: duration_to_subtract)
 
       let offset = utc_dt_sub |> datetime_drop_offset |> tz.calculate_offset
 
-      let naive =
+      let NaiveDateTime(date:, time:) =
         datetime_to_offset(utc_dt_sub, offset)
         |> datetime_drop_offset
 
-      LocalDateTime(naive:, offset:, tz:)
+      LocalDateTime(date:, time:, offset:, tz:)
     }
   }
 }
@@ -673,7 +677,7 @@ pub fn datetime_subtract(
 /// A datetime value that does not have a timezone offset associated with it. 
 /// It cannot be compared to datetimes with a timezone offset accurately, but
 /// can be compared to dates, times, and other naive datetimes.
-pub opaque type NaiveDateTime {
+pub type NaiveDateTime {
   NaiveDateTime(date: Date, time: Time)
 }
 
@@ -694,10 +698,10 @@ pub fn naive_datetime_get_time(naive_datetime: NaiveDateTime) -> Time {
 
 @internal
 pub fn naive_datetime_set_offset(
-  datetime: NaiveDateTime,
+  naive: NaiveDateTime,
   offset: Offset,
 ) -> DateTime {
-  DateTime(naive: datetime, offset: offset)
+  DateTime(date: naive.date, time: naive.time, offset: offset)
 }
 
 @internal
@@ -2151,12 +2155,7 @@ pub fn period_get_start_and_end_date_and_time(
       start.time,
       end.time,
     )
-    DateTimePeriod(start, end) -> #(
-      start.naive.date,
-      end.naive.date,
-      start.naive.time,
-      end.naive.time,
-    )
+    DateTimePeriod(start, end) -> #(start.date, end.date, start.time, end.time)
   }
 }
 
@@ -2169,7 +2168,7 @@ pub fn period_contains_datetime(period: Period, datetime: DateTime) -> Bool {
       && datetime
       |> datetime_is_earlier_or_equal(to: end)
 
-    _ -> period_contains_naive_datetime(period, datetime.naive)
+    _ -> period_contains_naive_datetime(period, NaiveDateTime(date: datetime.date, time: datetime.time))
   }
 }
 
@@ -2192,7 +2191,7 @@ pub fn period_comprising_dates(period: Period) -> List(Date) {
   let #(start_date, end_date): #(Date, Date) = case period {
     DatePeriod(start, end) -> #(start, end)
     NaiveDateTimePeriod(start, end) -> #(start.date, end.date)
-    DateTimePeriod(start, end) -> #(start.naive.date, end.naive.date)
+    DateTimePeriod(start, end) -> #(start.date, end.date)
   }
 
   do_period_comprising_dates([], end_date, start_date)
