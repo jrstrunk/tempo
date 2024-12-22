@@ -107,7 +107,7 @@ pub fn literal(datetime: String) -> tempo.DateTime {
 /// Gets the current local datetime of the host as an ISO-8601 formatted 
 /// string with millisecond precision. To record the current time (including 
 /// monotonic and unique), use `tempo.now_utc`. To get the current datetime
-/// for other purposes, use `tempo.now_utc |> moment.as_datetime`.
+/// for other purposes, use `tempo.now_utc |> instant.as_datetime`.
 /// 
 /// ## Examples
 /// 
@@ -137,7 +137,7 @@ pub fn now_local_string() -> String {
 /// Gets the current UTC datetime of the host as an ISO-8601 formatted string
 /// with millisecond precision. To record the current time (including 
 /// monotonic and unique), use `tempo.now_utc`. To get the current datetime 
-/// for other purposes, use `tempo.now_utc |> moment.as_datetime`.
+/// for other purposes, use `tempo.now_utc |> instant.as_datetime`.
 /// 
 /// ## Examples
 /// 

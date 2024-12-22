@@ -131,7 +131,7 @@ pub fn as_days(period: tempo.Period) -> Int {
     False -> 0
   }
   // If a full day is in the period as designated by the end time being
-  // the last moment of the day and the start time being the first second
+  // the last instant of the day and the start time being the first second
   // of the day, then 1 needs to be added to the days count.
   + case
     start_time
@@ -186,7 +186,7 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
     // of seconds in the end day.
     False ->
       // The as_days functions alread accounted for the time between the
-      // start and end dates when the end is at the last moment of the day,
+      // start and end dates when the end is at the last instant of the day,
       // so we do not need to account for it here as well.
       case time.is_equal(end_time, to: tempo.time(24, 0, 0, 0)) {
         True -> 0.0

@@ -155,7 +155,7 @@ pub fn literal(time: String) -> tempo.Time {
 
 /// Gets the UTC wall time of the host as a string with millisecond precision. 
 /// To time events, use the `tempo.now_utc` function. To get the current 
-/// time for other purposes, use `tempo.now_utc |> moment.as_time`.
+/// time for other purposes, use `tempo.now_utc |> instant.as_time`.
 ///
 /// ## Example
 /// 
@@ -182,7 +182,7 @@ pub fn now_utc_string() -> String {
 
 /// Gets the local wall time of the host as a string with milisecond precision. 
 /// To time events, use the `tempo.now_local` function. To get the current 
-/// time for other purposes, use `tempo.now_local |> moment.as_time`.
+/// time for other purposes, use `tempo.now_local |> instant.as_time`.
 /// 
 /// ## Example
 /// 

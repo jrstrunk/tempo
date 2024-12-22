@@ -48,13 +48,13 @@ If you need to send a datetime value outside of Gleam, then need to parse it bac
 
 ```gleam
 import tempo/datetime
-import tempo/moment
+import tempo/instant
 import tempo
 import dynamic
 
 pub fn main() {
-  // The `moment.as_datetime` call drops monotonic and unique time
-  let my_dt: DateTime = tempo.now_local() |> moment.as_datetime
+  // The `instant.as_datetime` call drops monotonic and unique time
+  let my_dt: DateTime = tempo.now_local() |> instant.as_datetime
 
   let assert Ok(external_dt) =
     datetime.serialize(my_dt)
