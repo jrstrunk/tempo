@@ -1,5 +1,6 @@
-//// The main module of this package. Contains most types and only a couple 
-//// general purpose functions. Look in specific modules for more functionality!
+//// The main module of this package. Contains most package types and general 
+//// purpose functions or functiones relating to the current system time.
+//// Look in specific modules for more functionality!
 
 import gleam/bool
 import gleam/int
@@ -32,6 +33,7 @@ import tempo/error as tempo_error
 //                              Now Logic                                     //
 // -------------------------------------------------------------------------- //
 
+/// The current instant on the host system.
 pub fn now() -> Instant {
   Instant(
     timestamp_utc_us: now_utc_ffi(),
@@ -41,7 +43,18 @@ pub fn now() -> Instant {
   )
 }
 
-pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
+/// Get the current UTC system time adjusted by the given duration. Useful for
+/// checking if a time is more than some time in the past or future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// // Is the given datetime more than 30 mins old?
+/// datetime.literal("2024-12-26T00:00:00Z")
+/// |> datetime.is_earlier(than: 
+///   tempo.now_adjusted(by: duration.minutes(-30))
+/// )
+pub fn now_adjusted(by duration: Duration) -> DateTime {
   let new_ts = now().timestamp_utc_us + duration.microseconds
 
   DateTime(
@@ -51,163 +64,520 @@ pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
   )
 }
 
+/// Formats the current UTC system time using the provided format.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.now_utc_formatted(tempo.ISO8601)
+/// // -> "2024-12-26T16:32:34Z"
+/// ```
 pub fn now_utc_formatted(in format: DateTimeFormat) -> String {
   now() |> instant_as_utc_datetime |> datetime_format(format)
 }
 
+/// Formats the current local system time using the provided format.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.now_local_formatted(tempo.ISO8601)
+/// // -> "2024-12-26T12:32:34-04:00"
+/// ```
 pub fn now_local_formatted(in format: DateTimeFormat) -> String {
   now() |> instant_as_local_datetime |> datetime_format(format)
 }
 
+/// Gets the duration between the current system time and the provided instant.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let monotonic_timer = tempo.now()
+/// // Do long task ...
+/// tempo.since(monotonic_timer)
+/// // -> duration.minutes(42)
 pub fn since(start start: Instant) -> Duration {
   now() |> instant_difference(from: start) |> duration_absolute
 }
 
+/// Formats the duration between the current system time and the provided 
+/// instant.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let monotonic_timer = tempo.now()
+/// // Do long task ...
+/// tempo.since_formatted(monotonic_timer)
+/// // -> "42 minutes"
 pub fn since_formatted(start start: Instant) -> String {
   let dur = since(start:)
   unit.format(dur.microseconds)
 }
 
+/// Compares the current utc system datetime to the provided datetime value.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare_utc(datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> order.Lt
 pub fn compare_utc(datetime: DateTime) -> order.Order {
   datetime_compare(now() |> instant_as_utc_datetime, to: datetime)
 }
 
-pub fn compare_local(datetime: DateTime) -> order.Order {
+/// Compares the current local system datetime to the provided datetime value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.compare_local(datetime.literal("2024-12-26T00:00:00-04:00"))
+/// // -> order.Gt
+pub fn compare_local(to datetime: DateTime) -> order.Order {
   datetime_compare(now() |> instant_as_local_datetime, to: datetime)
 }
 
+/// Checks if the current UTC system datetime is earlier than the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_earlier(than: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> False
+/// ```
 pub fn is_utc_earlier(than datetime: DateTime) -> Bool {
   datetime_is_earlier(now() |> instant_as_utc_datetime, than: datetime)
 }
 
+/// Checks if the current local system datetime is earlier than the provided
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_earlier(than: datetime.literal("2024-12-26T00:00:00-04:00"))
+/// // -> False
 pub fn is_local_earlier(than datetime: DateTime) -> Bool {
   datetime_is_earlier(now() |> instant_as_local_datetime, than: datetime)
 }
 
+/// Checks if the current UTC system datetime is earlier or equal to the provided 
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
+/// ```
 pub fn is_utc_earlier_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_earlier_or_equal(now() |> instant_as_utc_datetime, to: datetime)
 }
 
+/// Checks if the current local system datetime is earlier or equal to the 
+/// provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
 pub fn is_local_earlier_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_earlier_or_equal(now() |> instant_as_local_datetime, to: datetime)
 }
 
+/// Checks if the current UTC system datetime is equal to the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> False
 pub fn is_utc_equal(to datetime: DateTime) -> Bool {
   datetime_is_equal(now() |> instant_as_utc_datetime, to: datetime)
 }
 
+/// Checks if the current local system datetime is equal to the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> False
+/// ```
 pub fn is_local_equal(to datetime: DateTime) -> Bool {
   datetime_is_equal(now() |> instant_as_local_datetime, to: datetime)
 }
 
+/// Checks if the current UTC system datetime is later than the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_later(than: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
+/// ```
 pub fn is_utc_later(than datetime: DateTime) -> Bool {
   datetime_is_later(now() |> instant_as_utc_datetime, than: datetime)
 }
 
+/// Checks if the current local system datetime is later than the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_later(than: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
 pub fn is_local_later(than datetime: DateTime) -> Bool {
   datetime_is_later(now() |> instant_as_local_datetime, than: datetime)
 }
 
+/// Checks if the current UTC system datetime is later or equal to the provided 
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
+/// ```
 pub fn is_utc_later_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_later_or_equal(now() |> instant_as_utc_datetime, to: datetime)
 }
 
+/// Checks if the current local system datetime is later or equal to the provided 
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
 pub fn is_local_later_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_later_or_equal(now() |> instant_as_local_datetime, to: datetime)
 }
 
+/// Compares the current UTC system date to the provided date value. The same
+/// as `date.current_utc() |> date.compare`.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare_utc_date(date.literal("2024-12-26"))
+/// // -> order.Eq
+/// ``` 
 pub fn compare_utc_date(date: Date) -> order.Order {
   now() |> instant_as_utc_date |> date_compare(to: date)
 }
 
+/// Compares the current local system date to the provided date value. The same
+/// as `date.current_local() |> date.compare`.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare_local_date(date.literal("2024-12-26"))
+/// // -> order.Eq
+/// ```
 pub fn compare_local_date(date: Date) -> order.Order {
   now() |> instant_as_local_date |> date_compare(to: date)
 }
 
+/// Checks if the current UTC system date is earlier than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_earlier(than: date.literal("2024-12-26"))
+/// // -> False
+/// ```
 pub fn is_utc_date_earlier(than date: Date) -> Bool {
   date_is_earlier(now() |> instant_as_utc_date, than: date)
 }
 
+/// Checks if the current local system date is earlier than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_earlier(than: date.literal("2024-12-26"))
+/// // -> False
+/// ```
 pub fn is_local_date_earlier(than date: Date) -> Bool {
   date_is_earlier(now() |> instant_as_local_date, than: date)
 }
 
+/// Checks if the current UTC system date is earlier or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_earlier_or_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
 pub fn is_utc_date_earlier_or_equal(to date: Date) -> Bool {
   date_is_earlier_or_equal(now() |> instant_as_utc_date, to: date)
 }
 
+/// Checks if the current local system date is earlier or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_earlier_or_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
 pub fn is_local_date_earlier_or_equal(to date: Date) -> Bool {
   date_is_earlier_or_equal(now() |> instant_as_local_date, to: date)
 }
 
+/// Checks if the current UTC system date is equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
 pub fn is_utc_date_equal(to date: Date) -> Bool {
   date_is_equal(now() |> instant_as_utc_date, to: date)
 }
 
+/// Checks if the current local system date is equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
 pub fn is_local_date_equal(to date: Date) -> Bool {
   date_is_equal(now() |> instant_as_local_date, to: date)
 }
 
+/// Checks if the current UTC system date is later than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_later(than: date.literal("2024-12-26"))
+/// // -> True
+/// ```
 pub fn is_utc_date_later(than date: Date) -> Bool {
   date_is_later(now() |> instant_as_utc_date, than: date)
 }
 
+/// Checks if the current local system date is later than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_later(than: date.literal("2024-12-26"))
+/// // -> True
+/// ```
 pub fn is_local_date_later(than date: Date) -> Bool {
   date_is_later(now() |> instant_as_local_date, than: date)
 }
 
+/// Checks if the current UTC system date is later or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_later_or_equal(to: date.literal("2024-12-26"))
+/// // -> True
+/// ```
 pub fn is_utc_date_later_or_equal(to date: Date) -> Bool {
   date_is_later_or_equal(now() |> instant_as_utc_date, to: date)
 }
 
+/// Checks if the current local system date is later or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_later_or_equal(to: date.literal("2024-12-26"))
+/// // -> True
+/// ```
 pub fn is_local_date_later_or_equal(to date: Date) -> Bool {
   date_is_later_or_equal(now() |> instant_as_local_date, to: date)
 }
 
+/// Compares the current utc system time to the provided time value.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare_utc_time(time.literal("12:55:12"))
+/// // -> order.Gt
+/// ```
+pub fn compare_utc_time(to time: Time) -> order.Order {
+  time_compare(now() |> instant_as_utc_time, to: time)
+}
+
+/// Compares the current local system time to the provided time value.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare_local_time(time.literal("12:55:12"))
+/// // -> order.Lt
+/// ```
+pub fn compare_local_time(to time: Time) -> order.Order {
+  time_compare(now() |> instant_as_local_time, to: time)
+}
+
+/// Checks if the current UTC system time is earlier than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_earlier(than: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_utc_time_earlier(than time: Time) -> Bool {
   time_is_earlier(now() |> instant_as_utc_time, than: time)
 }
 
+/// Checks if the current local system time is earlier than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_earlier(than: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_local_time_earlier(than time: Time) -> Bool {
   time_is_earlier(now() |> instant_as_local_time, than: time)
 }
 
+/// Checks if the current UTC system time is earlier or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_earlier_or_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_utc_time_earlier_or_equal(to time: Time) -> Bool {
   time_is_earlier_or_equal(now() |> instant_as_utc_time, to: time)
 }
 
+/// Checks if the current local system time is earlier or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_earlier_or_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_local_time_earlier_or_equal(to time: Time) -> Bool {
   time_is_earlier_or_equal(now() |> instant_as_local_time, to: time)
 }
 
+/// Checks if the current UTC system time is equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_utc_time_equal(to time: Time) -> Bool {
   time_is_equal(now() |> instant_as_utc_time, to: time)
 }
 
+/// Checks if the current local system time is equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
 pub fn is_local_time_equal(to time: Time) -> Bool {
   time_is_equal(now() |> instant_as_local_time, to: time)
 }
 
+/// Checks if the current UTC system time is later than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_later(than: time.literal("13:42:11"))
+/// // -> True
+/// ```
 pub fn is_utc_time_later(than time: Time) -> Bool {
   time_is_later(now() |> instant_as_utc_time, than: time)
 }
 
+/// Checks if the current local system time is later than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_later(than: time.literal("13:42:11"))
+/// // -> True
+/// ```
 pub fn is_local_time_later(than time: Time) -> Bool {
   time_is_later(now() |> instant_as_local_time, than: time)
 }
 
+/// Checks if the current UTC system time is later or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_later_or_equal(to: time.literal("13:42:11"))
+/// // -> True
+/// ```
 pub fn is_utc_time_later_or_equal(to time: Time) -> Bool {
   time_is_later_or_equal(now() |> instant_as_utc_time, to: time)
 }
 
+/// Checks if the current local system time is later or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_later_or_equal(to: time.literal("13:42:11"))
+/// // -> True
+/// ```
 pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
   time_is_later_or_equal(now() |> instant_as_local_time, to: time)
 }
 
+/// Gets the difference between the current system datetime and the provided
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.difference_from(date.literal("2024-10-26"))
+/// |> duration.format
+/// // -> "54 days, 13 hours, and 46 minutes"
+/// ```
 pub fn difference_from(from start: DateTime) -> Duration {
   now() |> instant_as_utc_datetime |> datetime_difference(from: start)
 }
 
+/// Gets the time since the provided datetime relative to the current system
+/// datetime. A duration of 0 will be returned if the datetime is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.since_datetime(datetime.literal("2024-10-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "54 days, 13 hours, and 46 minutes"
+/// ```
+/// 
+/// ```gleam
+/// tempo.since_datetime(datetime.literal("9099-12-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "none"
+/// ```
 pub fn since_datetime(start start: DateTime) -> Duration {
   case difference_from(start) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -215,6 +585,22 @@ pub fn since_datetime(start start: DateTime) -> Duration {
   }
 }
 
+/// Gets the time until the provided datetime relative to the current system
+/// datetime. A duration of 0 will be returned if the datetime in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.until_datetime(datetime.literal("2024-10-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "none"
+/// ```
+/// 
+/// ```gleam
+/// tempo.until_datetime(datetime.literal("2025-02-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "54 days, 13 hours, and 46 minutes"
+/// ```
 pub fn until_datetime(end end: DateTime) -> Duration {
   case now() |> instant_as_utc_datetime |> datetime_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -222,14 +608,42 @@ pub fn until_datetime(end end: DateTime) -> Duration {
   }
 }
 
+/// Gets the difference between the current UTC system time and the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_time_difference_from(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "42 minutes"
 pub fn utc_time_difference_from(from start: Time) -> Duration {
   now() |> instant_as_utc_time |> time_difference(from: start)
 }
 
+/// Gets the difference between the current local system time and the provided 
+/// time.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.local_time_difference_from(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "4 hours and 42 minutes"
+/// ```
 pub fn local_time_difference_from(from start: Time) -> Duration {
   now() |> instant_as_utc_time |> time_difference(from: start)
 }
 
+/// Gets the time since the provided time relative to the current UTC system time.
+/// A duration of 0 will be returned if the time is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_time_since(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "42 minutes"
+/// ```
 pub fn utc_time_since(start start: Time) -> Duration {
   case utc_time_difference_from(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -237,6 +651,16 @@ pub fn utc_time_since(start start: Time) -> Duration {
   }
 }
 
+/// Gets the time since the provided time relative to the current local system 
+/// time. A duration of 0 will be returned if the time is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_time_since(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "4 hours and 42 minutes"
+/// ```
 pub fn local_time_since(start start: Time) -> Duration {
   case local_time_difference_from(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -244,6 +668,16 @@ pub fn local_time_since(start start: Time) -> Duration {
   }
 }
 
+/// Gets the time until the provided time relative to the current UTC system time.
+/// A duration of 0 will be returned if the time in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_time_until(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "none"
+/// ```
 pub fn utc_time_until(end end: Time) -> Duration {
   case now() |> instant_as_utc_time |> time_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -251,6 +685,16 @@ pub fn utc_time_until(end end: Time) -> Duration {
   }
 }
 
+/// Gets the time until the provided time relative to the current local system 
+/// time. A duration of 0 will be returned if the time in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_time_until(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "4 hours and 42 minutes"
+/// ```
 pub fn local_time_until(end end: Time) -> Duration {
   case now() |> instant_as_local_time |> time_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -258,14 +702,39 @@ pub fn local_time_until(end end: Time) -> Duration {
   }
 }
 
+/// Gets the difference between the current UTC system date and the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_date_difference_from(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
 pub fn utc_date_difference_from(from start: Date) -> Int {
   now() |> instant_as_utc_date |> date_days_apart(from: start)
 }
 
+/// Gets the difference between the current local system date and the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_date_difference_from(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
 pub fn local_date_difference_from(from start: Date) -> Int {
   now() |> instant_as_local_date |> date_days_apart(from: start)
 }
 
+/// Gets the number of days since the provided date relative to the current UTC 
+/// system date. A value of 0 will be returned if the date is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_date_since(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
 pub fn utc_date_since(start start: Date) -> Int {
   case utc_date_difference_from(from: start) {
     diff if diff > 0 -> diff
@@ -273,6 +742,15 @@ pub fn utc_date_since(start start: Date) -> Int {
   }
 }
 
+/// Gets the number of days since the provided date relative to the current local 
+/// system date. A value of 0 will be returned if the date is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_date_since(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
 pub fn local_date_since(start start: Date) -> Int {
   case local_date_difference_from(from: start) {
     diff if diff > 0 -> diff
@@ -280,6 +758,15 @@ pub fn local_date_since(start start: Date) -> Int {
   }
 }
 
+/// Gets the number of days until the provided date relative to the current UTC 
+/// system date. A value of 0 will be returned if the date is in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_date_until(date.literal("2024-10-26"))
+/// // -> 0
+/// ```
 pub fn utc_date_until(end end: Date) -> Int {
   case now() |> instant_as_utc_date |> date_days_apart(to: end) {
     diff if diff > 0 -> diff
@@ -287,6 +774,15 @@ pub fn utc_date_until(end end: Date) -> Int {
   }
 }
 
+/// Gets the number of days until the provided date relative to the current local 
+/// system date. A value of 0 will be returned if the date is in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_date_until(date.literal("2025-10-26"))
+/// // -> 365
+/// ```
 pub fn local_date_until(end end: Date) -> Int {
   case now() |> instant_as_local_date |> date_days_apart(to: end) {
     diff if diff > 0 -> diff
@@ -298,6 +794,10 @@ pub fn local_date_until(end end: Date) -> Int {
 //                             Instant Logic                                   //
 // -------------------------------------------------------------------------- //
 
+/// A monotonic type that reperesents a unique point in time on the host system. 
+/// It can be converted to all other date time types, but cannot be serialized
+/// itself. An instant constructed on one host has no meaningful purpose on
+/// another host.
 pub opaque type Instant {
   Instant(
     timestamp_utc_us: Int,
@@ -416,7 +916,7 @@ pub type DateTime {
 
 /// A type for external packages to provide so that datetimes can be converted
 /// between timezones. The package `gtz` was created to provide this and must
-/// be installed separately.
+/// be added as a project dependency separately.
 pub type TimeZoneProvider {
   TimeZoneProvider(
     get_name: fn() -> String,
@@ -674,7 +1174,7 @@ pub fn datetime_subtract(
 //                         Naive DateTime Logic                               //
 // -------------------------------------------------------------------------- //
 
-/// A datetime value that does not have a timezone offset associated with it. 
+/// A datetime value that does not have a timezone or offset associated with it. 
 /// It cannot be compared to datetimes with a timezone offset accurately, but
 /// can be compared to dates, times, and other naive datetimes.
 pub type NaiveDateTime {
@@ -855,7 +1355,7 @@ pub fn naive_datetime_subtract(
 //                             Offset Logic                                   //
 // -------------------------------------------------------------------------- //
 
-/// A timezone offset value. It represents the difference between UTC and the
+/// A datetime offset value. It represents the difference between UTC and the
 /// datetime value it is associated with.
 pub opaque type Offset {
   Offset(minutes: Int)
@@ -2306,7 +2806,6 @@ pub type DateTimeFormat {
   // HumanReadable
 }
 
-
 /// Provides common date formatting templates.
 /// 
 /// The CustomDate format dates a format string that implements the same 
@@ -2353,6 +2852,8 @@ pub type TimeFormat {
 }
 
 // Provide the locale API for now with no logic
+/// A type that provides information on how to format dates and times for a 
+/// specific region or language.
 pub type Locale
 
 @internal
