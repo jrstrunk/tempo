@@ -218,24 +218,24 @@ pub fn as_duration(period: tempo.Period) -> tempo.Duration {
   tempo.period_as_duration(period)
 }
 
-/// Creates a period of the specified month, starting at 00:00:00 on the
+/// Creates a period of the specified month year, starting at 00:00:00 on the
 /// first day of the month and ending at 24:00:00 on the last day of the month.
 /// 
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// period.from_month(tempo.Feb, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Feb, 2024))
 /// |> period.contains_date(date.literal("2024-06-21"))
 /// // -> False
 /// ```
-pub fn from_month(month: tempo.Month, year: Int) -> tempo.Period {
+pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
   let start =
-    tempo.naive_datetime(tempo.date(year, month, 1), tempo.time(0, 0, 0, 0))
+    tempo.naive_datetime(tempo.date(my.year, my.month, 1), tempo.time(0, 0, 0, 0))
 
   let end =
     tempo.naive_datetime(
-      tempo.date(year, month, month.days(of: month, in: year)),
+      tempo.date(my.year, my.month, month.days(of: my.month, in: my.year)),
       tempo.time(24, 0, 0, 0),
     )
 
