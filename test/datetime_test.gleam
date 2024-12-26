@@ -851,3 +851,15 @@ pub fn date_period_dec_test() {
 
   date.difference(test_date, test_date) |> should.equal(0)
 }
+
+pub fn format_http_local_test() {
+  datetime.literal("2024-12-26T13:02:01-04:30")
+  |> datetime.format(tempo.HTTP)
+  |> should.equal("Thu, 26 Dec 2024 17:32:01 GMT")
+}
+
+pub fn format_http_utc_test() {
+  datetime.literal("2025-01-05T13:02:01Z")
+  |> datetime.format(tempo.HTTP)
+  |> should.equal("Sun, 05 Jan 2025 13:02:01 GMT")
+}

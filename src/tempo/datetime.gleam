@@ -329,7 +329,11 @@ pub fn format(
   datetime: tempo.DateTime,
   in format: tempo.DateTimeFormat,
 ) -> String {
-  tempo.datetime_format(datetime, in: format)
+  case format {
+    tempo.HTTP -> to_utc(datetime)
+    _ -> datetime
+  }
+  |> tempo.datetime_format(in: format)
 }
 
 /// Returns the UTC datetime of a unix timestamp.

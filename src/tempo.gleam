@@ -85,7 +85,10 @@ pub fn now_utc_formatted(in format: DateTimeFormat) -> String {
 /// // -> "2024-12-26T12:32:34-04:00"
 /// ```
 pub fn now_local_formatted(in format: DateTimeFormat) -> String {
-  now() |> instant_as_local_datetime |> datetime_format(format)
+  case format {
+    HTTP -> now_utc_formatted(HTTP)
+    _ -> now() |> instant_as_local_datetime |> datetime_format(format)
+  }
 }
 
 /// Gets the duration between the current system time and the provided instant.
@@ -2783,7 +2786,7 @@ fn do_period_comprising_months(mys, my: MonthYear, end_date) {
 /// 
 /// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
 /// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+/// D (day of the month), DD (two-digint day of the month), d (day of the week), 
 /// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
@@ -2794,6 +2797,7 @@ pub type DateTimeFormat {
   ISO8601
   ISO8601Milli
   ISO8601Micro
+  HTTP
   Custom(format: String)
   CustomLocalised(format: String, locale: Locale)
   DateFormat(DateFormat)
@@ -2862,6 +2866,7 @@ pub fn get_datetime_format_str(format: DateTimeFormat) {
     ISO8601 -> "YYYY/MM/DDTHH:mm:ssZ"
     ISO8601Milli -> "YYYY/MM/DDTHH:mm:ss.SSSZ"
     ISO8601Micro -> "YYYY/MM/DDTHH:mm:ss.SSSSZ"
+    HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
     DateFormat(ISO8601Date) -> "YYYY/MM/DD"
     TimeFormat(ISO8601Time) -> "HH:mm:ssZ"
     TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSSZ"
