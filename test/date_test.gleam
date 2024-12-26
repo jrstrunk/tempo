@@ -1,8 +1,8 @@
-import tempo
 import gleam/dynamic
 import gleam/order
 import gleam/string
 import gleeunit/should
+import tempo
 import tempo/date
 
 pub fn date_current_test() {

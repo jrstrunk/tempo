@@ -106,7 +106,10 @@ pub fn as_local_time(instant: tempo.Instant) -> tempo.Time {
 /// |> instant.format_utc(tempo.ISO8601)
 /// // -> "2024-12-26T16:32:34Z"
 /// ```
-pub fn format_utc(instant: tempo.Instant, in format: tempo.DateTimeFormat) -> String {
+pub fn format_utc(
+  instant: tempo.Instant,
+  in format: tempo.DateTimeFormat,
+) -> String {
   tempo.instant_as_utc_datetime(instant) |> datetime.format(in: format)
 }
 
@@ -119,7 +122,10 @@ pub fn format_utc(instant: tempo.Instant, in format: tempo.DateTimeFormat) -> St
 /// |> instant.format_local(tempo.ISO8601)
 /// // -> "2024-12-26T12:32:34-04:00"
 /// ```
-pub fn format_local(instant: tempo.Instant, in format: tempo.DateTimeFormat) -> String {
+pub fn format_local(
+  instant: tempo.Instant,
+  in format: tempo.DateTimeFormat,
+) -> String {
   tempo.instant_as_local_datetime(instant) |> datetime.format(in: format)
 }
 

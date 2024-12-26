@@ -1,6 +1,6 @@
-import tempo
 import gleam/order
 import gleeunit/should
+import tempo
 import tempo/date
 import tempo/duration
 import tempo/naive_datetime

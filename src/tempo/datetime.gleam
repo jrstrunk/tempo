@@ -325,7 +325,10 @@ pub fn describe_parse_error(error: tempo_error.DateTimeParseError) {
 /// |> datetime.format(tempo.Custom("H HH h hh m mm s ss a A [An ant]"))
 /// // --------------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
-pub fn format(datetime: tempo.DateTime, in format: tempo.DateTimeFormat) -> String {
+pub fn format(
+  datetime: tempo.DateTime,
+  in format: tempo.DateTimeFormat,
+) -> String {
   tempo.datetime_format(datetime, in: format)
 }
 

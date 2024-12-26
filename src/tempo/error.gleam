@@ -8,7 +8,8 @@ pub type DateTimeParseError {
 @internal
 pub fn describe_datetime_parse_error(error: DateTimeParseError) -> String {
   case error {
-    DateTimeInvalidFormat(input) -> "Invalid datetime format: \"" <> input <> "\""
+    DateTimeInvalidFormat(input) ->
+      "Invalid datetime format: \"" <> input <> "\""
     DateTimeDateParseError(input, DateInvalidFormat(_)) ->
       "Invalid date format in datetime: \"" <> input <> "\""
     DateTimeDateParseError(input, DateOutOfBounds(_, DateDayOutOfBounds(_))) ->

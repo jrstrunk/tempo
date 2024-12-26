@@ -231,7 +231,10 @@ pub fn as_duration(period: tempo.Period) -> tempo.Duration {
 /// ```
 pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
   let start =
-    tempo.naive_datetime(tempo.date(my.year, my.month, 1), tempo.time(0, 0, 0, 0))
+    tempo.naive_datetime(
+      tempo.date(my.year, my.month, 1),
+      tempo.time(0, 0, 0, 0),
+    )
 
   let end =
     tempo.naive_datetime(

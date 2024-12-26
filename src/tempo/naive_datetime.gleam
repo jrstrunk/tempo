@@ -349,7 +349,10 @@ pub fn describe_parse_error(
 /// |> naive_datetime.format("H HH h hh m mm s ss a A [An ant]")
 /// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
-pub fn format(naive_datetime: tempo.NaiveDateTime, in format: tempo.DateTimeFormat) -> String {
+pub fn format(
+  naive_datetime: tempo.NaiveDateTime,
+  in format: tempo.DateTimeFormat,
+) -> String {
   let format_str = tempo.get_datetime_format_str(format)
 
   let assert Ok(re) = regexp.from_string(tempo.format_regex)
