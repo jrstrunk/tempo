@@ -104,58 +104,6 @@ pub fn literal(datetime: String) -> tempo.DateTime {
   }
 }
 
-/// Gets the current local datetime of the host as an ISO-8601 formatted 
-/// string with millisecond precision. To record the current time (including 
-/// monotonic and unique), use `tempo.now_utc`. To get the current datetime
-/// for other purposes, use `tempo.now_utc |> instant.as_datetime`.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.now_local_string()
-/// // -> "2024-06-14T04:19:20.086-04:00"
-/// ```
-pub fn now_local_string() -> String {
-  let now_utc = {
-    let now_ts_micro = tempo.now_utc_ffi()
-
-    new(
-      date.from_unix_utc(now_ts_micro / 1_000_000),
-      time.from_unix_micro_utc(now_ts_micro),
-      tempo.utc,
-    )
-  }
-
-  // This should always be precise because it is the current time.
-  case now_utc |> to_local {
-    Precise(datetime) -> datetime
-    Imprecise(datetime) -> datetime
-  }
-  |> format(in: "YYYY-MM-DDTHH:mm:ss.SSSZ")
-}
-
-/// Gets the current UTC datetime of the host as an ISO-8601 formatted string
-/// with millisecond precision. To record the current time (including 
-/// monotonic and unique), use `tempo.now_utc`. To get the current datetime 
-/// for other purposes, use `tempo.now_utc |> instant.as_datetime`.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.now_utc_string()
-/// // -> "2024-06-14T08:19:20.056Z"
-/// ```
-pub fn now_utc_string() -> String {
-  let now_ts_micro = tempo.now_utc_ffi()
-
-  new(
-    date.from_unix_utc(now_ts_micro / 1_000_000),
-    time.from_unix_micro_utc(now_ts_micro),
-    tempo.utc,
-  )
-  |> format(in: "YYYY-MM-DDTHH:mm:ss.SSSZ")
-}
-
 /// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
 /// `YYYYMMDDThhmmss.sTZD`, `YYYY-MM-DD hh:mm:ss.sTZD`,
 /// `YYYYMMDD hhmmss.sTZD`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
@@ -342,49 +290,35 @@ pub fn describe_parse_error(error: tempo_error.DateTimeParseError) {
   tempo_error.describe_datetime_parse_error(error)
 }
 
-/// Formats a datetime value into a string using the provided format string.
-/// Implements the same formatting directives as the great Day.js 
-/// library: https://day.js.org/docs/en/display/format, plus short timezones.
-/// 
-/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
-/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
-/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
-/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
-/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+/// Formats a datetime value into a string using the provided format.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.literal("2024-06-21T13:42:11.314-04:00")
+/// datetime.literal(tempo.Custom("2024-06-21T13:42:11.314-04:00"))
 /// |> datetime.format("ddd @ h:mm A (z)")
 /// // -> "Fri @ 1:42 PM (-04)"
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-03T09:02:01-04:00")
-/// |> datetime.format("YY YYYY M MM MMM MMMM D DD d dd ddd")
-/// // --------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
+/// |> datetime.format(tempo.Custom("YY YYYY M MM MMM MMMM D DD d dd ddd"))
+/// // -----------:---------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
 /// ```
 /// 
 /// ```gleam 
 /// datetime.literal("2024-06-03T09:02:01.014920202-00:00")
-/// |> datetime.format("dddd SSS SSSS SSSSS Z ZZ z")
+/// |> datetime.format(tempo.Custom("dddd SSS SSSS SSSSS Z ZZ z"))
 /// // -> "Monday 014 014920 014920202 -00:00 -0000 Z"
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-03T13:02:01-04:00")
-/// |> datetime.format("H HH h hh m mm s ss a A [An ant]")
-/// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
+/// |> datetime.format(tempo.Custom("H HH h hh m mm s ss a A [An ant]"))
+/// // --------------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
-pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
-  tempo.datetime_format(datetime, in: fmt)
+pub fn format(datetime: tempo.DateTime, in format: tempo.DateTimeFormat) -> String {
+  tempo.datetime_format(datetime, in: format)
 }
 
 /// Returns the UTC datetime of a unix timestamp.

@@ -1,3 +1,4 @@
+import tempo
 import gleam/dynamic
 import gleam/order
 import gleam/string
@@ -119,7 +120,7 @@ pub fn to_string_test() {
 
 pub fn format_test() {
   date.literal("2024-06-13")
-  |> date.format("MMMM 'YY")
+  |> date.format(tempo.CustomDate("MMMM 'YY"))
   |> should.equal("June '24")
 }
 

@@ -42,11 +42,11 @@ pub fn as_local_time(instant: tempo.Instant) -> tempo.Time {
   tempo.instant_as_local_time(instant)
 }
 
-pub fn format_utc(instant: tempo.Instant, in format: String) -> String {
+pub fn format_utc(instant: tempo.Instant, in format: tempo.DateTimeFormat) -> String {
   tempo.instant_as_utc_datetime(instant) |> datetime.format(in: format)
 }
 
-pub fn format_local(instant: tempo.Instant, in format: String) -> String {
+pub fn format_local(instant: tempo.Instant, in format: tempo.DateTimeFormat) -> String {
   tempo.instant_as_local_datetime(instant) |> datetime.format(in: format)
 }
 

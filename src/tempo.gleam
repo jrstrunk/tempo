@@ -13,7 +13,7 @@ import gleam/string_tree
 import gtempo/internal as unit
 import tempo/error as tempo_error
 
-// This is a big file. The contents are generally ordered by:
+// This is a big file. The contents are generally ordered (and searchable) by:
 // - Tempo now functions
 // - Instant logic (functions starting with `_instant`)
 // - DateTime logic (funcctions starting with `datetime_`)
@@ -25,7 +25,7 @@ import tempo/error as tempo_error
 // - Time logic (functions starting with `time_`)
 // - Duration logic (functions starting with `dur_`)
 // - Period logic (functions starting with `period_`)
-// - Tempo module other logic 
+// - Format logic
 // - FFI logic
 
 // -------------------------------------------------------------------------- //
@@ -51,11 +51,11 @@ pub fn now_utc_adjusted(by duration: Duration) -> DateTime {
   )
 }
 
-pub fn now_utc_formatted(in format: String) -> String {
+pub fn now_utc_formatted(in format: DateTimeFormat) -> String {
   now() |> instant_as_utc_datetime |> datetime_format(format)
 }
 
-pub fn now_local_formatted(in format: String) -> String {
+pub fn now_local_formatted(in format: DateTimeFormat) -> String {
   now() |> instant_as_local_datetime |> datetime_format(format)
 }
 
@@ -522,10 +522,12 @@ pub fn datetime_serialize(datetime: DateTime) -> String {
 }
 
 @internal
-pub fn datetime_format(datetime: DateTime, in fmt: String) -> String {
+pub fn datetime_format(datetime: DateTime, in format: DateTimeFormat) -> String {
+  let format_str = get_datetime_format_str(format)
+
   let assert Ok(re) = regexp.from_string(format_regex)
 
-  regexp.scan(re, fmt)
+  regexp.scan(re, format_str)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
@@ -983,6 +985,29 @@ pub fn validate_offset(offset: Offset) -> Result(Offset, Nil) {
 @internal
 pub fn offset_to_duration(offset: Offset) -> Duration {
   -offset.minutes * 60_000_000 |> Duration
+}
+
+fn offset_replace_format(content: String, offset: Offset) -> String {
+  case content {
+    "z" ->
+      case offset.minutes {
+        0 -> "Z"
+        _ -> {
+          let str_offset = offset |> offset_to_string
+
+          case str_offset |> string.split(":") {
+            [hours, "00"] -> hours
+            _ -> str_offset
+          }
+        }
+      }
+    "Z" -> offset |> offset_to_string
+    "ZZ" ->
+      offset
+      |> offset_to_string
+      |> string.replace(":", "")
+    _ -> content
+  }
 }
 
 // -------------------------------------------------------------------------- //
@@ -2166,7 +2191,11 @@ pub fn period_contains_datetime(period: Period, datetime: DateTime) -> Bool {
       && datetime
       |> datetime_is_earlier_or_equal(to: end)
 
-    _ -> period_contains_naive_datetime(period, NaiveDateTime(date: datetime.date, time: datetime.time))
+    _ ->
+      period_contains_naive_datetime(
+        period,
+        NaiveDateTime(date: datetime.date, time: datetime.time),
+      )
   }
 }
 
@@ -2241,29 +2270,127 @@ fn do_period_comprising_months(mys, my: MonthYear, end_date) {
 }
 
 // -------------------------------------------------------------------------- //
-//                          Tempo Module Logic                                //
+//                             Format Logic                                   //
 // -------------------------------------------------------------------------- //
 
-fn offset_replace_format(content: String, offset: Offset) -> String {
-  case content {
-    "z" ->
-      case offset.minutes {
-        0 -> "Z"
-        _ -> {
-          let str_offset = offset |> offset_to_string
+/// Provides common datetime formatting templates.
+/// 
+/// The CustomDateTime format dates a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format, plus condensed offsets.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+pub type DateTimeFormat {
+  ISO8601
+  ISO8601Milli
+  ISO8601Micro
+  Custom(format: String)
+  CustomLocalised(format: String, locale: Locale)
+  DateFormat(DateFormat)
+  TimeFormat(TimeFormat)
+  // LanguageLong
+  // LanguageLongLocalised(locale: Locale)
+  // LanguageShort
+  // LanguageShortLocalised(locale: Locale)
+  // HumanReadable
+  // HumanReadable
+}
 
-          case str_offset |> string.split(":") {
-            [hours, "00"] -> hours
-            _ -> str_offset
-          }
-        }
-      }
-    "Z" -> offset |> offset_to_string
-    "ZZ" ->
-      offset
-      |> offset_to_string
-      |> string.replace(":", "")
-    _ -> content
+
+/// Provides common date formatting templates.
+/// 
+/// The CustomDate format dates a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), and
+/// dddd (full day of the week).
+pub type DateFormat {
+  ISO8601Date
+  CustomDate(format: String)
+  CustomDateLocalised(format: String, locale: Locale)
+  // LanguageDate
+  // LanguageDateLocalised(locale: Locale)
+  // HumanDate
+}
+
+/// Provides common time formatting templates.
+/// 
+/// The CustomTime format dates a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] HH".
+/// 
+/// Available custom format directives: H (hour), HH (two-digit hour), h (12-hour clock hour),
+/// hh (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// A (AM/PM), a (am/pm).
+pub type TimeFormat {
+  ISO8601Time
+  ISO8601TimeMilli
+  ISO8601TimeMicro
+  CustomTime(format: String)
+  CustomTimeLocalised(format: String, locale: Locale)
+  // LanguageTime
+  // LanguageTimeLocalised(locale: Locale)
+  // HumanTime
+}
+
+// Provide the locale API for now with no logic
+pub type Locale
+
+@internal
+pub fn get_datetime_format_str(format: DateTimeFormat) {
+  case format {
+    ISO8601 -> "YYYY/MM/DDTHH:mm:ssZ"
+    ISO8601Milli -> "YYYY/MM/DDTHH:mm:ss.SSSZ"
+    ISO8601Micro -> "YYYY/MM/DDTHH:mm:ss.SSSSZ"
+    DateFormat(ISO8601Date) -> "YYYY/MM/DD"
+    TimeFormat(ISO8601Time) -> "HH:mm:ssZ"
+    TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSSZ"
+    TimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSSZ"
+    TimeFormat(CustomTime(format)) -> format
+    TimeFormat(CustomTimeLocalised(format, _locale)) -> format
+    DateFormat(CustomDate(format)) -> format
+    DateFormat(CustomDateLocalised(format, _locale)) -> format
+    Custom(format) -> format
+    CustomLocalised(format, _locale) -> format
+  }
+}
+
+@internal
+pub fn get_time_format_str(format: TimeFormat) {
+  case format {
+    ISO8601Time -> "HH:mm:ssZ"
+    ISO8601TimeMilli -> "HH:mm:ss.SSSZ"
+    ISO8601TimeMicro -> "HH:mm:ss.SSSSZ"
+    CustomTime(format) -> format
+    CustomTimeLocalised(format, _locale) -> format
+  }
+}
+
+@internal
+pub fn get_date_format_str(format: DateFormat) {
+  case format {
+    ISO8601Date -> "YYYY-MM-DD"
+    CustomDate(format) -> format
+    CustomDateLocalised(format, _locale) -> format
   }
 }
 

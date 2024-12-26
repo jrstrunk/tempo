@@ -330,7 +330,7 @@ pub fn compare_different_precision_test() {
 
 pub fn format_test() {
   time.literal("13:42:11")
-  |> time.format("hh:mm:ss a")
+  |> time.format(tempo.CustomTime("hh:mm:ss a"))
   |> should.equal("01:42:11 pm")
 }
 

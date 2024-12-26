@@ -153,62 +153,6 @@ pub fn literal(time: String) -> tempo.Time {
   }
 }
 
-/// Gets the UTC wall time of the host as a string with millisecond precision. 
-/// To time events, use the `tempo.now_utc` function. To get the current 
-/// time for other purposes, use `tempo.now_utc |> instant.as_time`.
-///
-/// ## Example
-/// 
-/// ```gleam
-/// case 
-///   time.now_utc_string() 
-///   |> time.is_later(than: time.literal("11:50:00")) 
-/// { 
-///   True -> "We are all late!"
-///   False -> "No rush :)"
-/// }
-/// ```
-pub fn now_utc_string() -> String {
-  let now_ts_micro = tempo.now_utc_ffi()
-  let date_ts_micro =
-    { date.to_unix_utc(date.from_unix_utc(now_ts_micro / 1_000_000)) }
-    * 1_000_000
-
-  // Subtract the microseconds that are responsible for the date and the local
-  // offset microseconds.
-  tempo.time_from_microseconds(now_ts_micro - date_ts_micro)
-  |> format(in: "HH:mm:ss.SSSZ")
-}
-
-/// Gets the local wall time of the host as a string with milisecond precision. 
-/// To time events, use the `tempo.now_local` function. To get the current 
-/// time for other purposes, use `tempo.now_local |> instant.as_time`.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// case 
-///   time.now_local_string() 
-///   |> time.is_later(than: time.literal("11:50:00")) 
-/// { 
-///   True -> "We are late!"
-///   False -> "No rush :)"
-/// }
-/// ```
-pub fn now_local_string() -> String {
-  let now_ts_micro = tempo.now_utc_ffi()
-  let date_ts_micro =
-    { date.to_unix_utc(date.from_unix_utc(now_ts_micro / 1_000_000)) }
-    * 1_000_000
-
-  // Subtract the microseconds that are responsible for the date and the local
-  // offset microseconds.
-  tempo.time_from_microseconds(
-    now_ts_micro - date_ts_micro + tempo.offset_local_micro(),
-  )
-  |> format(in: "HH:mm:ss.SSSZ")
-}
-
 /// Early on these were part of the public API and used in a lot of tests, 
 /// but since have been removed from the public API. The tests should be 
 /// updated and these functions removed.
@@ -496,18 +440,15 @@ pub fn describe_parse_error(error: tempo_error.TimeParseError) {
   tempo_error.describe_time_parse_error(error)
 }
 
-/// Formats a time value using the provided format string.
-/// Implements the same formatting directives as the great Day.js 
-/// library: https://day.js.org/docs/en/display/format.
-/// 
-/// Values can be escaped by putting brackets around them, like "[Hello!] HH".
-/// 
-/// Available directives: H (hour), HH (two-digit hour), h (12-hour clock hour),
-/// hh (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// A (AM/PM), a (am/pm).
+/// Formats a time value using the provided format.
 /// 
 /// ## Example
+/// 
+/// ```gleam
+/// time.literal("13:42:11")
+/// |> time.format(tempo.ISO8601TimeMilli)
+/// // -> "13:42:11.000"
+/// ```
 /// 
 /// ```gleam
 /// time.literal("13:42:11.314")
@@ -526,10 +467,12 @@ pub fn describe_parse_error(error: tempo_error.TimeParseError) {
 /// |> naive_datetime.format("H HH h hh m mm s ss a A [An ant]")
 /// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
-pub fn format(time: tempo.Time, in fmt: String) -> String {
+pub fn format(time: tempo.Time, in format: tempo.TimeFormat) -> String {
+  let format_str = tempo.get_time_format_str(format)
+
   let assert Ok(re) = regexp.from_string(tempo.format_regex)
 
-  regexp.scan(re, fmt)
+  regexp.scan(re, format_str)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {

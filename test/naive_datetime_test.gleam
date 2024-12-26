@@ -1,3 +1,4 @@
+import tempo
 import gleam/order
 import gleeunit/should
 import tempo/date
@@ -48,7 +49,7 @@ pub fn to_tuple_test() {
 
 pub fn format_test() {
   naive_datetime.literal("2024-06-21T13:42:11")
-  |> naive_datetime.format("ddd @ h:mm A")
+  |> naive_datetime.format(tempo.Custom("ddd @ h:mm A"))
   |> should.equal("Fri @ 1:42 PM")
 }
 

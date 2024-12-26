@@ -335,51 +335,45 @@ pub fn describe_parse_error(error: tempo_error.DateParseError) {
   tempo_error.describe_date_parse_error(error)
 }
 
-/// Formats a datetime value into a string using the provided format string.
-/// Implements the same formatting directives as the great Day.js 
-/// library: https://day.js.org/docs/en/display/format, plus short timezones.
-/// 
-/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
-/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
-/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
-/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
-/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+/// Formats a date value into a string using the provided date format.
 /// 
 /// ## Example
 /// 
 /// ```gleam
+/// datetime.literal("2024-12-26T13:02:01-04:00")
+/// |> datetime.format(tempo.ISO8601Date)
+/// // -> "2024-12-26"
+/// ```
+/// 
+/// ```gleam
 /// datetime.literal("2024-06-21T13:42:11.314-04:00")
-/// |> datetime.format("ddd @ h:mm A (z)")
+/// |> datetime.format(tempo.CustomDate("ddd @ h:mm A (z)"))
 /// // -> "Fri @ 1:42 PM (-04)"
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-03T09:02:01-04:00")
-/// |> datetime.format("YY YYYY M MM MMM MMMM D DD d dd ddd")
-/// // --------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
+/// |> datetime.format(tempo.CustomDate("YY YYYY M MM MMM MMMM D DD d dd ddd"))
+/// // -------------------------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
 /// ```
 /// 
 /// ```gleam 
 /// datetime.literal("2024-06-03T09:02:01.014920202-00:00")
-/// |> datetime.format("dddd SSS SSSS SSSSS Z ZZ z")
+/// |> datetime.format(tempo.CustomDate("dddd SSS SSSS SSSSS Z ZZ z"))
 /// // -> "Monday 014 014920 014920202 -00:00 -0000 Z"
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-03T13:02:01-04:00")
-/// |> datetime.format("H HH h hh m mm s ss a A [An ant]")
-/// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
+/// |> datetime.format(tempo.CustomDate(("H HH h hh m mm s ss a A [An ant]"))
+/// // -------------------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
-pub fn format(date: tempo.Date, in fmt: String) -> String {
+pub fn format(date: tempo.Date, in format: tempo.DateFormat) -> String {
+  let format_str = tempo.get_date_format_str(format)
+
   let assert Ok(re) = regexp.from_string(tempo.format_regex)
 
-  regexp.scan(re, fmt)
+  regexp.scan(re, format_str)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {

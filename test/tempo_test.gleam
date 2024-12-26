@@ -3,15 +3,10 @@ import gleam/option.{None, Some}
 import gleeunit/should
 import tempo
 import tempo/date
-import tempo/datetime
 import tempo/offset
 import tempo/time
 
 pub fn main() {
-  datetime.now_local_string() |> io.debug
-  datetime.now_utc_string() |> io.debug
-  time.now_local_string() |> io.debug
-  time.now_utc_string() |> io.debug
   date.current_local() |> io.debug
   date.current_utc() |> io.debug
 }

@@ -1,6 +1,7 @@
 import gleam/dynamic
 import gleam/order
 import gleeunit/should
+import tempo
 import tempo/date
 import tempo/datetime
 import tempo/duration
@@ -145,9 +146,9 @@ pub fn date_to_string_test() {
 
 pub fn format_pad_test() {
   datetime.literal("2024-06-03T09:02:01.014920-04:00")
-  |> datetime.format(
+  |> datetime.format(tempo.Custom(
     "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS Z ZZ z",
-  )
+  ))
   |> should.equal(
     "24 2024 6 06 Jun June 3 03 1 Mo Mon Monday 9 09 9 09 am AM 2 02 1 01 014 014920 -04:00 -0400 -04",
   )
@@ -155,9 +156,9 @@ pub fn format_pad_test() {
 
 pub fn format_no_pad_test() {
   datetime.literal("2001-12-25T22:52:21.914920-00:00")
-  |> datetime.format(
+  |> datetime.format(tempo.Custom(
     "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS Z ZZ z",
-  )
+  ))
   |> should.equal(
     "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 -00:00 -0000 Z",
   )
@@ -165,37 +166,37 @@ pub fn format_no_pad_test() {
 
 pub fn format_parenthesis_test() {
   datetime.literal("2024-06-21T13:42:11.314-04:00")
-  |> datetime.format("ddd @ h:mm A (z)")
+  |> datetime.format(tempo.Custom("ddd @ h:mm A (z)"))
   |> should.equal("Fri @ 1:42 PM (-04)")
 }
 
 pub fn format_pm_test() {
   datetime.literal("2024-06-21T12:42:11.314-04:00")
-  |> datetime.format("h:mm a")
+  |> datetime.format(tempo.Custom("h:mm a"))
   |> should.equal("12:42 pm")
 }
 
 pub fn format_padded_pm_test() {
   datetime.literal("2024-06-21T15:47:00.000-04:00")
-  |> datetime.format("hh:mm:ss a")
+  |> datetime.format(tempo.Custom("hh:mm:ss a"))
   |> should.equal("03:47:00 pm")
 }
 
 pub fn format_am_test() {
   datetime.literal("2024-06-21T00:42:11.314-04:00")
-  |> datetime.format("h:mm a")
+  |> datetime.format(tempo.Custom("h:mm a"))
   |> should.equal("12:42 am")
 }
 
 pub fn format_padded_am_test() {
   datetime.literal("2024-06-21T06:42:11.314-04:00")
-  |> datetime.format("hh:mm:ss a")
+  |> datetime.format(tempo.Custom("hh:mm:ss a"))
   |> should.equal("06:42:11 am")
 }
 
 pub fn format_escape_test() {
   datetime.literal("2024-06-13T13:42:11.314-04:00")
-  |> datetime.format("[Hi Mom! It is:] YYYY-MM-DD")
+  |> datetime.format(tempo.Custom("[Hi Mom! It is:] YYYY-MM-DD"))
   |> should.equal("Hi Mom! It is: 2024-06-13")
 }
 
@@ -505,12 +506,6 @@ pub fn apply_positive_offset_test() {
   |> datetime.apply_offset
   |> naive_datetime.to_string
   |> should.equal("2024-06-17T08:00:54.334000")
-}
-
-pub fn now_test() {
-  datetime.now_local_string()
-  datetime.now_utc_string()
-  // Just should not crash or anything, not really much to validate
 }
 
 pub fn from_dynamic_string_test() {
