@@ -1,7 +1,7 @@
 //// Functions to use with the `Instant` type in Tempo. The instant type is 
 //// a monotonic type that represents a unique point in time on the host system.
-//// It is the only way to get the current time on the host system, and means
-//// very little on other systems.
+//// It is the only way to get the current time on the host system as a value, 
+//// and means very little on other systems.
 
 import gleam/order
 import tempo

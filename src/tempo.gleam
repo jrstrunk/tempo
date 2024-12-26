@@ -791,7 +791,7 @@ pub fn local_date_until(end end: Date) -> Int {
 }
 
 // -------------------------------------------------------------------------- //
-//                             Instant Logic                                   //
+//                             Instant Logic                                  //
 // -------------------------------------------------------------------------- //
 
 /// A monotonic type that reperesents a unique point in time on the host system. 
