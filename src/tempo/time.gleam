@@ -982,7 +982,8 @@ pub fn left_in_day(time: tempo.Time) -> tempo.Time {
   |> tempo.time_from_microseconds
 }
 
-/// Returns a duration representing the time left until a given time.
+/// Returns a duration representing the time left from the first time 
+/// until a given time. 
 /// 
 /// ## Example
 /// 
@@ -1008,7 +1009,8 @@ pub fn until(time: tempo.Time, until: tempo.Time) -> tempo.Duration {
   }
 }
 
-/// Returns a duration representing the time since a given time.
+/// Returns a duration representing the time since the first time to the 
+/// given time.
 /// 
 /// ## Example
 /// 

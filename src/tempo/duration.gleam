@@ -13,16 +13,6 @@
 ////   // -> "1 hour, 42 minutes, 11 seconds"
 //// }
 //// ```
-//// 
-//// ```gleam
-//// import tempo/duration
-//// 
-//// pub fn timed(func) {
-////   let start = duration.start_monotonic()
-////   func() 
-////   io.println("This took " <> duration.since(start) <> " to run!")
-//// }
-//// ```
 
 import gleam/int
 import gleam/list

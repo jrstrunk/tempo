@@ -2,7 +2,7 @@
 
 A lightweight and Gleamy datetime library!
 
-Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and stringify datetimes, and more! Over 400 unit tests, contributions welcome!
+Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more! Over 400 unit tests, contributions welcome!
 
 Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible.
 
@@ -33,45 +33,15 @@ pub fn main() {
   tempo.parse_any("Dec 25, 2024 at 1:00 PM")
   // -> Ok(#(Some(date), Some(time), None))
 
+  tempo.now_utc_formatted(tempo.ISO8601Milli)
+  // -> "2024-12-25T06:04:20.534Z"
+
   datetime.literal("2024-12-25T06:00:00Z")
-  |> datetime.format("ddd @ h:mm A")
+  |> datetime.format(tempo.Custom("ddd @ h:mm A"))
   // -> "Fri @ 6:00 AM"
 
   date.parse("03/02/1998", "DD/MM/YYYY")
   // -> Ok(date.literal("1998-02-03"))
-}
-```
-
-#### Serializing DateTimes
-
-If you need to send a datetime value outside of Gleam, then need to parse it back into a datetime value later, prefer using the `datetime.serialize` function.
-
-```gleam
-import tempo/datetime
-import tempo/instant
-import tempo
-import dynamic
-
-pub fn main() {
-  // The `instant.as_datetime` call drops monotonic and unique time
-  let my_dt: DateTime = tempo.now_local() |> instant.as_datetime
-
-  let assert Ok(external_dt) =
-    datetime.serialize(my_dt)
-    // send somewhere external, then retrieve it
-    |> dynamic.from
-    |> datetime.from_dynamic_string
-
-  my_dt == external_dt
-  // -> True
-
-  let assert Ok(faulty_external_dt) =
-    datetime.to_string(my_dt)
-    // send somewhere external, then retrieve it
-    |> dynamic.from
-    |> datetime.from_dynamic_string
-  my_dt == faulty_external_dt
-  // -> False, because sub-millisecond precision was lost
 }
 ```
 
@@ -100,53 +70,35 @@ pub fn main() {
 // -> "2024-01-03T00:30:02.334-05:00"
 ```
 
-#### Time-Based Logical Branching and Logging
+#### Handling Current System Time
+To aviod common pitfalls, regular time values representing the current system 
+time are not commonly returned to the user. You are encouraged to use the `tempo`
+module functions like below to handle the current system time.
 
 ```gleam
-import gleam/int
 import gleam/io
 import tempo
-import tempo/date
-import tempo/datetime
 import tempo/duration
 import tempo/time
 
 pub fn main() {
-  io.println(datetime.now_text() <> " booting up!")
+  // Timing tasks
+  let timer = tempo.now()
+  long_running_task()
+  tempo.since(timer)
+  // -> duration.minutes(42)
 
-  let target_time = time.literal("07:50:00")
-
-  // This is monotonic time
-  let timer = duration.start_monotonic()
-
-  case tempo.is_time_later(than: target_time) {
-    True -> {
+  // Comparing the system time to other times
+  case tempo.is_local_time_later(than: time.literal("07:50:00")) {
+    True -> 
       io.println(
-        "We are late by "
-        <> tempo.time_since(target_time)
-        |> duration.as_minutes
-        |> int.to_string
-        <> " minutes! This should take until "
-        <> tempo.now_utc_adjusted(by: duration.minutes(16))
-        |> datetime.format("h:mm a"),
-        <> " UTC",
+        "We are late by " 
+        <> tempo.local_time_since(time.literal("07:50:00"))
+        |> duration.format
       )
-
-      run_rushed_task(for: date.current_local())
-    }
-
-    False -> {
-      io.println(
-        "No rush :) This should take until "
-        <> tempo.now_utc_adjusted(by: duration.hours(3))
-        |> datetime.format("h:mm a"),
-      )
-  io.println("Phew, that only took " <> duration.since(timer))
+    False -> io.println("We are on time!")
+  }
 }
-
-// -> 2024-06-21 08:06:54.279 booting up!
-// -> We are late by 16 minutes! This should take until 9:30 PM
-// -> Phew, that only took 978 microseconds
 ```
 
 #### Iterating Over a Date Range
@@ -158,13 +110,13 @@ import tempo/period
 
 pub fn main() {
   date.literal("2024-06-21")
-  |> date.difference(from: date.literal("2024-06-24"))
+  |> date.as_period(end: date.literal("2024-06-24"))
   |> period.comprising_dates
   |> iterator.to_list
   // -> [2024-06-21, 2024-06-22, 2024-06-23, 2024-06-24]
 
   date.literal("2024-06-21")
-  |> date.difference(from: date.literal("2024-07-08"))
+  |> date.as_period(end: date.literal("2024-07-08"))
   |> period.comprising_months
   |> iterator.to_list
   // -> [tempo.Jun, tempo.Jul]
@@ -177,11 +129,9 @@ pub fn main() {
 import gleam/erlang/process
 import tempo/duration
 import tempo/time
-
 pub fn main() {
   // Sleep until 8:25 if we start before then.
-  time.now_local()
-  |> time.until(time.literal("08:25:00"))
+  tempo.local_time_until(time.literal("08:25:00"))
   |> duration.as_milliseconds
   |> process.sleep
 
