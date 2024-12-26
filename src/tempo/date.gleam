@@ -331,7 +331,16 @@ pub fn parse_any(str: String) -> Result(tempo.Date, tempo_error.DateParseError) 
   }
 }
 
-pub fn describe_parse_error(error: tempo_error.DateParseError) {
+/// Converts a date parse error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.parse_any("01:32 PM")
+/// |> snag.map_error(with: date.describe_parse_error)
+/// // -> snag.error("Invalid date format: 01:32 PM")
+/// ```
+pub fn describe_parse_error(error: tempo_error.DateParseError) -> String {
   tempo_error.describe_date_parse_error(error)
 }
 
@@ -419,6 +428,15 @@ pub fn from_tuple(
   tempo.date_from_tuple(date)
 }
 
+/// Converts a date out of bounds error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.from_tuple(#(98, 6, 13))
+/// |> snag.map_error(with: date.describe_out_of_bounds_error)
+/// // -> snag.error("Year out of bounds in date: 98")
+/// ```
 pub fn describe_out_of_bounds_error(error: tempo_error.DateOutOfBoundsError) {
   tempo_error.describe_date_out_of_bounds_error(error)
 }

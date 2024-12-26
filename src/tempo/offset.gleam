@@ -91,6 +91,15 @@ pub fn from_string(
   tempo.offset_from_string(offset)
 }
 
+/// Converts an offset parse error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// offset.from_string("bad offset")
+/// |> snag.map_error(with: offset.describe_parse_error)
+/// // -> snag.error("Invalid offset format: "bad offset"")
+/// ```
 pub fn describe_parse_error(error: tempo_error.OffsetParseError) -> String {
   tempo_error.describe_offset_parse_error(error)
 }

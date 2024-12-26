@@ -294,6 +294,15 @@ pub fn parse_any(
   }
 }
 
+/// Converts a naive datetime parse error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// naive_datetime.parse("2024 06 21 23:17:00")
+/// |> snag.map_error(with: naive_datetime.describe_parse_error)
+/// // -> snag.error("Invalid date format in naive datetime: 2024 06 21 23:17:00")
+/// ```
 pub fn describe_parse_error(
   error: tempo_error.NaiveDateTimeParseError,
 ) -> String {

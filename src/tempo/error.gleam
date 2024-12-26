@@ -8,31 +8,31 @@ pub type DateTimeParseError {
 @internal
 pub fn describe_datetime_parse_error(error: DateTimeParseError) -> String {
   case error {
-    DateTimeInvalidFormat(input) -> "Invalid datetime format: " <> input
+    DateTimeInvalidFormat(input) -> "Invalid datetime format: \"" <> input <> "\""
     DateTimeDateParseError(input, DateInvalidFormat(_)) ->
-      "Invalid date format in datetime: " <> input
+      "Invalid date format in datetime: \"" <> input <> "\""
     DateTimeDateParseError(input, DateOutOfBounds(_, DateDayOutOfBounds(_))) ->
-      "Day out of bounds in datetime: " <> input
+      "Day out of bounds in datetime: \"" <> input <> "\""
     DateTimeDateParseError(input, DateOutOfBounds(_, DateMonthOutOfBounds(_))) ->
-      "Month out of bounds in datetime: " <> input
+      "Month out of bounds in datetime: \"" <> input <> "\""
     DateTimeDateParseError(input, DateOutOfBounds(_, DateYearOutOfBounds(_))) ->
-      "Year out of bounds in datetime: " <> input
+      "Year out of bounds in datetime: \"" <> input <> "\""
     DateTimeTimeParseError(input, TimeInvalidFormat(..)) ->
-      "Invalid time format in datetime: " <> input
+      "Invalid time format in datetime: \"" <> input <> "\""
     DateTimeTimeParseError(input, TimeOutOfBounds(_, TimeHourOutOfBounds(_))) ->
-      "Hour out of bounds in datetime: " <> input
+      "Hour out of bounds in datetime: \"" <> input <> "\""
     DateTimeTimeParseError(input, TimeOutOfBounds(_, TimeMinuteOutOfBounds(_))) ->
-      "Minute out of bounds in datetime: " <> input
+      "Minute out of bounds in datetime: \"" <> input <> "\""
     DateTimeTimeParseError(input, TimeOutOfBounds(_, TimeSecondOutOfBounds(_))) ->
-      "Second out of bounds in datetime: " <> input
+      "Second out of bounds in datetime: \"" <> input <> "\""
     DateTimeTimeParseError(
       input,
       TimeOutOfBounds(_, TimeMicroSecondOutOfBounds(_)),
-    ) -> "Subsecond value out of bounds in datetime: " <> input
+    ) -> "Subsecond value out of bounds in datetime: \"" <> input <> "\""
     DateTimeOffsetParseError(input, OffsetInvalidFormat(_)) ->
-      "Invalid offset format in datetime: " <> input
+      "Invalid offset format in datetime: \"" <> input <> "\""
     DateTimeOffsetParseError(input, OffsetOutOfBounds(_)) ->
-      "Offset out of bounds in datetime: " <> input
+      "Offset out of bounds in datetime: \"" <> input <> "\""
   }
 }
 
@@ -74,8 +74,8 @@ pub type OffsetParseError {
 @internal
 pub fn describe_offset_parse_error(error: OffsetParseError) -> String {
   case error {
-    OffsetInvalidFormat(input) -> "Invalid offset format: " <> input
-    OffsetOutOfBounds(input) -> "Offset out of bounds: " <> input
+    OffsetInvalidFormat(input) -> "Invalid offset format: \"" <> input <> "\""
+    OffsetOutOfBounds(input) -> "Offset out of bounds: \"" <> input <> "\""
   }
 }
 
@@ -91,39 +91,39 @@ pub fn describe_naive_datetime_parse_error(
 ) -> String {
   case error {
     NaiveDateTimeInvalidFormat(input) ->
-      "Invalid naive datetime format: " <> input
+      "Invalid naive datetime format: \"" <> input <> "\""
     NaiveDateTimeDateParseError(input, DateInvalidFormat(_)) ->
-      "Invalid date format in naive datetime: " <> input
+      "Invalid date format in naive datetime: \"" <> input <> "\""
     NaiveDateTimeDateParseError(
       input,
       DateOutOfBounds(_, DateDayOutOfBounds(_)),
-    ) -> "Day out of bounds in naive datetime: " <> input
+    ) -> "Day out of bounds in naive datetime: \"" <> input <> "\""
     NaiveDateTimeDateParseError(
       input,
       DateOutOfBounds(_, DateMonthOutOfBounds(_)),
-    ) -> "Month out of bounds in naive datetime: " <> input
+    ) -> "Month out of bounds in naive datetime: \"" <> input <> "\""
     NaiveDateTimeDateParseError(
       input,
       DateOutOfBounds(_, DateYearOutOfBounds(_)),
-    ) -> "Year out of bounds in naive datetime: " <> input
+    ) -> "Year out of bounds in naive datetime: \"" <> input <> "\""
     NaiveDateTimeTimeParseError(input, TimeInvalidFormat(_)) ->
-      "Invalid time format in naive datetime: " <> input
+      "Invalid time format in naive datetime: \"" <> input <> "\""
     NaiveDateTimeTimeParseError(
       input,
       TimeOutOfBounds(_, TimeHourOutOfBounds(_)),
-    ) -> "Hour out of bounds in naive datetime: " <> input
+    ) -> "Hour out of bounds in naive datetime: \"" <> input <> "\""
     NaiveDateTimeTimeParseError(
       input,
       TimeOutOfBounds(_, TimeMinuteOutOfBounds(_)),
-    ) -> "Minute out of bounds in naive datetime: " <> input
+    ) -> "Minute out of bounds in naive datetime: \"" <> input <> "\""
     NaiveDateTimeTimeParseError(
       input,
       TimeOutOfBounds(_, TimeSecondOutOfBounds(_)),
-    ) -> "Second out of bounds in naive datetime: " <> input
+    ) -> "Second out of bounds in naive datetime: \"" <> input <> "\""
     NaiveDateTimeTimeParseError(
       input,
       TimeOutOfBounds(_, TimeMicroSecondOutOfBounds(_)),
-    ) -> "Subsecond value out of bounds in naive datetime: " <> input
+    ) -> "Subsecond value out of bounds in naive datetime: \"" <> input <> "\""
   }
 }
 
@@ -137,11 +137,11 @@ pub fn describe_date_parse_error(error: DateParseError) -> String {
   case error {
     DateInvalidFormat(input) -> "Invalid date format: " <> input
     DateOutOfBounds(input, DateDayOutOfBounds(_)) ->
-      "Day out of bounds in date: " <> input
+      "Day out of bounds in date: \"" <> input <> "\""
     DateOutOfBounds(input, DateMonthOutOfBounds(_)) ->
-      "Month out of bounds in date: " <> input
+      "Month out of bounds in date: \"" <> input <> "\""
     DateOutOfBounds(input, DateYearOutOfBounds(_)) ->
-      "Year out of bounds in date: " <> input
+      "Year out of bounds in date: \"" <> input <> "\""
   }
 }
 
@@ -168,15 +168,15 @@ pub type TimeParseError {
 @internal
 pub fn describe_time_parse_error(error: TimeParseError) -> String {
   case error {
-    TimeInvalidFormat(input) -> "Invalid time format: " <> input
+    TimeInvalidFormat(input) -> "Invalid time format: \"" <> input <> "\""
     TimeOutOfBounds(input, TimeHourOutOfBounds(_)) ->
-      "Hour out of bounds in time: " <> input
+      "Hour out of bounds in time: \"" <> input <> "\""
     TimeOutOfBounds(input, TimeMinuteOutOfBounds(_)) ->
-      "Minute out of bounds in time: " <> input
+      "Minute out of bounds in time: \"" <> input <> "\""
     TimeOutOfBounds(input, TimeSecondOutOfBounds(_)) ->
-      "Second out of bounds in time: " <> input
+      "Second out of bounds in time: \"" <> input <> "\""
     TimeOutOfBounds(input, TimeMicroSecondOutOfBounds(_)) ->
-      "Subsecond value out of bounds in time: " <> input
+      "Subsecond value out of bounds in time: \"" <> input <> "\""
   }
 }
 

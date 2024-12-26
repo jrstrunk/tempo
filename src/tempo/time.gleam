@@ -113,6 +113,14 @@ pub fn new_micro(
   tempo.new_time_micro(hour, minute, second, microsecond)
 }
 
+/// Converts a time out of bounds error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.new(23, 59, 60)
+/// |> snag.map_error(with: time.describe_out_of_bounds_error)
+/// // -> snag.error("Second out of bounds in time: 60")
 pub fn describe_out_of_bounds_error(error: tempo_error.TimeOutOfBoundsError) {
   tempo_error.describe_time_out_of_bounds_error(error)
 }
@@ -436,6 +444,14 @@ pub fn parse_any(str: String) -> Result(tempo.Time, tempo_error.TimeParseError) 
   }
 }
 
+/// Converts a time parse error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.parse("13 42 11", "HH:mm:ss")
+/// |> snag.map_error(with: time.describe_parse_error)
+/// // -> snag.error("Invalid time format: "13 42 11"")
 pub fn describe_parse_error(error: tempo_error.TimeParseError) {
   tempo_error.describe_time_parse_error(error)
 }

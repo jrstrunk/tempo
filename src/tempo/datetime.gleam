@@ -286,6 +286,14 @@ pub fn parse_any(
   }
 }
 
+/// Converts a datetime parse error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// datetime.parse("13:42:11.314-04:00", "YYYY-MM-DDTHH:mm:ss.SSSZ")
+/// |> snag.map_error(with: datetime.describe_parse_error)
+/// // -> snag.error("Invalid date format in datetime: 13:42:11.314-04:00")
 pub fn describe_parse_error(error: tempo_error.DateTimeParseError) {
   tempo_error.describe_datetime_parse_error(error)
 }
