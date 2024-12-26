@@ -88,6 +88,10 @@ pub fn main() {
   tempo.since(timer)
   // -> duration.minutes(42)
 
+  // Formatting the current system time
+  tempo.now_local_formatted(tempo.ISO8601Milli)
+  // -> "2024-12-26T15:04:20.534-04:00"
+
   // Comparing the system time to other times
   case tempo.is_local_time_later(than: time.literal("07:50:00")) {
     True -> 
