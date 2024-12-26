@@ -173,7 +173,15 @@ pub fn from_string(
 ) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   let split_dt = case string.contains(datetime, "T") {
     True -> string.split(datetime, "T")
-    False -> string.split(datetime, " ")
+    False ->
+      case string.contains(datetime, "t") {
+        True -> string.split(datetime, "t")
+        False ->
+          case string.contains(datetime, "_") {
+            True -> string.split(datetime, "_")
+            False -> string.split(datetime, " ")
+          }
+      }
   }
 
   case split_dt {
