@@ -735,10 +735,10 @@ pub fn local_date_difference_from(from start: Date) -> Int {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.utc_date_since(date.literal("2024-10-26"))
+/// tempo.utc_days_since(date.literal("2024-10-26"))
 /// // -> 54
 /// ```
-pub fn utc_date_since(start start: Date) -> Int {
+pub fn utc_days_since(start start: Date) -> Int {
   case utc_date_difference_from(from: start) {
     diff if diff > 0 -> diff
     _ -> 0
@@ -751,10 +751,10 @@ pub fn utc_date_since(start start: Date) -> Int {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.local_date_since(date.literal("2024-10-26"))
+/// tempo.local_days_since(date.literal("2024-10-26"))
 /// // -> 54
 /// ```
-pub fn local_date_since(start start: Date) -> Int {
+pub fn local_days_since(start start: Date) -> Int {
   case local_date_difference_from(from: start) {
     diff if diff > 0 -> diff
     _ -> 0
@@ -767,10 +767,10 @@ pub fn local_date_since(start start: Date) -> Int {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.utc_date_until(date.literal("2024-10-26"))
+/// tempo.utc_days_until(date.literal("2024-10-26"))
 /// // -> 0
 /// ```
-pub fn utc_date_until(end end: Date) -> Int {
+pub fn utc_days_until(end end: Date) -> Int {
   case now() |> instant_as_utc_date |> date_days_apart(to: end) {
     diff if diff > 0 -> diff
     _ -> 0
@@ -783,10 +783,10 @@ pub fn utc_date_until(end end: Date) -> Int {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.local_date_until(date.literal("2025-10-26"))
+/// tempo.local_days_until(date.literal("2025-10-26"))
 /// // -> 365
 /// ```
-pub fn local_date_until(end end: Date) -> Int {
+pub fn local_days_until(end end: Date) -> Int {
   case now() |> instant_as_local_date |> date_days_apart(to: end) {
     diff if diff > 0 -> diff
     _ -> 0
