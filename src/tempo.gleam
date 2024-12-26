@@ -33,12 +33,10 @@ import tempo/error as tempo_error
 // -------------------------------------------------------------------------- //
 
 pub fn now() -> Instant {
-  let monotonic_us = now_monotonic_ffi()
-
   Instant(
     timestamp_utc_us: now_utc_ffi(),
     offset_local_us: offset_local_micro(),
-    monotonic_us:,
+    monotonic_us: now_monotonic_ffi(),
     unique: now_unique_ffi(),
   )
 }
