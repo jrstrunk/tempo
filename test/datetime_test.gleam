@@ -90,44 +90,47 @@ pub fn from_time_out_of_bounds_string_test() {
 }
 
 pub fn parse_isoish_test() {
-  datetime.parse("2024/06/08, 13:42:11, -04:00", "YYYY/MM/DD, HH:mm:ss, Z")
+  datetime.parse(
+    "2024/06/08, 13:42:11, -04:00",
+    tempo.Custom("YYYY/MM/DD, HH:mm:ss, Z"),
+  )
   |> should.equal(Ok(datetime.literal("2024-06-08T13:42:11-04")))
 }
 
 pub fn parse_long_name_test() {
-  datetime.parse("January 13, 2024. 3:42:11Z", "MMMM DD, YYYY. H:mm:ssz")
+  datetime.parse("January 13, 2024. 3:42:11Z", tempo.Custom("MMMM DD, YYYY. H:mm:ssz"))
   |> should.equal(Ok(datetime.literal("2024-01-13T03:42:11Z")))
 }
 
 pub fn parse_short_name_test() {
-  datetime.parse("Jan 3, 1998. -04:00 13:42:11", "MMM D, YYYY. Z HH:mm:ss")
+  datetime.parse("Jan 3, 1998. -04:00 13:42:11", tempo.Custom("MMM D, YYYY. Z HH:mm:ss"))
   |> should.equal(Ok(datetime.literal("1998-01-03T13:42:11-04")))
 }
 
 pub fn parse_early_am_test() {
-  datetime.parse("2024 11 13 12 2 am Z", "YYYY M D h m a z")
+  datetime.parse("2024 11 13 12 2 am Z", tempo.Custom("YYYY M D h m a z"))
   |> should.equal(Ok(datetime.literal("2024-11-13T00:02:00Z")))
 }
 
 pub fn parse_late_am_test() {
-  datetime.parse("2024 11 13 02:42:12 AM -0400", "YYYY M D hh:mm:ss A ZZ")
+  datetime.parse("2024 11 13 02:42:12 AM -0400", tempo.Custom("YYYY M D hh:mm:ss A ZZ"))
   |> should.equal(Ok(datetime.literal("2024-11-13T02:42:12-04")))
 }
 
 pub fn parse_early_pm_test() {
-  datetime.parse("2024 11 13 12:42:4 PM Z", "YYYY M D h:mm:s A z")
+  datetime.parse("2024 11 13 12:42:4 PM Z", tempo.Custom("YYYY M D h:mm:s A z"))
   |> should.equal(Ok(datetime.literal("2024-11-13T12:42:04Z")))
 }
 
 pub fn parse_late_pm_test() {
-  datetime.parse("2024 11 13 2 42 pm -04", "YYYY M D h m a z")
+  datetime.parse("2024 11 13 2 42 pm -04", tempo.Custom("YYYY M D h m a z"))
   |> should.equal(Ok(datetime.literal("2024-11-13T14:42:00-04")))
 }
 
 pub fn parse_escape_test() {
   datetime.parse(
     "Hello! It is: 2024/06/08, 13:42:11, -04:00",
-    "[Hello! It is:] YYYY/MM/DD, HH:mm:ss, Z",
+    tempo.Custom("[Hello! It is:] YYYY/MM/DD, HH:mm:ss, Z"),
   )
   |> should.equal(Ok(datetime.literal("2024-06-08T13:42:11-04")))
 }

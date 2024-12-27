@@ -40,7 +40,7 @@ pub fn main() {
   |> datetime.format(tempo.Custom("ddd @ h:mm A"))
   // -> "Fri @ 6:00 AM"
 
-  date.parse("03/02/1998", "DD/MM/YYYY")
+  date.parse("03/02/1998", tempo.CustomDate("DD/MM/YYYY"))
   // -> Ok(date.literal("1998-02-03"))
 }
 ```

@@ -243,10 +243,12 @@ pub fn to_tuple(
 /// ```
 pub fn parse(
   str: String,
-  in fmt: String,
+  in format: tempo.NaiveDateTimeFormat,
 ) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
+  let format_str = tempo.get_naive_datetime_format_str(format)
+
   use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: fmt)
+    tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.NaiveDateTimeInvalidFormat(_)),
   )
 
@@ -351,9 +353,9 @@ pub fn describe_parse_error(
 /// ```
 pub fn format(
   naive_datetime: tempo.NaiveDateTime,
-  in format: tempo.DateTimeFormat,
+  in format: tempo.NaiveDateTimeFormat,
 ) -> String {
-  let format_str = tempo.get_datetime_format_str(format)
+  let format_str = tempo.get_naive_datetime_format_str(format)
 
   let assert Ok(re) = regexp.from_string(tempo.format_regex)
 

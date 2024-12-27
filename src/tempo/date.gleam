@@ -298,10 +298,12 @@ pub fn to_string(date: tempo.Date) -> String {
 /// ```
 pub fn parse(
   str: String,
-  in fmt: String,
+  in format: tempo.DateFormat,
 ) -> Result(tempo.Date, tempo_error.DateParseError) {
+  let format_str = tempo.get_date_format_str(format)
+
   use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: fmt)
+    tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.DateInvalidFormat(_)),
   )
 

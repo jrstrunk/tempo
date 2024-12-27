@@ -44,7 +44,10 @@ pub fn now() -> Instant {
 }
 
 /// Get the current UTC system time adjusted by the given duration. Useful for
-/// checking if a time is more than some time in the past or future.
+/// checking if a time is more than some time in the past or future. Though
+/// this uses UTC time, UTC datetimes are directly comparable to local datetimes;
+/// formatting is where the difference really shows itself. If you want to 
+/// format this value as a local datetime, you can localise it before formatting.
 /// 
 /// ## Example
 /// 
@@ -2778,7 +2781,7 @@ fn do_period_comprising_months(mys, my: MonthYear, end_date) {
 
 /// Provides common datetime formatting templates.
 /// 
-/// The CustomDateTime format dates a format string that implements the same 
+/// The Custom format takes a format string that implements the same 
 /// formatting directives as the nice Day.js 
 /// library: https://day.js.org/docs/en/display/format, plus condensed offsets.
 /// 
@@ -2810,9 +2813,42 @@ pub type DateTimeFormat {
   // HumanReadable
 }
 
+/// Provides common naive datetime formatting templates.
+/// 
+/// The CustomNaive format takes a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format, plus condensed offsets.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digint day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+pub type NaiveDateTimeFormat {
+  NaiveISO8601Sec
+  NaiveISO8601Milli
+  NaiveISO8601Micro
+  CustomNaive(format: String)
+  CustomNaiveLocalised(format: String, locale: Locale)
+  NaiveDateFormat(DateFormat)
+  NaiveTimeFormat(TimeFormat)
+  // LanguageLong
+  // LanguageLongLocalised(locale: Locale)
+  // LanguageShort
+  // LanguageShortLocalised(locale: Locale)
+  // HumanReadable
+  // HumanReadable
+}
+
 /// Provides common date formatting templates.
 /// 
-/// The CustomDate format dates a format string that implements the same 
+/// The CustomDate format takes a format string that implements the same 
 /// formatting directives as the nice Day.js 
 /// library: https://day.js.org/docs/en/display/format.
 /// 
@@ -2834,7 +2870,7 @@ pub type DateFormat {
 
 /// Provides common time formatting templates.
 /// 
-/// The CustomTime format dates a format string that implements the same 
+/// The CustomTime format takes a format string that implements the same 
 /// formatting directives as the nice Day.js 
 /// library: https://day.js.org/docs/en/display/format.
 /// 
@@ -2877,6 +2913,25 @@ pub fn get_datetime_format_str(format: DateTimeFormat) {
     DateFormat(CustomDateLocalised(format, _locale)) -> format
     Custom(format) -> format
     CustomLocalised(format, _locale) -> format
+  }
+}
+
+@internal
+pub fn get_naive_datetime_format_str(format: NaiveDateTimeFormat) {
+  case format {
+    NaiveISO8601Sec -> "YYYY-MM-DDTHH:mm:ss"
+    NaiveISO8601Milli -> "YYYY-MM-DDTHH:mm:ss.SSS"
+    NaiveISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSS"
+    CustomNaive(format) -> format
+    CustomNaiveLocalised(format, _locale) -> format
+    NaiveDateFormat(ISO8601Date) -> "YYYY-MM-DD"
+    NaiveTimeFormat(ISO8601Time) -> "HH:mm:ss"
+    NaiveTimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSS"
+    NaiveTimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSS"
+    NaiveTimeFormat(CustomTime(format)) -> format
+    NaiveTimeFormat(CustomTimeLocalised(format, _locale)) -> format
+    NaiveDateFormat(CustomDate(format)) -> format
+    NaiveDateFormat(CustomDateLocalised(format, _locale)) -> format
   }
 }
 

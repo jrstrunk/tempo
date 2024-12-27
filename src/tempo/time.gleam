@@ -411,10 +411,12 @@ pub fn from_string(
 /// ```
 pub fn parse(
   str: String,
-  in fmt: String,
+  in format: tempo.TimeFormat,
 ) -> Result(tempo.Time, tempo_error.TimeParseError) {
+  let format_str = tempo.get_time_format_str(format)
+
   use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: fmt)
+    tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.TimeInvalidFormat(_)),
   )
 

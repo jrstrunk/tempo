@@ -230,10 +230,12 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// ```
 pub fn parse(
   str: String,
-  in fmt: String,
+  in format: tempo.DateTimeFormat,
 ) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
+  let format_str = tempo.get_datetime_format_str(format)
+
   use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: fmt)
+    tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.DateTimeInvalidFormat(_)),
   )
 
