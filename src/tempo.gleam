@@ -2794,7 +2794,7 @@ fn do_period_comprising_months(mys, my: MonthYear, end_date) {
 /// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 pub type DateTimeFormat {
-  ISO8601
+  ISO8601Sec
   ISO8601Milli
   ISO8601Micro
   HTTP
@@ -2863,7 +2863,7 @@ pub type Locale
 @internal
 pub fn get_datetime_format_str(format: DateTimeFormat) {
   case format {
-    ISO8601 -> "YYYY/MM/DDTHH:mm:ssZ"
+    ISO8601Sec -> "YYYY/MM/DDTHH:mm:ssZ"
     ISO8601Milli -> "YYYY/MM/DDTHH:mm:ss.SSSZ"
     ISO8601Micro -> "YYYY/MM/DDTHH:mm:ss.SSSSZ"
     HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
