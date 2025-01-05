@@ -2777,7 +2777,7 @@ fn do_period_comprising_months(mys, my: MonthYear, end_date) {
 /// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 pub type DateTimeFormat {
-  ISO8601Sec
+  ISO8601Seconds
   ISO8601Milli
   ISO8601Micro
   HTTP
@@ -2811,7 +2811,7 @@ pub type DateTimeFormat {
 /// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 pub type NaiveDateTimeFormat {
-  NaiveISO8601Sec
+  NaiveISO8601Seconds
   NaiveISO8601Milli
   NaiveISO8601Micro
   CustomNaive(format: String)
@@ -2879,7 +2879,7 @@ pub type Locale
 @internal
 pub fn get_datetime_format_str(format: DateTimeFormat) {
   case format {
-    ISO8601Sec -> "YYYY/MM/DDTHH:mm:ssZ"
+    ISO8601Seconds -> "YYYY/MM/DDTHH:mm:ssZ"
     ISO8601Milli -> "YYYY/MM/DDTHH:mm:ss.SSSZ"
     ISO8601Micro -> "YYYY/MM/DDTHH:mm:ss.SSSSZ"
     HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
@@ -2899,7 +2899,7 @@ pub fn get_datetime_format_str(format: DateTimeFormat) {
 @internal
 pub fn get_naive_datetime_format_str(format: NaiveDateTimeFormat) {
   case format {
-    NaiveISO8601Sec -> "YYYY-MM-DDTHH:mm:ss"
+    NaiveISO8601Seconds -> "YYYY-MM-DDTHH:mm:ss"
     NaiveISO8601Milli -> "YYYY-MM-DDTHH:mm:ss.SSS"
     NaiveISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSS"
     CustomNaive(format) -> format
