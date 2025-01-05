@@ -18,6 +18,10 @@
 import gleam/result
 import tempo
 
+/// An ordered list of all months in the year.
+/// -> [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+pub const months = tempo.months
+
 /// Returns a month's short name.
 /// 
 /// ## Example

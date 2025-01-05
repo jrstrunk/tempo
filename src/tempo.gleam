@@ -1377,7 +1377,7 @@ pub fn offset_get_minutes(offset: Offset) {
   offset.minutes
 }
 
-/// The Tempo representation of the UTC offset.
+@internal
 pub const utc = Offset(0)
 
 @internal
@@ -2020,8 +2020,7 @@ pub type Month {
   Dec
 }
 
-/// An ordered list of all months in the year.
-/// -> [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+@internal
 pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
 
 @internal

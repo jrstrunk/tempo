@@ -16,6 +16,9 @@
 import tempo
 import tempo/error as tempo_error
 
+/// The Tempo representation of the UTC offset.
+pub const utc = tempo.utc
+
 @internal
 pub fn local() -> tempo.Offset {
   tempo.offset_local_minutes() |> tempo.offset
