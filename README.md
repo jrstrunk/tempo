@@ -2,7 +2,7 @@
 
 A lightweight and Gleamy datetime library!
 
-Only run a task past a certain time of day, only accept submissions since a certain date, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more! Over 400 unit tests, contributions welcome!
+Only run a task past a certain time of day, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more! Over 400 unit tests, contributions welcome!
 
 Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible!
 
@@ -11,13 +11,13 @@ Supports both the Erlang and JavaScript targets.
 ## Installation
 
 ```sh
-gleam add gtempo
+gleam add gtempo@6
 ```
 
 Supports timezones only through the `gtz` package. Add it with:
 
 ```sh
-gleam add gtz
+gleam add gtz@1
 ```
 
 [![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gtempo)
@@ -91,8 +91,8 @@ pub fn main() {
   // -> duration.minutes(42)
 
   // Formatting the current system time
-  tempo.format_utc(tempo.ISO8601Milli)
-  // -> "2024-12-26T15:04:20.534Z"
+  tempo.format_utc(tempo.ISO8601Seconds)
+  // -> "2024-12-26T15:04:20Z"
 
   // Comparing the system time to other times
   let target = datetime.literal("2024-12-26T03:10:00Z")
