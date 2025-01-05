@@ -98,12 +98,18 @@ pub fn parse_isoish_test() {
 }
 
 pub fn parse_long_name_test() {
-  datetime.parse("January 13, 2024. 3:42:11Z", tempo.Custom("MMMM DD, YYYY. H:mm:ssz"))
+  datetime.parse(
+    "January 13, 2024. 3:42:11Z",
+    tempo.Custom("MMMM DD, YYYY. H:mm:ssz"),
+  )
   |> should.equal(Ok(datetime.literal("2024-01-13T03:42:11Z")))
 }
 
 pub fn parse_short_name_test() {
-  datetime.parse("Jan 3, 1998. -04:00 13:42:11", tempo.Custom("MMM D, YYYY. Z HH:mm:ss"))
+  datetime.parse(
+    "Jan 3, 1998. -04:00 13:42:11",
+    tempo.Custom("MMM D, YYYY. Z HH:mm:ss"),
+  )
   |> should.equal(Ok(datetime.literal("1998-01-03T13:42:11-04")))
 }
 
@@ -113,7 +119,10 @@ pub fn parse_early_am_test() {
 }
 
 pub fn parse_late_am_test() {
-  datetime.parse("2024 11 13 02:42:12 AM -0400", tempo.Custom("YYYY M D hh:mm:ss A ZZ"))
+  datetime.parse(
+    "2024 11 13 02:42:12 AM -0400",
+    tempo.Custom("YYYY M D hh:mm:ss A ZZ"),
+  )
   |> should.equal(Ok(datetime.literal("2024-11-13T02:42:12-04")))
 }
 
@@ -443,50 +452,50 @@ pub fn compare_gt_time_different_offset_test() {
 }
 
 pub fn from_unix_epoch_utc_test() {
-  datetime.from_unix_utc(0)
+  datetime.from_unix_seconds(0)
   |> datetime.to_string
   |> should.equal("1970-01-01T00:00:00.000000Z")
 }
 
 pub fn to_unix_epoch_utc_test() {
   datetime.literal("1970-01-01T00:00:00.000000Z")
-  |> datetime.to_unix_utc
+  |> datetime.to_unix_seconds
   |> should.equal(0)
 }
 
-pub fn from_unix_utc_time_test() {
-  datetime.from_unix_utc(1_718_629_191)
+pub fn from_unix_seconds_time_test() {
+  datetime.from_unix_seconds(1_718_629_191)
   |> datetime.to_string
   |> should.equal("2024-06-17T12:59:51.000000Z")
 }
 
-pub fn to_unix_utc_time_test() {
+pub fn to_unix_seconds_time_test() {
   datetime.literal("2024-06-17T12:59:51.000000Z")
-  |> datetime.to_unix_utc
+  |> datetime.to_unix_seconds
   |> should.equal(1_718_629_191)
 }
 
-pub fn from_unix_utc_time_milli_test() {
-  datetime.from_unix_milli_utc(1_718_629_314_334)
+pub fn from_unix_seconds_time_milli_test() {
+  datetime.from_unix_milli(1_718_629_314_334)
   |> datetime.to_string
   |> should.equal("2024-06-17T13:01:54.334000Z")
 }
 
-pub fn to_unix_utc_time_milli_test() {
+pub fn to_unix_seconds_time_milli_test() {
   datetime.literal("2024-06-17T13:01:54.334Z")
-  |> datetime.to_unix_milli_utc
+  |> datetime.to_unix_milli
   |> should.equal(1_718_629_314_334)
 }
 
-pub fn from_unix_utc_time_micro_test() {
-  datetime.from_unix_micro_utc(1_718_629_314_334_734)
+pub fn from_unix_seconds_time_micro_test() {
+  datetime.from_unix_micro(1_718_629_314_334_734)
   |> datetime.to_string
   |> should.equal("2024-06-17T13:01:54.334734Z")
 }
 
-pub fn to_unix_utc_time_micro_test() {
+pub fn to_unix_seconds_time_micro_test() {
   datetime.literal("2024-06-17T13:01:54.334734Z")
-  |> datetime.to_unix_micro_utc
+  |> datetime.to_unix_micro
   |> should.equal(1_718_629_314_334_734)
 }
 

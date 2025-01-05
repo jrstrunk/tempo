@@ -123,12 +123,12 @@ pub fn as_local_datetime(instant: tempo.Instant) -> tempo.DateTime {
 }
 
 @internal
-pub fn as_unix_utc(instant: tempo.Instant) -> Int {
+pub fn as_unix_seconds(instant: tempo.Instant) -> Int {
   tempo.instant_as_unix_utc(instant)
 }
 
 @internal
-pub fn as_unix_milli_utc(instant: tempo.Instant) -> Int {
+pub fn as_unix_milli(instant: tempo.Instant) -> Int {
   tempo.instant_as_unix_milli_utc(instant)
 }
 

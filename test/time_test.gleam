@@ -480,56 +480,56 @@ pub fn get_difference_test() {
   |> should.equal(-25)
 }
 
-pub fn from_unix_utc_epoch_test() {
-  time.from_unix_utc(0)
+pub fn from_unix_seconds_epoch_test() {
+  time.from_unix_seconds(0)
   |> time.to_string
   |> should.equal("00:00:00.000000")
 }
 
-pub fn from_unix_milli_utc_zero_test() {
-  time.from_unix_milli_utc(0)
+pub fn from_unix_milli_zero_test() {
+  time.from_unix_milli(0)
   |> time.to_string
   |> should.equal("00:00:00.000000")
 }
 
 pub fn from_unix_no_date_test() {
-  time.from_unix_utc(373)
+  time.from_unix_seconds(373)
   |> time.to_string
   |> should.equal("00:06:13.000000")
 }
 
 pub fn from_unix_milli_no_date_test() {
-  time.from_unix_milli_utc(373_351)
+  time.from_unix_milli(373_351)
   |> time.to_string
   |> should.equal("00:06:13.351000")
 }
 
-pub fn from_unix_utc_test() {
-  time.from_unix_utc(327_132)
+pub fn from_unix_seconds_test() {
+  time.from_unix_seconds(327_132)
   |> time.to_string
   |> should.equal("18:52:12.000000")
 }
 
-pub fn from_unix_milli_utc_test() {
-  time.from_unix_milli_utc(327_132_050)
+pub fn from_unix_milli_test() {
+  time.from_unix_milli(327_132_050)
   |> time.to_string
   |> should.equal("18:52:12.050000")
 }
 
-pub fn from_unix_utc_large_test() {
-  time.from_unix_utc(1_718_829_395)
+pub fn from_unix_seconds_large_test() {
+  time.from_unix_seconds(1_718_829_395)
   |> time.to_string
   |> should.equal("20:36:35.000000")
 }
 
-pub fn from_unix_milli_utc_large_test() {
-  time.from_unix_milli_utc(1_718_829_586_791)
+pub fn from_unix_milli_large_test() {
+  time.from_unix_milli(1_718_829_586_791)
   |> time.to_string
   |> should.equal("20:39:46.791000")
 }
 
-pub fn from_unix_micro_utc_large_test() {
-  time.from_unix_micro_utc(1_718_829_586_791_832)
+pub fn from_unix_micro_large_test() {
+  time.from_unix_micro(1_718_829_586_791_832)
   |> time.to_string
   |> should.equal("20:39:46.791832")
 }

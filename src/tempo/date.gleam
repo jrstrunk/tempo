@@ -128,7 +128,7 @@ pub fn literal(date: String) -> tempo.Date {
 /// ```
 pub fn current_local() {
   { tempo.now_utc_ffi() + tempo.offset_local_micro() } / 1_000_000
-  |> from_unix_utc
+  |> from_unix_seconds
 }
 
 /// Gets the current UTC date of the host.
@@ -142,7 +142,7 @@ pub fn current_local() {
 /// ```
 pub fn current_utc() {
   tempo.now_utc_ffi() / 1_000_000
-  |> from_unix_utc
+  |> from_unix_seconds
 }
 
 /// Gets the year value of a date.
@@ -512,17 +512,17 @@ pub fn from_dynamic_string(
 /// ## Examples
 /// 
 /// ```gleam
-/// date.from_unix_utc(267_840_000)
+/// date.from_unix_seconds(267_840_000)
 /// // -> date.literal("1978-06-28")
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the date from there if they need it.
 @internal
-pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
-  tempo.date_from_unix_utc(unix_ts)
+pub fn from_unix_seconds(unix_ts: Int) -> tempo.Date {
+  tempo.date_from_unix_seconds(unix_ts)
 }
 
 /// Returns the UTC unix timestamp of a date, assuming the time on that date 
@@ -532,17 +532,17 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Date {
 /// 
 /// ```gleam
 /// date.literal("2024-06-12")
-/// |> date.to_unix_utc
+/// |> date.to_unix_seconds
 /// // -> 1_718_150_400
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the date from there if they need it.
 @internal
-pub fn to_unix_utc(date: tempo.Date) -> Int {
-  tempo.date_to_unix_utc(date)
+pub fn to_unix_seconds(date: tempo.Date) -> Int {
+  tempo.date_to_unix_seconds(date)
 }
 
 /// Returns the UTC date of a unix timestamp in milliseconds. If the local 
@@ -553,17 +553,17 @@ pub fn to_unix_utc(date: tempo.Date) -> Int {
 /// ## Examples
 /// 
 /// ```gleam
-/// date.from_unix_milli_utc(267_840_000)
+/// date.from_unix_milli(267_840_000)
 /// // -> date.literal("1978-06-28")
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the date from there if they need it.
 @internal
-pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Date {
-  from_unix_utc(unix_ts / 1000)
+pub fn from_unix_milli(unix_ts: Int) -> tempo.Date {
+  from_unix_seconds(unix_ts / 1000)
 }
 
 /// Returns the UTC unix timestamp in milliseconds of a date, assuming the
@@ -573,17 +573,17 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Date {
 /// 
 /// ```gleam
 /// date.literal("2024-06-12")
-/// |> date.to_unix_milli_utc
+/// |> date.to_unix_milli
 /// // -> 1_718_150_400_000
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the date from there if they need it.
 @internal
-pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
-  to_unix_utc(date) * 1000
+pub fn to_unix_milli(date: tempo.Date) -> Int {
+  to_unix_seconds(date) * 1000
 }
 
 /// Returns the UTC date of a unix timestamp in microseconds. If the local 
@@ -594,17 +594,17 @@ pub fn to_unix_milli_utc(date: tempo.Date) -> Int {
 /// ## Examples
 /// 
 /// ```gleam
-/// date.from_unix_milli_utc(267_840_000_000)
+/// date.from_unix_milli(267_840_000_000)
 /// // -> date.literal("1978-06-28")
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the date from there if they need it.
 @internal
-pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Date {
-  tempo.date_from_unix_micro_utc(unix_ts)
+pub fn from_unix_micro(unix_ts: Int) -> tempo.Date {
+  tempo.date_from_unix_micro(unix_ts)
 }
 
 /// Returns the UTC unix timestamp in microseconds of a date, assuming the
@@ -614,17 +614,17 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Date {
 /// 
 /// ```gleam
 /// date.literal("2024-06-12")
-/// |> date.to_unix_micro_utc
+/// |> date.to_unix_micro
 /// // -> 1_718_150_400_000_000
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the date from there if they need it.
 @internal
-pub fn to_unix_micro_utc(date: tempo.Date) -> Int {
-  tempo.date_to_unix_micro_utc(date)
+pub fn to_unix_micro(date: tempo.Date) -> Int {
+  tempo.date_to_unix_micro(date)
 }
 
 /// Compares two dates.

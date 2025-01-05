@@ -54,7 +54,7 @@ import tempo/datetime
 pub fn main() {
   let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
 
-  datetime.from_unix_utc(1_729_257_776)
+  datetime.from_unix_seconds(1_729_257_776)
   |> datetime.to_timezone(local_tz)
   |> datetime.to_string
   |> io.println
@@ -71,7 +71,8 @@ pub fn main() {
 ```
 
 #### Handling Current System Time
-To aviod common pitfalls, regular time values representing the current system 
+
+To aviod common pitfalls, regular time values representing the current system
 time are not commonly returned to the user. You are encouraged to use the `tempo`
 module functions like below to handle the current system time.
 
@@ -94,9 +95,9 @@ pub fn main() {
 
   // Comparing the system time to other times
   case tempo.is_local_time_later(than: time.literal("07:50:00")) {
-    True -> 
+    True ->
       io.println(
-        "We are late by " 
+        "We are late by "
         <> tempo.local_time_since(time.literal("07:50:00"))
         |> duration.format
       )

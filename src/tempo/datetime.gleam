@@ -23,7 +23,7 @@
 //// import tempo/datetime
 //// 
 //// pub fn is_30_mins_old(unix_ts: Int) {
-////   datetime.from_unix_utc(unix_ts)
+////   datetime.from_unix_seconds(unix_ts)
 ////   |> datetime.is_equal_or_earlier(
 ////      to: tempo.now_utc_adjusted(by: duration.minutes(-30))
 ////   )
@@ -343,11 +343,15 @@ pub fn format(
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.from_unix_utc(1_718_829_191)
+/// datetime.from_unix_seconds(1_718_829_191)
 /// // -> datetime.literal("2024-06-17T12:59:51Z")
 /// ```
-pub fn from_unix_utc(unix_ts: Int) -> tempo.DateTime {
-  new(date.from_unix_utc(unix_ts), time.from_unix_utc(unix_ts), tempo.utc)
+pub fn from_unix_seconds(unix_ts: Int) -> tempo.DateTime {
+  new(
+    date.from_unix_seconds(unix_ts),
+    time.from_unix_seconds(unix_ts),
+    tempo.utc,
+  )
 }
 
 /// Returns the UTC unix timestamp of a datetime.
@@ -356,13 +360,13 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.DateTime {
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-17T12:59:51Z")
-/// |> datetime.to_unix_utc
+/// |> datetime.to_unix_seconds
 /// // -> 1_718_829_191
 /// ```
-pub fn to_unix_utc(datetime: tempo.DateTime) -> Int {
+pub fn to_unix_seconds(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_utc(utc_dt |> tempo.naive_datetime_get_date)
+  date.to_unix_seconds(utc_dt |> tempo.naive_datetime_get_date)
   + {
     tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time)
     / 1_000_000
@@ -374,15 +378,11 @@ pub fn to_unix_utc(datetime: tempo.DateTime) -> Int {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.from_unix_milli_utc(1_718_629_314_334)
+/// datetime.from_unix_milli(1_718_629_314_334)
 /// // -> datetime.literal("2024-06-17T13:01:54.334Z")
 /// ```
-pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.DateTime {
-  new(
-    date.from_unix_milli_utc(unix_ts),
-    time.from_unix_milli_utc(unix_ts),
-    tempo.utc,
-  )
+pub fn from_unix_milli(unix_ts: Int) -> tempo.DateTime {
+  new(date.from_unix_milli(unix_ts), time.from_unix_milli(unix_ts), tempo.utc)
 }
 
 /// Returns the UTC unix timestamp in milliseconds of a datetime.
@@ -391,13 +391,13 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.DateTime {
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-17T13:01:54.334Z")
-/// |> datetime.to_unix_milli_utc
+/// |> datetime.to_unix_milli
 /// // -> 1_718_629_314_334
 /// ```
-pub fn to_unix_milli_utc(datetime: tempo.DateTime) -> Int {
+pub fn to_unix_milli(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_milli_utc(utc_dt |> tempo.naive_datetime_get_date)
+  date.to_unix_milli(utc_dt |> tempo.naive_datetime_get_date)
   + {
     tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000
   }
@@ -408,15 +408,11 @@ pub fn to_unix_milli_utc(datetime: tempo.DateTime) -> Int {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.from_unix_micro_utc(1_718_629_314_334_734)
+/// datetime.from_unix_micro(1_718_629_314_334_734)
 /// // -> datetime.literal("2024-06-17T13:01:54.334734Z")
 /// ```
-pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.DateTime {
-  new(
-    date.from_unix_micro_utc(unix_ts),
-    time.from_unix_micro_utc(unix_ts),
-    tempo.utc,
-  )
+pub fn from_unix_micro(unix_ts: Int) -> tempo.DateTime {
+  new(date.from_unix_micro(unix_ts), time.from_unix_micro(unix_ts), tempo.utc)
 }
 
 /// Returns the UTC unix timestamp in microseconds of a datetime.
@@ -425,13 +421,13 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.DateTime {
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-17T13:01:54.334734Z")
-/// |> datetime.to_unix_micro_utc
+/// |> datetime.to_unix_micro
 /// // -> 1_718_629_314_334_734
 /// ```
-pub fn to_unix_micro_utc(datetime: tempo.DateTime) -> Int {
+pub fn to_unix_micro(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_micro_utc(utc_dt |> tempo.naive_datetime_get_date)
+  date.to_unix_micro(utc_dt |> tempo.naive_datetime_get_date)
   + { tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time) }
 }
 
@@ -507,7 +503,7 @@ pub fn from_dynamic_unix_utc(
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
   use dt: Int <- result.map(dynamic.int(dynamic_ts))
 
-  from_unix_utc(dt)
+  from_unix_seconds(dt)
 }
 
 /// Checks if a dynamic value is a valid unix timestamp in milliseconds, and 
@@ -537,7 +533,7 @@ pub fn from_dynamic_unix_milli_utc(
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
   use dt: Int <- result.map(dynamic.int(dynamic_ts))
 
-  from_unix_milli_utc(dt)
+  from_unix_milli(dt)
 }
 
 /// Checks if a dynamic value is a valid unix timestamp in microseconds, and 
@@ -567,7 +563,7 @@ pub fn from_dynamic_unix_micro_utc(
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
   use dt: Int <- result.map(dynamic.int(dynamic_ts))
 
-  from_unix_micro_utc(dt)
+  from_unix_micro(dt)
 }
 
 /// Gets the date of a datetime.
@@ -894,7 +890,7 @@ pub fn to_local_date(
 /// ```gleam
 /// import gtz
 /// let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
-/// datetime.from_unix_utc(1_729_257_776)
+/// datetime.from_unix_seconds(1_729_257_776)
 /// |> datetime.to_timezone(local_tz)
 /// |> datetime.to_string
 /// // -> "2024-10-18T14:22:56.000+01:00"

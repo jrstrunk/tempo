@@ -67,8 +67,8 @@ pub fn now_adjusted(by duration: Duration) -> DateTime {
   let new_ts = now().timestamp_utc_us + duration.microseconds
 
   DateTime(
-    date_from_unix_utc(new_ts / 1_000_000),
-    time_from_unix_micro_utc(new_ts),
+    date_from_unix_seconds(new_ts / 1_000_000),
+    time_from_unix_micro(new_ts),
     offset: utc,
   )
 }
@@ -130,7 +130,7 @@ pub fn since_formatted(start start: Instant) -> String {
   unit.format(dur.microseconds)
 }
 
-/// Compares the current system datetime to the provided datetime value.
+/// Compares the current system time to the provided datetime value.
 ///
 /// ## Example
 ///
@@ -141,7 +141,7 @@ pub fn compare(to datetime: DateTime) -> order.Order {
   datetime_compare(now() |> instant_as_utc_datetime, to: datetime)
 }
 
-/// Checks if the current UTC system datetime is earlier than the provided datetime.
+/// Checks if the current system time is earlier than the provided datetime.
 /// 
 /// ## Example
 /// 
@@ -149,12 +149,11 @@ pub fn compare(to datetime: DateTime) -> order.Order {
 /// tempo.is_earlier(than: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> False
 /// ```
-@internal
 pub fn is_earlier(than datetime: DateTime) -> Bool {
   datetime_is_earlier(now() |> instant_as_utc_datetime, than: datetime)
 }
 
-/// Checks if the current UTC system datetime is earlier or equal to the provided 
+/// Checks if the current system time is earlier or equal to the provided 
 /// datetime.
 /// 
 /// ## Example
@@ -163,24 +162,22 @@ pub fn is_earlier(than datetime: DateTime) -> Bool {
 /// tempo.is_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
 /// ```
-@internal
 pub fn is_earlier_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_earlier_or_equal(now() |> instant_as_utc_datetime, to: datetime)
 }
 
-/// Checks if the current UTC system datetime is equal to the provided datetime.
+/// Checks if the current system time is equal to the provided datetime.
 /// 
 /// ## Example
 /// 
 /// ```gleam
 /// tempo.is_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> False
-@internal
 pub fn is_equal(to datetime: DateTime) -> Bool {
   datetime_is_equal(now() |> instant_as_utc_datetime, to: datetime)
 }
 
-/// Checks if the current UTC system datetime is later than the provided datetime.
+/// Checks if the current system time is later than the provided datetime.
 /// 
 /// ## Example
 /// 
@@ -188,12 +185,11 @@ pub fn is_equal(to datetime: DateTime) -> Bool {
 /// tempo.is_later(than: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
 /// ```
-@internal
 pub fn is_later(than datetime: DateTime) -> Bool {
   datetime_is_later(now() |> instant_as_utc_datetime, than: datetime)
 }
 
-/// Checks if the current UTC system datetime is later or equal to the provided 
+/// Checks if the current system time is later or equal to the provided 
 /// datetime.
 /// 
 /// ## Example
@@ -202,7 +198,6 @@ pub fn is_later(than datetime: DateTime) -> Bool {
 /// tempo.is_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
 /// ```
-@internal
 pub fn is_later_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_later_or_equal(now() |> instant_as_utc_datetime, to: datetime)
 }
@@ -838,24 +833,24 @@ pub fn instant_to_local_string(instant: Instant) -> String {
 
 @internal
 pub fn instant_as_utc_date(instant: Instant) -> Date {
-  date_from_unix_utc(instant.timestamp_utc_us / 1_000_000)
+  date_from_unix_seconds(instant.timestamp_utc_us / 1_000_000)
 }
 
 @internal
 pub fn instant_as_local_date(instant: Instant) -> Date {
-  date_from_unix_utc(
+  date_from_unix_seconds(
     { instant.timestamp_utc_us + instant.offset_local_us } / 1_000_000,
   )
 }
 
 @internal
 pub fn instant_as_utc_time(instant: Instant) -> Time {
-  time_from_unix_micro_utc(instant.timestamp_utc_us)
+  time_from_unix_micro(instant.timestamp_utc_us)
 }
 
 @internal
 pub fn instant_as_local_time(instant: Instant) -> Time {
-  time_from_unix_micro_utc(instant.timestamp_utc_us + instant.offset_local_us)
+  time_from_unix_micro(instant.timestamp_utc_us + instant.offset_local_us)
 }
 
 @internal
@@ -1707,7 +1702,7 @@ pub fn date_from_tuple(
 }
 
 @internal
-pub fn date_from_unix_utc(unix_ts: Int) -> Date {
+pub fn date_from_unix_seconds(unix_ts: Int) -> Date {
   let z = unix_ts / 86_400 + 719_468
   let era =
     case z >= 0 {
@@ -1738,7 +1733,7 @@ pub fn date_from_unix_utc(unix_ts: Int) -> Date {
 }
 
 @internal
-pub fn date_to_unix_utc(date: Date) -> Int {
+pub fn date_to_unix_seconds(date: Date) -> Int {
   let full_years_since_epoch = date_get_year(date) - 1970
   // Offset the year by one to cacluate the number of leap years since the
   // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
@@ -1780,13 +1775,13 @@ pub fn date_to_unix_utc(date: Date) -> Int {
 }
 
 @internal
-pub fn date_from_unix_micro_utc(unix_ts: Int) -> Date {
-  date_from_unix_utc(unix_ts / 1_000_000)
+pub fn date_from_unix_micro(unix_ts: Int) -> Date {
+  date_from_unix_seconds(unix_ts / 1_000_000)
 }
 
 @internal
-pub fn date_to_unix_micro_utc(date: Date) -> Int {
-  date_to_unix_utc(date) * 1_000_000
+pub fn date_to_unix_micro(date: Date) -> Int {
+  date_to_unix_seconds(date) * 1_000_000
 }
 
 @internal
@@ -2461,9 +2456,9 @@ pub fn time_from_microseconds(microseconds: Int) -> Time {
 }
 
 @internal
-pub fn time_from_unix_micro_utc(unix_ts: Int) -> Time {
+pub fn time_from_unix_micro(unix_ts: Int) -> Time {
   // Subtract the microseconds that are responsible for the date.
-  { unix_ts - { date_to_unix_micro_utc(date_from_unix_micro_utc(unix_ts)) } }
+  { unix_ts - { date_to_unix_micro(date_from_unix_micro(unix_ts)) } }
   |> time_from_microseconds
 }
 

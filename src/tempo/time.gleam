@@ -517,18 +517,19 @@ pub fn format(time: tempo.Time, in format: tempo.TimeFormat) -> String {
 /// ## Example
 /// 
 /// ```gleam
-/// time.from_unix_utc(1_718_829_395)
+/// time.from_unix_seconds(1_718_829_395)
 /// // -> time.literal("20:36:35")
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the time from there if they need it.
 @internal
-pub fn from_unix_utc(unix_ts: Int) -> tempo.Time {
+pub fn from_unix_seconds(unix_ts: Int) -> tempo.Time {
   // Subtract the microseconds that are responsible for the date.
-  { unix_ts - { date.to_unix_utc(date.from_unix_utc(unix_ts)) } } * 1_000_000
+  { unix_ts - { date.to_unix_seconds(date.from_unix_seconds(unix_ts)) } }
+  * 1_000_000
   |> tempo.time_from_microseconds
 }
 
@@ -538,19 +539,18 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.Time {
 /// ## Example
 /// 
 /// ```gleam
-/// time.from_unix_milli_utc(1_718_829_586_791)
+/// time.from_unix_milli(1_718_829_586_791)
 /// // -> time.literal("20:39:46.791")
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the time from there if they need it.
 @internal
-pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Time {
+pub fn from_unix_milli(unix_ts: Int) -> tempo.Time {
   // Subtract the microseconds that are responsible for the date.
-  { unix_ts - { date.to_unix_milli_utc(date.from_unix_milli_utc(unix_ts)) } }
-  * 1000
+  { unix_ts - { date.to_unix_milli(date.from_unix_milli(unix_ts)) } } * 1000
   |> tempo.time_from_microseconds
 }
 
@@ -560,17 +560,17 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.Time {
 /// ## Example
 /// 
 /// ```gleam
-/// time.from_unix_micro_utc(1_718_829_586_791_832)
+/// time.from_unix_micro(1_718_829_586_791_832)
 /// // -> time.literal("20:39:46.791832")
 /// ```
 /// 
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
-/// Users should probably use the 'datetime' module's 'from_unix_utc' function
+/// Users should probably use the 'datetime' module's 'from_unix_seconds' function
 /// instead and get the time from there if they need it.
 @internal
-pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.Time {
-  tempo.time_from_unix_micro_utc(unix_ts)
+pub fn from_unix_micro(unix_ts: Int) -> tempo.Time {
+  tempo.time_from_unix_micro(unix_ts)
 }
 
 /// Returns a time value as a tuple of hours, minutes, and seconds. Useful 
