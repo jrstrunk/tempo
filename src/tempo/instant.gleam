@@ -1,11 +1,98 @@
-//// Functions to use with the `Instant` type in Tempo. The instant type is 
+//// The `Instant` type is the most complete representation of system time. It is
 //// a monotonic type that represents a unique point in time on the host system.
 //// It is the only way to get the current time on the host system as a value, 
-//// and means very little on other systems.
+//// and means very little on other systems. Try to keep `Instant` values as
+//// this type as long as possible in your programs. It can be safely used for 
+//// timing tasks, sorting times, and recording times.
+//// 
+//// If you would like to send this value outside of Gleam, then it will have 
+//// to be converted to a `DateTime` value first.
+//// 
+//// ## Timing Tasks
+//// 
+//// ```gleam
+//// import tempo/instant
+//// 
+//// pub fn main() {
+////   let monotonic_timer = instant.now()
+////   // Do long task ...
+////   instant.since(monotonic_timer)
+////   // -> duration.minutes(42)
+//// 
+////   instant.format_since(monotonic_timer)
+////   // -> "42 minutes"
+//// }
+//// ```
+//// 
+//// ## Sorting Times
+//// 
+//// ```gleam
+//// import tempo/instant
+//// 
+//// pub fn main() {
+////   let completed_async_tasks = // ...
+//// 
+////   let task_by_completion_time = 
+////     list.sort(
+////       completed_async_tasks,
+////       fn(a, b) { instant.compare(a.completion_time, b.completion_time) },
+////     )
+//// }
+//// ```
+//// 
+//// ## Recording Times
+////
+//// ```gleam
+//// import tempo/instant
+//// 
+//// pub type Record {
+////   Record(name: String, created_time: instant.Instant)
+//// }
+//// 
+//// pub fn new_record(name) {
+////   Record(name: name, created_time: instant.now())
+//// }
+//// 
+//// pub fn render_record_created_time(record: Record) {
+////   instant.format(record.created_time, tempo.ISO8601Milli)
+//// }
+//// ```
 
 import gleam/order
 import tempo
 import tempo/datetime
+
+/// The current instant on the host system.
+pub fn now() {
+  tempo.now()
+}
+
+/// Gets the duration between the current system time and the provided instant.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let monotonic_timer = instant.now()
+/// // Do long task ...
+/// instant.since(monotonic_timer)
+/// // -> duration.minutes(42)
+pub fn since(start start: tempo.Instant) -> tempo.Duration {
+  tempo.since(start)
+}
+
+/// Formats the duration between the current system time and the provided 
+/// instant.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let monotonic_timer = instant.now()
+/// // Do long task ...
+/// instant.format_since(monotonic_timer)
+/// // -> "42 minutes"
+pub fn format_since(start start: tempo.Instant) -> String {
+  tempo.since_formatted(start)
+}
 
 /// Converts an instant to a UTC datetime value. Do not use this with 
 /// `datetime.difference` to time tasks!
@@ -13,7 +100,7 @@ import tempo/datetime
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.now()
+/// instant.now()
 /// |> instant.as_utc_datetime
 /// // -> datetime.literal("2024-12-26T16:32:34Z")
 /// ```
@@ -103,8 +190,8 @@ pub fn as_local_time(instant: tempo.Instant) -> tempo.Time {
 /// 
 /// ```gleam
 /// tempo.now()
-/// |> instant.format_utc(tempo.ISO8601)
-/// // -> "2024-12-26T16:32:34Z"
+/// |> instant.format_utc(tempo.ISO8601Milli)
+/// // -> "2024-12-26T16:32:34.254Z"
 /// ```
 pub fn format_utc(
   instant: tempo.Instant,
@@ -119,8 +206,8 @@ pub fn format_utc(
 /// 
 /// ```gleam
 /// tempo.now()
-/// |> instant.format_local(tempo.ISO8601)
-/// // -> "2024-12-26T12:32:34-04:00"
+/// |> instant.format_local(tempo.ISO8601Micro)
+/// // -> "2024-12-26T12:32:34.534223-04:00"
 /// ```
 pub fn format_local(
   instant: tempo.Instant,

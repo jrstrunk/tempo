@@ -1,5 +1,5 @@
 //// The main module of this package. Contains most package types and general 
-//// purpose functions or functiones relating to the current system time.
+//// purpose functions.
 //// Look in specific modules for more functionality!
 
 import gleam/bool
@@ -32,8 +32,13 @@ import tempo/error as tempo_error
 // -------------------------------------------------------------------------- //
 //                              Now Logic                                     //
 // -------------------------------------------------------------------------- //
+// These functions were written to be released in the tempo module itself to
+// avoid the need to make a call to `now()` and then pass it to a second
+// function, but it ended up being too clunky and verbose. Instead, the instant
+// module is the sole entrypoint into the system time
 
 /// The current instant on the host system.
+@internal
 pub fn now() -> Instant {
   Instant(
     timestamp_utc_us: now_utc_ffi(),
@@ -57,6 +62,7 @@ pub fn now() -> Instant {
 /// |> datetime.is_earlier(than: 
 ///   tempo.now_adjusted(by: duration.minutes(-30))
 /// )
+@internal
 pub fn now_adjusted(by duration: Duration) -> DateTime {
   let new_ts = now().timestamp_utc_us + duration.microseconds
 
@@ -75,6 +81,7 @@ pub fn now_adjusted(by duration: Duration) -> DateTime {
 /// tempo.now_utc_formatted(tempo.ISO8601)
 /// // -> "2024-12-26T16:32:34Z"
 /// ```
+@internal
 pub fn now_utc_formatted(in format: DateTimeFormat) -> String {
   now() |> instant_as_utc_datetime |> datetime_format(format)
 }
@@ -87,6 +94,7 @@ pub fn now_utc_formatted(in format: DateTimeFormat) -> String {
 /// tempo.now_local_formatted(tempo.ISO8601)
 /// // -> "2024-12-26T12:32:34-04:00"
 /// ```
+@internal
 pub fn now_local_formatted(in format: DateTimeFormat) -> String {
   case format {
     HTTP -> now_utc_formatted(HTTP)
@@ -103,6 +111,7 @@ pub fn now_local_formatted(in format: DateTimeFormat) -> String {
 /// // Do long task ...
 /// tempo.since(monotonic_timer)
 /// // -> duration.minutes(42)
+@internal
 pub fn since(start start: Instant) -> Duration {
   now() |> instant_difference(from: start) |> duration_absolute
 }
@@ -117,6 +126,7 @@ pub fn since(start start: Instant) -> Duration {
 /// // Do long task ...
 /// tempo.since_formatted(monotonic_timer)
 /// // -> "42 minutes"
+@internal
 pub fn since_formatted(start start: Instant) -> String {
   let dur = since(start:)
   unit.format(dur.microseconds)
@@ -129,6 +139,7 @@ pub fn since_formatted(start start: Instant) -> String {
 /// ```gleam
 /// tempo.compare(datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> order.Lt
+@internal
 pub fn compare(to datetime: DateTime) -> order.Order {
   datetime_compare(now() |> instant_as_utc_datetime, to: datetime)
 }
@@ -210,6 +221,7 @@ pub fn is_later_or_equal(to datetime: DateTime) -> Bool {
 ///   order.Gt -> "Greater than"
 /// }
 /// ``` 
+@internal
 pub fn compare_utc_date(date: Date) -> order.Order {
   now() |> instant_as_utc_date |> date_compare(to: date)
 }
@@ -225,6 +237,7 @@ pub fn compare_utc_date(date: Date) -> order.Order {
 ///   order.Gt -> "Greater than"
 /// }
 /// ```
+@internal
 pub fn compare_local_date(date: Date) -> order.Order {
   now() |> instant_as_local_date |> date_compare(to: date)
 }
@@ -367,6 +380,7 @@ pub fn is_local_date_later_or_equal(to date: Date) -> Bool {
 /// tempo.compare_utc_time(time.literal("12:55:12"))
 /// // -> order.Gt
 /// ```
+@internal
 pub fn compare_utc_time(to time: Time) -> order.Order {
   time_compare(now() |> instant_as_utc_time, to: time)
 }
@@ -379,6 +393,7 @@ pub fn compare_utc_time(to time: Time) -> order.Order {
 /// tempo.compare_local_time(time.literal("12:55:12"))
 /// // -> order.Lt
 /// ```
+@internal
 pub fn compare_local_time(to time: Time) -> order.Order {
   time_compare(now() |> instant_as_local_time, to: time)
 }
@@ -523,6 +538,7 @@ pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
+@internal
 pub fn difference_from(from start: DateTime) -> Duration {
   now() |> instant_as_utc_datetime |> datetime_difference(from: start)
 }
@@ -543,6 +559,7 @@ pub fn difference_from(from start: DateTime) -> Duration {
 /// |> duration.format
 /// // -> "none"
 /// ```
+@internal
 pub fn since_datetime(start start: DateTime) -> Duration {
   case difference_from(start) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -566,6 +583,7 @@ pub fn since_datetime(start start: DateTime) -> Duration {
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
+@internal
 pub fn until_datetime(end end: DateTime) -> Duration {
   case now() |> instant_as_utc_datetime |> datetime_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -581,6 +599,7 @@ pub fn until_datetime(end end: DateTime) -> Duration {
 /// tempo.utc_time_difference_from(time.literal("13:42:11"))
 /// |> duration.format
 /// // -> "42 minutes"
+@internal
 pub fn utc_time_difference_from(from start: Time) -> Duration {
   now() |> instant_as_utc_time |> time_difference(from: start)
 }
@@ -595,6 +614,7 @@ pub fn utc_time_difference_from(from start: Time) -> Duration {
 /// |> duration.format
 /// // -> "4 hours and 42 minutes"
 /// ```
+@internal
 pub fn local_time_difference_from(from start: Time) -> Duration {
   now() |> instant_as_utc_time |> time_difference(from: start)
 }
@@ -609,6 +629,7 @@ pub fn local_time_difference_from(from start: Time) -> Duration {
 /// |> duration.format
 /// // -> "42 minutes"
 /// ```
+@internal
 pub fn utc_time_since(start start: Time) -> Duration {
   case utc_time_difference_from(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -626,6 +647,7 @@ pub fn utc_time_since(start start: Time) -> Duration {
 /// |> duration.format
 /// // -> "4 hours and 42 minutes"
 /// ```
+@internal
 pub fn local_time_since(start start: Time) -> Duration {
   case local_time_difference_from(from: start) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -643,6 +665,7 @@ pub fn local_time_since(start start: Time) -> Duration {
 /// |> duration.format
 /// // -> "none"
 /// ```
+@internal
 pub fn utc_time_until(end end: Time) -> Duration {
   case now() |> instant_as_utc_time |> time_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -660,6 +683,7 @@ pub fn utc_time_until(end end: Time) -> Duration {
 /// |> duration.format
 /// // -> "4 hours and 42 minutes"
 /// ```
+@internal
 pub fn local_time_until(end end: Time) -> Duration {
   case now() |> instant_as_local_time |> time_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
@@ -675,6 +699,7 @@ pub fn local_time_until(end end: Time) -> Duration {
 /// tempo.utc_date_difference_from(date.literal("2024-10-26"))
 /// // -> 54
 /// ```
+@internal
 pub fn utc_date_difference_from(from start: Date) -> Int {
   now() |> instant_as_utc_date |> date_days_apart(from: start)
 }
@@ -687,6 +712,7 @@ pub fn utc_date_difference_from(from start: Date) -> Int {
 /// tempo.local_date_difference_from(date.literal("2024-10-26"))
 /// // -> 54
 /// ```
+@internal
 pub fn local_date_difference_from(from start: Date) -> Int {
   now() |> instant_as_local_date |> date_days_apart(from: start)
 }
@@ -700,6 +726,7 @@ pub fn local_date_difference_from(from start: Date) -> Int {
 /// tempo.utc_days_since(date.literal("2024-10-26"))
 /// // -> 54
 /// ```
+@internal
 pub fn utc_days_since(start start: Date) -> Int {
   case utc_date_difference_from(from: start) {
     diff if diff > 0 -> diff
@@ -716,6 +743,7 @@ pub fn utc_days_since(start start: Date) -> Int {
 /// tempo.local_days_since(date.literal("2024-10-26"))
 /// // -> 54
 /// ```
+@internal
 pub fn local_days_since(start start: Date) -> Int {
   case local_date_difference_from(from: start) {
     diff if diff > 0 -> diff
@@ -732,6 +760,7 @@ pub fn local_days_since(start start: Date) -> Int {
 /// tempo.utc_days_until(date.literal("2024-10-26"))
 /// // -> 0
 /// ```
+@internal
 pub fn utc_days_until(end end: Date) -> Int {
   case now() |> instant_as_utc_date |> date_days_apart(to: end) {
     diff if diff > 0 -> diff
@@ -748,6 +777,7 @@ pub fn utc_days_until(end end: Date) -> Int {
 /// tempo.local_days_until(date.literal("2025-10-26"))
 /// // -> 365
 /// ```
+@internal
 pub fn local_days_until(end end: Date) -> Int {
   case now() |> instant_as_local_date |> date_days_apart(to: end) {
     diff if diff > 0 -> diff
