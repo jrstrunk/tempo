@@ -2935,6 +2935,7 @@ pub fn get_date_format_str(format: DateFormat) {
   }
 }
 
+// regex to pull the supported formatting directives from a string
 @internal
 pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
 
