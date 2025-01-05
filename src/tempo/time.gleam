@@ -16,9 +16,9 @@
 //// 
 //// pub fn get_enthusiastic_time() {
 ////   time.literal("13:42")
-////   |> time.format(
+////   |> time.format(tempo.CustomTime(
 ////     "[The hour is:] HH, [wow! And even better the minute is:] mm!"
-////   )
+////   ))
 ////   // -> "The hour is: 13, wow! And even better the minute is: 42!"
 //// }
 //// ```

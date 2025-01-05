@@ -9,8 +9,9 @@
 //// 
 //// pub fn main() {
 ////   time.literal("01:42:11")
+////   |> time.since(time.literal("00:00:01"))
 ////   |> duration.format
-////   // -> "1 hour, 42 minutes, 11 seconds"
+////   // -> "1 hour, 42 minutes, 10 seconds"
 //// }
 //// ```
 

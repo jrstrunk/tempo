@@ -5,7 +5,7 @@
 //// this type as long as possible in your programs. It can be safely used for 
 //// timing tasks, sorting times, and recording times.
 //// 
-//// If you would like to send this value outside of Gleam, then it will have 
+//// If you would like to send this value outside of Gleam, it will have 
 //// to be converted to a `DateTime` value first.
 //// 
 //// ## Timing Tasks
