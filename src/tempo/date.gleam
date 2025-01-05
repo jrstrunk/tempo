@@ -10,7 +10,7 @@
 ////   |> date.to_string
 ////   // -> "2024-06-21"
 //// 
-////   date.parse("06/21/2024", "MM/DD/YYYY")
+////   date.parse("06/21/2024", tempo.CustomDate("MM/DD/YYYY"))
 ////   |> date.to_string
 ////   // -> "2024-06-21"
 //// 
