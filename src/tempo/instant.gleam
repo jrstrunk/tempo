@@ -77,7 +77,7 @@ pub fn now() {
 /// instant.since(monotonic_timer)
 /// // -> duration.minutes(42)
 pub fn since(start start: tempo.Instant) -> tempo.Duration {
-  tempo.since(start)
+  tempo.instant_since(start)
 }
 
 /// Formats the duration between the current system time and the provided 
@@ -91,7 +91,7 @@ pub fn since(start start: tempo.Instant) -> tempo.Duration {
 /// instant.format_since(monotonic_timer)
 /// // -> "42 minutes"
 pub fn format_since(start start: tempo.Instant) -> String {
-  tempo.since_formatted(start)
+  tempo.instant_since_formatted(start)
 }
 
 /// Converts an instant to a UTC datetime value. Do not use this with 

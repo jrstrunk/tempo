@@ -110,7 +110,7 @@ pub fn format_local(in format: DateTimeFormat) -> String {
 /// tempo.since(monotonic_timer)
 /// // -> duration.minutes(42)
 @internal
-pub fn since(start start: Instant) -> Duration {
+pub fn instant_since(start start: Instant) -> Duration {
   now() |> instant_difference(from: start) |> duration_absolute
 }
 
@@ -125,8 +125,8 @@ pub fn since(start start: Instant) -> Duration {
 /// tempo.since_formatted(monotonic_timer)
 /// // -> "42 minutes"
 @internal
-pub fn since_formatted(start start: Instant) -> String {
-  let dur = since(start:)
+pub fn instant_since_formatted(start start: Instant) -> String {
+  let dur = instant_since(start:)
   unit.format(dur.microseconds)
 }
 
@@ -535,23 +535,23 @@ pub fn difference(from start: DateTime) -> Duration {
 }
 
 /// Gets the time since the provided datetime relative to the current system
-/// datetime. A duration of 0 will be returned if the datetime is in the future.
+/// time. The same as `tempo.difference`, but a duration of 0 will be 
+/// returned instead if the datetime is in the future.
 /// 
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.since_datetime(datetime.literal("2024-10-26T00:00:00Z"))
+/// tempo.since(datetime.literal("2024-10-26T00:00:00Z"))
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
 /// 
 /// ```gleam
-/// tempo.since_datetime(datetime.literal("9099-12-26T00:00:00Z"))
+/// tempo.since(datetime.literal("9099-12-26T00:00:00Z"))
 /// |> duration.format
 /// // -> "none"
 /// ```
-@internal
-pub fn since_datetime(start start: DateTime) -> Duration {
+pub fn since(start start: DateTime) -> Duration {
   case difference(start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
@@ -559,23 +559,22 @@ pub fn since_datetime(start start: DateTime) -> Duration {
 }
 
 /// Gets the time until the provided datetime relative to the current system
-/// datetime. A duration of 0 will be returned if the datetime in the past.
+/// time. A duration of 0 will be returned if the datetime in the past.
 /// 
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.until_datetime(datetime.literal("2024-10-26T00:00:00Z"))
+/// tempo.until(datetime.literal("2024-10-26T00:00:00Z"))
 /// |> duration.format
 /// // -> "none"
 /// ```
 /// 
 /// ```gleam
-/// tempo.until_datetime(datetime.literal("2025-02-26T00:00:00Z"))
+/// tempo.until(datetime.literal("2025-02-26T00:00:00Z"))
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
-@internal
-pub fn until_datetime(end end: DateTime) -> Duration {
+pub fn until(end end: DateTime) -> Duration {
   case now() |> instant_as_utc_datetime |> datetime_difference(to: end) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
