@@ -78,11 +78,10 @@ pub fn now_adjusted(by duration: Duration) -> DateTime {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.now_utc_formatted(tempo.ISO8601)
+/// tempo.format_utc(tempo.ISO8601)
 /// // -> "2024-12-26T16:32:34Z"
 /// ```
-@internal
-pub fn now_utc_formatted(in format: DateTimeFormat) -> String {
+pub fn format_utc(in format: DateTimeFormat) -> String {
   now() |> instant_as_utc_datetime |> datetime_format(format)
 }
 
@@ -91,13 +90,12 @@ pub fn now_utc_formatted(in format: DateTimeFormat) -> String {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.now_local_formatted(tempo.ISO8601)
+/// tempo.format_local(tempo.ISO8601)
 /// // -> "2024-12-26T12:32:34-04:00"
 /// ```
-@internal
-pub fn now_local_formatted(in format: DateTimeFormat) -> String {
+pub fn format_local(in format: DateTimeFormat) -> String {
   case format {
-    HTTP -> now_utc_formatted(HTTP)
+    HTTP -> format_utc(HTTP)
     _ -> now() |> instant_as_local_datetime |> datetime_format(format)
   }
 }
