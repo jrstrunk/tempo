@@ -137,7 +137,6 @@ pub fn since_formatted(start start: Instant) -> String {
 /// ```gleam
 /// tempo.compare(datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> order.Lt
-@internal
 pub fn compare(to datetime: DateTime) -> order.Order {
   datetime_compare(now() |> instant_as_utc_datetime, to: datetime)
 }
@@ -532,12 +531,11 @@ pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.difference_from(date.literal("2024-10-26"))
+/// tempo.difference(from: datetime.literal("2024-10-26T00:00:00Z"))
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
-@internal
-pub fn difference_from(from start: DateTime) -> Duration {
+pub fn difference(from start: DateTime) -> Duration {
   now() |> instant_as_utc_datetime |> datetime_difference(from: start)
 }
 
@@ -559,7 +557,7 @@ pub fn difference_from(from start: DateTime) -> Duration {
 /// ```
 @internal
 pub fn since_datetime(start start: DateTime) -> Duration {
-  case difference_from(start) {
+  case difference(start) {
     Duration(diff) if diff > 0 -> Duration(diff)
     _ -> Duration(0)
   }
