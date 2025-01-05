@@ -122,26 +122,15 @@ pub fn since_formatted(start start: Instant) -> String {
   unit.format(dur.microseconds)
 }
 
-/// Compares the current utc system datetime to the provided datetime value.
+/// Compares the current system datetime to the provided datetime value.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// tempo.compare_utc(datetime.literal("2024-12-26T00:00:00Z"))
+/// tempo.compare(datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> order.Lt
-pub fn compare_utc(datetime: DateTime) -> order.Order {
+pub fn compare(to datetime: DateTime) -> order.Order {
   datetime_compare(now() |> instant_as_utc_datetime, to: datetime)
-}
-
-/// Compares the current local system datetime to the provided datetime value.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// tempo.compare_local(datetime.literal("2024-12-26T00:00:00-04:00"))
-/// // -> order.Gt
-pub fn compare_local(to datetime: DateTime) -> order.Order {
-  datetime_compare(now() |> instant_as_local_datetime, to: datetime)
 }
 
 /// Checks if the current UTC system datetime is earlier than the provided datetime.
@@ -149,23 +138,12 @@ pub fn compare_local(to datetime: DateTime) -> order.Order {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.is_utc_earlier(than: datetime.literal("2024-12-26T00:00:00Z"))
+/// tempo.is_earlier(than: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> False
 /// ```
-pub fn is_utc_earlier(than datetime: DateTime) -> Bool {
+@internal
+pub fn is_earlier(than datetime: DateTime) -> Bool {
   datetime_is_earlier(now() |> instant_as_utc_datetime, than: datetime)
-}
-
-/// Checks if the current local system datetime is earlier than the provided
-/// datetime.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// tempo.is_local_earlier(than: datetime.literal("2024-12-26T00:00:00-04:00"))
-/// // -> False
-pub fn is_local_earlier(than datetime: DateTime) -> Bool {
-  datetime_is_earlier(now() |> instant_as_local_datetime, than: datetime)
 }
 
 /// Checks if the current UTC system datetime is earlier or equal to the provided 
@@ -174,23 +152,12 @@ pub fn is_local_earlier(than datetime: DateTime) -> Bool {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.is_utc_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// tempo.is_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
 /// ```
-pub fn is_utc_earlier_or_equal(to datetime: DateTime) -> Bool {
+@internal
+pub fn is_earlier_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_earlier_or_equal(now() |> instant_as_utc_datetime, to: datetime)
-}
-
-/// Checks if the current local system datetime is earlier or equal to the 
-/// provided datetime.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// tempo.is_local_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
-/// // -> True
-pub fn is_local_earlier_or_equal(to datetime: DateTime) -> Bool {
-  datetime_is_earlier_or_equal(now() |> instant_as_local_datetime, to: datetime)
 }
 
 /// Checks if the current UTC system datetime is equal to the provided datetime.
@@ -198,22 +165,11 @@ pub fn is_local_earlier_or_equal(to datetime: DateTime) -> Bool {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.is_utc_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// tempo.is_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> False
-pub fn is_utc_equal(to datetime: DateTime) -> Bool {
+@internal
+pub fn is_equal(to datetime: DateTime) -> Bool {
   datetime_is_equal(now() |> instant_as_utc_datetime, to: datetime)
-}
-
-/// Checks if the current local system datetime is equal to the provided datetime.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// tempo.is_local_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
-/// // -> False
-/// ```
-pub fn is_local_equal(to datetime: DateTime) -> Bool {
-  datetime_is_equal(now() |> instant_as_local_datetime, to: datetime)
 }
 
 /// Checks if the current UTC system datetime is later than the provided datetime.
@@ -221,22 +177,12 @@ pub fn is_local_equal(to datetime: DateTime) -> Bool {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.is_utc_later(than: datetime.literal("2024-12-26T00:00:00Z"))
+/// tempo.is_later(than: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
 /// ```
-pub fn is_utc_later(than datetime: DateTime) -> Bool {
+@internal
+pub fn is_later(than datetime: DateTime) -> Bool {
   datetime_is_later(now() |> instant_as_utc_datetime, than: datetime)
-}
-
-/// Checks if the current local system datetime is later than the provided datetime.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// tempo.is_local_later(than: datetime.literal("2024-12-26T00:00:00Z"))
-/// // -> True
-pub fn is_local_later(than datetime: DateTime) -> Bool {
-  datetime_is_later(now() |> instant_as_local_datetime, than: datetime)
 }
 
 /// Checks if the current UTC system datetime is later or equal to the provided 
@@ -245,23 +191,12 @@ pub fn is_local_later(than datetime: DateTime) -> Bool {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.is_utc_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// tempo.is_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
 /// ```
-pub fn is_utc_later_or_equal(to datetime: DateTime) -> Bool {
+@internal
+pub fn is_later_or_equal(to datetime: DateTime) -> Bool {
   datetime_is_later_or_equal(now() |> instant_as_utc_datetime, to: datetime)
-}
-
-/// Checks if the current local system datetime is later or equal to the provided 
-/// datetime.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// tempo.is_local_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
-/// // -> True
-pub fn is_local_later_or_equal(to datetime: DateTime) -> Bool {
-  datetime_is_later_or_equal(now() |> instant_as_local_datetime, to: datetime)
 }
 
 /// Compares the current UTC system date to the provided date value. The same
@@ -270,8 +205,10 @@ pub fn is_local_later_or_equal(to datetime: DateTime) -> Bool {
 /// ## Example
 ///
 /// ```gleam
-/// tempo.compare_utc_date(date.literal("2024-12-26"))
-/// // -> order.Eq
+/// case tempo.compare_utc_date(to: date.literal("2024-12-26")) {
+///   order.Eq | order.Lt -> "Less than or equal to"
+///   order.Gt -> "Greater than"
+/// }
 /// ``` 
 pub fn compare_utc_date(date: Date) -> order.Order {
   now() |> instant_as_utc_date |> date_compare(to: date)
@@ -283,8 +220,10 @@ pub fn compare_utc_date(date: Date) -> order.Order {
 /// ## Example
 ///
 /// ```gleam
-/// tempo.compare_local_date(date.literal("2024-12-26"))
-/// // -> order.Eq
+/// case tempo.compare_local_date(to: date.literal("2024-12-26")) {
+///   order.Eq | order.Lt -> "Less than or equal to"
+///   order.Gt -> "Greater than"
+/// }
 /// ```
 pub fn compare_local_date(date: Date) -> order.Order {
   now() |> instant_as_local_date |> date_compare(to: date)
@@ -298,6 +237,7 @@ pub fn compare_local_date(date: Date) -> order.Order {
 /// tempo.is_utc_date_earlier(than: date.literal("2024-12-26"))
 /// // -> False
 /// ```
+@internal
 pub fn is_utc_date_earlier(than date: Date) -> Bool {
   date_is_earlier(now() |> instant_as_utc_date, than: date)
 }
@@ -310,6 +250,7 @@ pub fn is_utc_date_earlier(than date: Date) -> Bool {
 /// tempo.is_local_date_earlier(than: date.literal("2024-12-26"))
 /// // -> False
 /// ```
+@internal
 pub fn is_local_date_earlier(than date: Date) -> Bool {
   date_is_earlier(now() |> instant_as_local_date, than: date)
 }
@@ -322,6 +263,7 @@ pub fn is_local_date_earlier(than date: Date) -> Bool {
 /// tempo.is_utc_date_earlier_or_equal(to: date.literal("2024-12-26"))
 /// // -> False
 /// ```
+@internal
 pub fn is_utc_date_earlier_or_equal(to date: Date) -> Bool {
   date_is_earlier_or_equal(now() |> instant_as_utc_date, to: date)
 }
@@ -334,6 +276,7 @@ pub fn is_utc_date_earlier_or_equal(to date: Date) -> Bool {
 /// tempo.is_local_date_earlier_or_equal(to: date.literal("2024-12-26"))
 /// // -> False
 /// ```
+@internal
 pub fn is_local_date_earlier_or_equal(to date: Date) -> Bool {
   date_is_earlier_or_equal(now() |> instant_as_local_date, to: date)
 }
@@ -346,6 +289,7 @@ pub fn is_local_date_earlier_or_equal(to date: Date) -> Bool {
 /// tempo.is_utc_date_equal(to: date.literal("2024-12-26"))
 /// // -> False
 /// ```
+@internal
 pub fn is_utc_date_equal(to date: Date) -> Bool {
   date_is_equal(now() |> instant_as_utc_date, to: date)
 }
@@ -358,6 +302,7 @@ pub fn is_utc_date_equal(to date: Date) -> Bool {
 /// tempo.is_local_date_equal(to: date.literal("2024-12-26"))
 /// // -> False
 /// ```
+@internal
 pub fn is_local_date_equal(to date: Date) -> Bool {
   date_is_equal(now() |> instant_as_local_date, to: date)
 }
@@ -370,6 +315,7 @@ pub fn is_local_date_equal(to date: Date) -> Bool {
 /// tempo.is_utc_date_later(than: date.literal("2024-12-26"))
 /// // -> True
 /// ```
+@internal
 pub fn is_utc_date_later(than date: Date) -> Bool {
   date_is_later(now() |> instant_as_utc_date, than: date)
 }
@@ -382,6 +328,7 @@ pub fn is_utc_date_later(than date: Date) -> Bool {
 /// tempo.is_local_date_later(than: date.literal("2024-12-26"))
 /// // -> True
 /// ```
+@internal
 pub fn is_local_date_later(than date: Date) -> Bool {
   date_is_later(now() |> instant_as_local_date, than: date)
 }
@@ -394,6 +341,7 @@ pub fn is_local_date_later(than date: Date) -> Bool {
 /// tempo.is_utc_date_later_or_equal(to: date.literal("2024-12-26"))
 /// // -> True
 /// ```
+@internal
 pub fn is_utc_date_later_or_equal(to date: Date) -> Bool {
   date_is_later_or_equal(now() |> instant_as_utc_date, to: date)
 }
@@ -406,6 +354,7 @@ pub fn is_utc_date_later_or_equal(to date: Date) -> Bool {
 /// tempo.is_local_date_later_or_equal(to: date.literal("2024-12-26"))
 /// // -> True
 /// ```
+@internal
 pub fn is_local_date_later_or_equal(to date: Date) -> Bool {
   date_is_later_or_equal(now() |> instant_as_local_date, to: date)
 }
@@ -442,6 +391,7 @@ pub fn compare_local_time(to time: Time) -> order.Order {
 /// tempo.is_utc_time_earlier(than: time.literal("13:42:11"))
 /// // -> False
 /// ```
+@internal
 pub fn is_utc_time_earlier(than time: Time) -> Bool {
   time_is_earlier(now() |> instant_as_utc_time, than: time)
 }
@@ -454,6 +404,7 @@ pub fn is_utc_time_earlier(than time: Time) -> Bool {
 /// tempo.is_local_time_earlier(than: time.literal("13:42:11"))
 /// // -> False
 /// ```
+@internal
 pub fn is_local_time_earlier(than time: Time) -> Bool {
   time_is_earlier(now() |> instant_as_local_time, than: time)
 }
@@ -466,6 +417,7 @@ pub fn is_local_time_earlier(than time: Time) -> Bool {
 /// tempo.is_utc_time_earlier_or_equal(to: time.literal("13:42:11"))
 /// // -> False
 /// ```
+@internal
 pub fn is_utc_time_earlier_or_equal(to time: Time) -> Bool {
   time_is_earlier_or_equal(now() |> instant_as_utc_time, to: time)
 }
@@ -478,6 +430,7 @@ pub fn is_utc_time_earlier_or_equal(to time: Time) -> Bool {
 /// tempo.is_local_time_earlier_or_equal(to: time.literal("13:42:11"))
 /// // -> False
 /// ```
+@internal
 pub fn is_local_time_earlier_or_equal(to time: Time) -> Bool {
   time_is_earlier_or_equal(now() |> instant_as_local_time, to: time)
 }
@@ -490,6 +443,7 @@ pub fn is_local_time_earlier_or_equal(to time: Time) -> Bool {
 /// tempo.is_utc_time_equal(to: time.literal("13:42:11"))
 /// // -> False
 /// ```
+@internal
 pub fn is_utc_time_equal(to time: Time) -> Bool {
   time_is_equal(now() |> instant_as_utc_time, to: time)
 }
@@ -502,6 +456,7 @@ pub fn is_utc_time_equal(to time: Time) -> Bool {
 /// tempo.is_local_time_equal(to: time.literal("13:42:11"))
 /// // -> False
 /// ```
+@internal
 pub fn is_local_time_equal(to time: Time) -> Bool {
   time_is_equal(now() |> instant_as_local_time, to: time)
 }
@@ -514,6 +469,7 @@ pub fn is_local_time_equal(to time: Time) -> Bool {
 /// tempo.is_utc_time_later(than: time.literal("13:42:11"))
 /// // -> True
 /// ```
+@internal
 pub fn is_utc_time_later(than time: Time) -> Bool {
   time_is_later(now() |> instant_as_utc_time, than: time)
 }
@@ -526,6 +482,7 @@ pub fn is_utc_time_later(than time: Time) -> Bool {
 /// tempo.is_local_time_later(than: time.literal("13:42:11"))
 /// // -> True
 /// ```
+@internal
 pub fn is_local_time_later(than time: Time) -> Bool {
   time_is_later(now() |> instant_as_local_time, than: time)
 }
@@ -538,6 +495,7 @@ pub fn is_local_time_later(than time: Time) -> Bool {
 /// tempo.is_utc_time_later_or_equal(to: time.literal("13:42:11"))
 /// // -> True
 /// ```
+@internal
 pub fn is_utc_time_later_or_equal(to time: Time) -> Bool {
   time_is_later_or_equal(now() |> instant_as_utc_time, to: time)
 }
@@ -550,6 +508,7 @@ pub fn is_utc_time_later_or_equal(to time: Time) -> Bool {
 /// tempo.is_local_time_later_or_equal(to: time.literal("13:42:11"))
 /// // -> True
 /// ```
+@internal
 pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
   time_is_later_or_equal(now() |> instant_as_local_time, to: time)
 }
@@ -2189,6 +2148,7 @@ pub fn month_year_next(month_year: MonthYear) -> MonthYear {
   }
 }
 
+@internal
 pub fn month_year_days_of(my: MonthYear) -> Int {
   case my.month {
     Jan -> 31
