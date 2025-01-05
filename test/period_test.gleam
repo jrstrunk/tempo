@@ -615,7 +615,7 @@ pub fn comprising_months_year_boundary_test() {
 }
 
 pub fn tempo_datetime_period_test() {
-  let test_datetime = datetime.literal("2024-12-11T08:55:32.424420250Z")
+  let test_datetime = datetime.literal("2024-12-11T08:55:32.424420Z")
   datetime.difference(test_datetime, test_datetime)
   |> duration.as_seconds
   |> should.equal(0)

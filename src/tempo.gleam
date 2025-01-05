@@ -2936,7 +2936,7 @@ pub fn get_date_format_str(format: DateFormat) {
 }
 
 @internal
-pub const format_regexp = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
+pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
