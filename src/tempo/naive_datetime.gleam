@@ -22,6 +22,7 @@ import gleam/result
 import gleam/string
 import tempo
 import tempo/date
+import tempo/error as tempo_error
 import tempo/month
 import tempo/offset
 import tempo/time
@@ -62,72 +63,45 @@ pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
 pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
   case from_string(naive_datetime) {
     Ok(naive_datetime) -> naive_datetime
-    Error(tempo.NaiveDateTimeInvalidFormat) ->
+    Error(tempo_error.NaiveDateTimeInvalidFormat(..)) ->
       panic as "Invalid naive datetime literal format"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeInvalidFormat(_))) ->
-      panic as "Invalid time format in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeHourOutOfBounds,
-    ))) -> panic as "Invalid hour value in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeMinuteOutOfBounds,
-    ))) -> panic as "Invalid minute value in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeSecondOutOfBounds,
-    ))) -> panic as "Invalid second value in naive datetime literal"
-    Error(tempo.NaiveDateTimeTimeParseError(tempo.TimeOutOfBounds(
-      tempo.TimeNanoSecondOutOfBounds,
-    ))) -> panic as "Invalid subsecond value in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateInvalidFormat(_))) ->
-      panic as "Invalid date format in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
-      tempo.DateDayOutOfBounds,
-    ))) -> panic as "Invalid date day in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
-      tempo.DateMonthOutOfBounds,
-    ))) -> panic as "Invalid date month in naive datetime literal"
-    Error(tempo.NaiveDateTimeDateParseError(tempo.DateOutOfBounds(
-      tempo.DateYearOutOfBounds,
-    ))) -> panic as "Invalid date year in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeInvalidFormat(_),
+    )) -> panic as "Invalid time format in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeHourOutOfBounds(..)),
+    )) -> panic as "Invalid hour value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeMinuteOutOfBounds(..)),
+    )) -> panic as "Invalid minute value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeSecondOutOfBounds(..)),
+    )) -> panic as "Invalid second value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeTimeParseError(
+      _,
+      tempo_error.TimeOutOfBounds(_, tempo_error.TimeMicroSecondOutOfBounds(..)),
+    )) -> panic as "Invalid subsecond value in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateInvalidFormat(_),
+    )) -> panic as "Invalid date format in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateOutOfBounds(_, tempo_error.DateDayOutOfBounds(..)),
+    )) -> panic as "Invalid date day in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateOutOfBounds(_, tempo_error.DateMonthOutOfBounds(..)),
+    )) -> panic as "Invalid date month in naive datetime literal"
+    Error(tempo_error.NaiveDateTimeDateParseError(
+      _,
+      tempo_error.DateOutOfBounds(_, tempo_error.DateYearOutOfBounds(..)),
+    )) -> panic as "Invalid date year in naive datetime literal"
   }
-}
-
-/// Gets the current local naive datetime of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// naive_datetime.now_local()
-/// |> naive_datetime.to_string
-/// // -> "2024-06-21T12:23:23.380956212"
-/// ```
-pub fn now_local() -> tempo.NaiveDateTime {
-  now_utc() |> subtract(offset.to_duration(offset.local()))
-}
-
-/// Gets the current UTC naive datetime of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time. 
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// naive_datetime.now_utc()
-/// |> naive_datetime.to_string
-/// // -> "2024-06-21T16:23:23.380413364"
-/// ```
-pub fn now_utc() -> tempo.NaiveDateTime {
-  let #(now_monotonic, now_unique) = tempo.now_monounique()
-
-  let now_ts_nano = tempo.now_utc()
-
-  new(
-    date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano)
-      |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique)),
-  )
 }
 
 /// Parses a naive datetime string in the format `YYYY-MM-DDThh:mm:ss.s`,
@@ -152,7 +126,7 @@ pub fn now_utc() -> tempo.NaiveDateTime {
 /// ```
 pub fn from_string(
   datetime: String,
-) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseError) {
+) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   let split_dt = case string.contains(datetime, "T") {
     True -> string.split(datetime, "T")
     False -> string.split(datetime, " ")
@@ -162,43 +136,50 @@ pub fn from_string(
     [date, time] -> {
       use date: tempo.Date <- result.try(
         date.from_string(date)
-        |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+        |> result.map_error(tempo_error.NaiveDateTimeDateParseError(
+          "Unable to parse date in input: " <> datetime,
+          _,
+        )),
       )
       use time: tempo.Time <- result.map(
         time.from_string(time)
-        |> result.map_error(fn(e) { tempo.NaiveDateTimeTimeParseError(e) }),
+        |> result.map_error(tempo_error.NaiveDateTimeTimeParseError(
+          "Unable to parse time in input: " <> datetime,
+          _,
+        )),
       )
       tempo.naive_datetime(date, time)
     }
     [date] -> {
       use date: tempo.Date <- result.map(
         date.from_string(date)
-        |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+        |> result.map_error(tempo_error.NaiveDateTimeDateParseError(
+          "Unable to parse date in input: " <> datetime,
+          _,
+        )),
       )
-      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0, None, None))
+      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0))
     }
-    _ -> Error(tempo.NaiveDateTimeInvalidFormat)
+    _ ->
+      Error(tempo_error.NaiveDateTimeInvalidFormat(
+        "Unable to determine date and time delimiter in input: " <> datetime,
+      ))
   }
 }
 
 /// Returns a string representation of a naive datetime value in the ISO 8601
-/// format
+/// format with millisecond precision. If a different precision is needed, 
+/// use the `format` function. 
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.to_string
-/// // -> "2024-06-21T23:17:00"
+/// // -> "2024-06-21T23:17:00.000"
 /// ```
 pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
-  datetime
-  |> get_date
-  |> date.to_string
-  <> "T"
-  <> datetime
-  |> get_time
-  |> time.to_string
+  tempo.naive_datetime_to_string(datetime)
 }
 
 /// Returns a tuple of the date and time values in the format used in Erlang.
@@ -242,7 +223,7 @@ pub fn to_tuple(
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), A (AM/PM), a (am/pm).
+/// A (AM/PM), a (am/pm).
 /// 
 /// ## Example
 /// 
@@ -262,21 +243,23 @@ pub fn to_tuple(
 /// ```
 pub fn parse(
   str: String,
-  in fmt: String,
-) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseError) {
+  in format: tempo.NaiveDateTimeFormat,
+) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
+  let format_str = tempo.get_naive_datetime_format_str(format)
+
   use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: fmt)
-    |> result.replace_error(tempo.NaiveDateTimeInvalidFormat),
+    tempo.consume_format(str, in: format_str)
+    |> result.map_error(tempo_error.NaiveDateTimeInvalidFormat(_)),
   )
 
   use date <- result.try(
     tempo.find_date(in: parts)
-    |> result.map_error(fn(e) { tempo.NaiveDateTimeDateParseError(e) }),
+    |> result.map_error(tempo_error.NaiveDateTimeDateParseError(str, _)),
   )
 
   use time <- result.try(
     tempo.find_time(in: parts)
-    |> result.map_error(fn(e) { tempo.NaiveDateTimeTimeParseError(e) }),
+    |> result.map_error(tempo_error.NaiveDateTimeTimeParseError(str, _)),
   )
 
   Ok(new(date, time))
@@ -299,12 +282,33 @@ pub fn parse(
 /// ```
 pub fn parse_any(
   str: String,
-) -> Result(tempo.NaiveDateTime, tempo.NaiveDateTimeParseAnyError) {
+) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   case tempo.parse_any(str) {
     #(Some(date), Some(time), _) -> Ok(new(date, time))
-    #(_, None, _) -> Error(tempo.NaiveDateTimeMissingDate)
-    #(None, _, _) -> Error(tempo.NaiveDateTimeMissingTime)
+    #(_, None, _) ->
+      Error(tempo_error.NaiveDateTimeInvalidFormat(
+        "Unable to find date in " <> str,
+      ))
+    #(None, _, _) ->
+      Error(tempo_error.NaiveDateTimeInvalidFormat(
+        "Unable to find time in " <> str,
+      ))
   }
+}
+
+/// Converts a naive datetime parse error to a human readable error message.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// naive_datetime.parse("2024 06 21 23:17:00")
+/// |> snag.map_error(with: naive_datetime.describe_parse_error)
+/// // -> snag.error("Invalid date format in naive datetime: 2024 06 21 23:17:00")
+/// ```
+pub fn describe_parse_error(
+  error: tempo_error.NaiveDateTimeParseError,
+) -> String {
+  tempo_error.describe_naive_datetime_parse_error(error)
 }
 
 /// Formats a naive datetime value using the provided format string.
@@ -320,7 +324,7 @@ pub fn parse_any(
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), A (AM/PM), a (am/pm).
+/// A (AM/PM), a (am/pm).
 /// 
 /// ## Example
 /// 
@@ -347,17 +351,22 @@ pub fn parse_any(
 /// |> naive_datetime.format("H HH h hh m mm s ss a A [An ant]")
 /// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
-pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
-  let assert Ok(re) = regexp.from_string(tempo.format_regexp)
+pub fn format(
+  naive_datetime: tempo.NaiveDateTime,
+  in format: tempo.NaiveDateTimeFormat,
+) -> String {
+  let format_str = tempo.get_naive_datetime_format_str(format)
 
-  regexp.scan(re, fmt)
+  let assert Ok(re) = regexp.from_string(tempo.format_regex)
+
+  regexp.scan(re, format_str)
   |> list.reverse
   |> list.fold(from: [], with: fn(acc, match) {
     case match {
       regexp.Match(content, []) -> [
         content
-          |> date.replace_format(naive_datetime |> get_date)
-          |> time.replace_format(naive_datetime |> get_time),
+          |> tempo.date_replace_format(naive_datetime |> get_date)
+          |> tempo.time_replace_format(naive_datetime |> get_time),
         ..acc
       ]
 
@@ -381,11 +390,26 @@ pub fn format(naive_datetime: tempo.NaiveDateTime, in fmt: String) -> String {
 /// 
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
-/// |> naive_datetime.set_utc
+/// |> naive_datetime.as_utc
 /// // -> datetime.literal("2024-06-21T23:17:00Z")
 /// ```
-pub fn set_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
+pub fn as_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
   set_offset(datetime, tempo.utc)
+}
+
+/// Sets a naive datetime's offset to the host's local offset, leaving the 
+/// date and time unchanged while returning a datetime value. 
+/// Alias for `set_offset(naive_datetime, offset.local())`.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// naive_datetime.literal("2024-06-21T23:17:00")
+/// |> naive_datetime.as_local
+/// // -> datetime.literal("2024-06-21T23:17:00+01:00")
+/// ```
+pub fn as_local(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
+  set_offset(datetime, offset.local())
 }
 
 /// Gets the date of a naive datetime.
@@ -425,7 +449,7 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 /// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
   tempo.naive_datetime_get_date(datetime)
-  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0, None, None))
+  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0))
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and

@@ -1,5 +1,3 @@
-import gleam/yielder
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/date
@@ -7,10 +5,6 @@ import tempo/datetime
 import tempo/duration
 import tempo/naive_datetime
 import tempo/period
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn full_years_apart_same_year_test() {
   date.literal("2024-08-13")
@@ -344,75 +338,75 @@ pub fn period_as_days_multiple_partial_test() {
 }
 
 pub fn period_from_month_june_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.as_days
   |> should.equal(30)
 }
 
 pub fn period_from_month_feb_leap_test() {
-  period.from_month(tempo.Feb, 2024)
+  period.from_month(tempo.MonthYear(tempo.Feb, 2024))
   |> period.as_days
   |> should.equal(29)
 }
 
 pub fn period_from_month_june_fractional_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.as_days_fractional
   |> should.equal(30.0)
 }
 
 pub fn month_period_contains_date_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_date(date.literal("2024-06-21"))
   |> should.be_true
 }
 
 pub fn month_period_contains_date_inclusive_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_date(date.literal("2024-06-30"))
   |> should.be_true
 
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_date(date.literal("2024-06-01"))
   |> should.be_true
 }
 
 pub fn month_period_contains_datetime_inclusive_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_datetime(datetime.literal("2024-06-30T24:00:00-07:00"))
   |> should.be_true
 
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_datetime(datetime.literal("2024-06-01T00:00:00+07:00"))
   |> should.be_true
 }
 
 pub fn month_period_contains_invalid_date_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_date(date.literal("2024-07-22"))
   |> should.be_false
 }
 
 pub fn month_period_contains_datetime_utc_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_datetime(datetime.literal("2024-06-30T24:00:00Z"))
   |> should.be_true
 }
 
 pub fn month_period_contains_datetime_offset_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_datetime(datetime.literal("2024-06-30T24:00:00-07:00"))
   |> should.be_true
 }
 
 pub fn month_period_contains_invalid_datetime_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_datetime(datetime.literal("2024-07-22T24:00:00Z"))
   |> should.be_false
 }
 
 pub fn month_period_contains_naive_datetime_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_naive_datetime(naive_datetime.literal(
     "2024-06-30T24:00:00",
   ))
@@ -420,7 +414,7 @@ pub fn month_period_contains_naive_datetime_test() {
 }
 
 pub fn month_period_contains_invalid_naive_datetime_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_naive_datetime(naive_datetime.literal(
     "2024-09-22T24:00:00",
   ))
@@ -428,7 +422,7 @@ pub fn month_period_contains_invalid_naive_datetime_test() {
 }
 
 pub fn month_period_contains_date_different_year_test() {
-  period.from_month(tempo.Jun, 2024)
+  period.from_month(tempo.MonthYear(tempo.Jun, 2024))
   |> period.contains_date(date.literal("2022-06-21"))
   |> should.be_false
 }
@@ -519,7 +513,6 @@ pub fn comprising_dates_test() {
     end: datetime.literal("2024-06-21T00:16:12+01:00"),
   )
   |> period.comprising_dates
-  |> yielder.to_list
   |> should.equal([
     date.literal("2024-06-19"),
     date.literal("2024-06-20"),
@@ -533,7 +526,6 @@ pub fn comprising_dates_one_day_test() {
     end: datetime.literal("2024-06-21T02:16:12Z"),
   )
   |> period.comprising_dates
-  |> yielder.to_list
   |> should.equal([date.literal("2024-06-21")])
 }
 
@@ -543,7 +535,6 @@ pub fn comprising_dates_month_boundary_test() {
     end: naive_datetime.literal("2024-07-04T07:16:12"),
   )
   |> period.comprising_dates
-  |> yielder.to_list
   |> should.equal([
     date.literal("2024-06-21"),
     date.literal("2024-06-22"),
@@ -568,7 +559,6 @@ pub fn comprising_dates_year_boundary_test() {
     end: naive_datetime.literal("2025-01-04T07:16:12"),
   )
   |> period.comprising_dates
-  |> yielder.to_list
   |> should.equal([
     date.literal("2024-12-25"),
     date.literal("2024-12-26"),
@@ -590,7 +580,6 @@ pub fn comprising_months_one_month_test() {
     end: datetime.literal("2024-06-21T00:16:12+01:00"),
   )
   |> period.comprising_months
-  |> yielder.to_list
   |> should.equal([tempo.MonthYear(tempo.Jun, 2024)])
 }
 
@@ -600,7 +589,6 @@ pub fn comprising_months_multiple_months_test() {
     end: datetime.literal("2024-09-21T00:16:12+01:00"),
   )
   |> period.comprising_months
-  |> yielder.to_list
   |> should.equal([
     tempo.MonthYear(tempo.Jun, 2024),
     tempo.MonthYear(tempo.Jul, 2024),
@@ -615,7 +603,6 @@ pub fn comprising_months_year_boundary_test() {
     end: datetime.literal("2025-04-30T23:59:59-04:00"),
   )
   |> period.comprising_months
-  |> yielder.to_list
   |> should.equal([
     tempo.MonthYear(tempo.Oct, 2024),
     tempo.MonthYear(tempo.Nov, 2024),
@@ -628,7 +615,7 @@ pub fn comprising_months_year_boundary_test() {
 }
 
 pub fn tempo_datetime_period_test() {
-  let test_datetime = datetime.literal("2024-12-11T08:55:32.424420250Z")
+  let test_datetime = datetime.literal("2024-12-11T08:55:32.424420Z")
   datetime.difference(test_datetime, test_datetime)
   |> duration.as_seconds
   |> should.equal(0)

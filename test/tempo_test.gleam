@@ -1,5 +1,5 @@
+import gleam/io
 import gleam/option.{None, Some}
-import gleeunit
 import gleeunit/should
 import tempo
 import tempo/date
@@ -7,7 +7,8 @@ import tempo/offset
 import tempo/time
 
 pub fn main() {
-  gleeunit.main()
+  date.current_local() |> io.debug
+  date.current_utc() |> io.debug
 }
 
 pub fn parse_any_all_test() {

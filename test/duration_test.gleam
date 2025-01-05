@@ -1,18 +1,5 @@
-import gleeunit
 import gleeunit/should
-import tempo
 import tempo/duration
-
-pub fn main() {
-  gleeunit.main()
-}
-
-pub fn monotonic_time_start_stop_test() {
-  duration.start_monotonic()
-  |> duration.stop_monotonic
-  |> fn(d: tempo.Duration) { d |> tempo.duration_get_ns >= 0 }
-  |> should.be_true
-}
 
 pub fn format_single_test() {
   duration.minutes(1)
@@ -81,57 +68,51 @@ pub fn format_three_units_large_test() {
 }
 
 pub fn format_years_test() {
-  duration.nanoseconds(93_691_332_000_000_000)
+  duration.microseconds(93_691_332_000_000)
   |> duration.format
   |> should.equal("2 ~years, 50 weeks, 6 days, 9 hours, and 22 minutes")
 }
 
 pub fn format_weeks_test() {
-  duration.nanoseconds(691_332_000_000_000)
+  duration.microseconds(691_332_000_000)
   |> duration.format
   |> should.equal("1 week, 1 day, 0 hours, and 2 minutes")
 }
 
 pub fn format_days_test() {
-  duration.nanoseconds(172_980_000_000_000)
+  duration.microseconds(172_980_000_000)
   |> duration.format
   |> should.equal("2 days, 0 hours, and 3 minutes")
 }
 
 pub fn format_hours_test() {
-  duration.nanoseconds(49_676_829_182_912)
+  duration.microseconds(49_676_829_182)
   |> duration.format
   |> should.equal("13 hours, 47 minutes, and 56.82 seconds")
 }
 
 pub fn format_minutes_test() {
-  duration.nanoseconds(676_829_182_912)
+  duration.microseconds(676_829_182)
   |> duration.format
   |> should.equal("11 minutes and 16.829 seconds")
 }
 
 pub fn format_seconds_test() {
-  duration.nanoseconds(46_829_182_912)
+  duration.microseconds(46_829_182)
   |> duration.format
   |> should.equal("46.829 seconds")
 }
 
 pub fn format_milliseconds_test() {
-  duration.nanoseconds(829_182_912)
+  duration.microseconds(829_182)
   |> duration.format
   |> should.equal("829 milliseconds")
 }
 
 pub fn format_microseconds_test() {
-  duration.nanoseconds(182_912)
+  duration.microseconds(182)
   |> duration.format
   |> should.equal("182 microseconds")
-}
-
-pub fn format_nanoseconds_test() {
-  duration.nanoseconds(912)
-  |> duration.format
-  |> should.equal("912 nanoseconds")
 }
 
 pub fn duration_roundtrip_test() {
@@ -158,10 +139,6 @@ pub fn duration_roundtrip_test() {
   duration.microseconds(13)
   |> duration.as_microseconds
   |> should.equal(13)
-
-  duration.nanoseconds(15)
-  |> duration.as_nanoseconds
-  |> should.equal(15)
 }
 
 pub fn absolute_test() {

@@ -22,17 +22,14 @@
 //// pub fn get_every_friday_between(date1, date2) {
 ////   period.new(date1, date2)
 ////   |> period.comprising_dates
-////   |> yielder.filter(fn(date) { 
+////   |> list.filter(fn(date) { 
 ////     date |> date.to_day_of_week == date.Fri
 ////   })
-////   |> yielder.to_list
 ////   // -> ["2024-06-21", "2024-06-28", "2024-07-05"]
 //// }
 //// ```
 
 import gleam/int
-import gleam/option.{None}
-import gleam/yielder
 import gtempo/internal as unit
 import tempo
 import tempo/date
@@ -89,7 +86,6 @@ pub type Unit {
   Second
   Millisecond
   Microsecond
-  Nanosecond
 }
 
 /// Returns the number of seconds in the period.
@@ -135,13 +131,13 @@ pub fn as_days(period: tempo.Period) -> Int {
     False -> 0
   }
   // If a full day is in the period as designated by the end time being
-  // the last moment of the day and the start time being the first second
+  // the last instant of the day and the start time being the first second
   // of the day, then 1 needs to be added to the days count.
   + case
     start_time
-    |> time.is_equal(to: tempo.time(0, 0, 0, 0, None, None))
+    |> time.is_equal(to: tempo.time(0, 0, 0, 0))
     && end_time
-    |> time.is_equal(to: tempo.time(24, 0, 0, 0, None, None))
+    |> time.is_equal(to: tempo.time(24, 0, 0, 0))
   {
     True -> 1
     False -> 0
@@ -176,30 +172,30 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
         start_time
         |> time.left_in_day
         |> time.to_duration
-        |> duration.as_nanoseconds,
+        |> duration.as_microseconds,
       )
-      /. int.to_float(unit.imprecise_day_nanoseconds)
+      /. int.to_float(unit.imprecise_day_microseconds)
       +. int.to_float(
         end_time
         |> time.to_duration
-        |> duration.as_nanoseconds,
+        |> duration.as_microseconds,
       )
-      /. int.to_float(unit.imprecise_day_nanoseconds)
+      /. int.to_float(unit.imprecise_day_microseconds)
 
     // The time between the start and end times divided by the total number 
     // of seconds in the end day.
     False ->
       // The as_days functions alread accounted for the time between the
-      // start and end dates when the end is at the last moment of the day,
+      // start and end dates when the end is at the last instant of the day,
       // so we do not need to account for it here as well.
-      case time.is_equal(end_time, to: tempo.time(24, 0, 0, 0, None, None)) {
+      case time.is_equal(end_time, to: tempo.time(24, 0, 0, 0)) {
         True -> 0.0
         False ->
           int.to_float(
             time.difference(from: start_time, to: end_time)
-            |> duration.as_nanoseconds,
+            |> duration.as_microseconds,
           )
-          /. int.to_float(unit.imprecise_day_nanoseconds)
+          /. int.to_float(unit.imprecise_day_microseconds)
       }
   }
 }
@@ -222,28 +218,28 @@ pub fn as_duration(period: tempo.Period) -> tempo.Duration {
   tempo.period_as_duration(period)
 }
 
-/// Creates a period of the specified month, starting at 00:00:00 on the
+/// Creates a period of the specified month year, starting at 00:00:00 on the
 /// first day of the month and ending at 24:00:00 on the last day of the month.
 /// 
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// period.from_month(tempo.Feb, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Feb, 2024))
 /// |> period.contains_date(date.literal("2024-06-21"))
 /// // -> False
 /// ```
-pub fn from_month(month: tempo.Month, year: Int) -> tempo.Period {
+pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
   let start =
     tempo.naive_datetime(
-      tempo.date(year, month, 1),
-      tempo.time(0, 0, 0, 0, None, None),
+      tempo.date(my.year, my.month, 1),
+      tempo.time(0, 0, 0, 0),
     )
 
   let end =
     tempo.naive_datetime(
-      tempo.date(year, month, month.days(of: month, in: year)),
-      tempo.time(24, 0, 0, 0, None, None),
+      tempo.date(my.year, my.month, month.days(of: my.month, in: my.year)),
+      tempo.time(24, 0, 0, 0),
     )
 
   new_naive(start, end)
@@ -362,7 +358,7 @@ pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool
   tempo.period_contains_datetime(period, datetime)
 }
 
-/// Returns an yielder over all the dates in the period, inclusive of the 
+/// Returns a list over all the dates in the period, inclusive of the 
 /// dates of both the start and end datetimes and ignoring the offset.
 ///
 /// ## Examples
@@ -373,7 +369,6 @@ pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool
 ///   end: naive_datetime.literal("2024-06-21T00:16:12+01:00"),
 /// )
 /// |> period.comprising_dates
-/// |> yielder.to_list
 /// // -> [
 /// //   date.literal("2024-06-19"),
 /// //   date.literal("2024-06-20"),
@@ -384,17 +379,16 @@ pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool
 /// ```gleam
 /// period.from_month(tempo.Feb, 2024)
 /// |> period.comprising_dates
-/// |> yielder.to_list
 /// // -> [
 /// //   date.literal("2024-02-01"),
 /// //   ...
 /// //   date.literal("2024-02-29"),
 /// // ]
-pub fn comprising_dates(period: tempo.Period) -> yielder.Yielder(tempo.Date) {
+pub fn comprising_dates(period: tempo.Period) -> List(tempo.Date) {
   tempo.period_comprising_dates(period)
 }
 
-/// Returns an yielder over all the months in the period, inclusive of the
+/// Returns list over all the months in the period, inclusive of the
 /// months of both the start and end datetimes and ignoring the offset.
 ///
 /// ## Examples
@@ -405,7 +399,6 @@ pub fn comprising_dates(period: tempo.Period) -> yielder.Yielder(tempo.Date) {
 ///   end: datetime.literal("2025-04-30T23:59:59-04:00"),
 /// )
 /// |> period.comprising_months
-/// |> yielder.to_list
 /// // -> [
 /// //   tempo.MonthYear(tempo.Oct, 2024),
 /// //   tempo.MonthYear(tempo.Nov, 2024),
@@ -416,9 +409,7 @@ pub fn comprising_dates(period: tempo.Period) -> yielder.Yielder(tempo.Date) {
 /// //   tempo.MonthYear(tempo.Apr, 2025),
 /// // ]
 /// ```
-pub fn comprising_months(
-  period: tempo.Period,
-) -> yielder.Yielder(tempo.MonthYear) {
+pub fn comprising_months(period: tempo.Period) -> List(tempo.MonthYear) {
   tempo.period_comprising_months(period)
 }
 

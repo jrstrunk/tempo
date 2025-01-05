@@ -1,5 +1,6 @@
-//// The main module of this package. Contains most types and only a couple 
-//// general purpose functions. Look in specific modules for more functionality!
+//// The main module of this package. Contains most package types and general 
+//// purpose functions.
+//// Look in specific modules for more functionality!
 
 import gleam/bool
 import gleam/int
@@ -9,21 +10,883 @@ import gleam/order
 import gleam/regexp
 import gleam/result
 import gleam/string
-import gleam/yielder
+import gleam/string_tree
 import gtempo/internal as unit
+import tempo/error as tempo_error
 
-// This is a big file. The contents are generally ordered by:
-// 1. DateTime logic (funcctions starting with `dt_`)
-// 2. NaiveDateTime logic (functions starting with `ndt_`)
-// 3. Offset logic (functions starting with `offset_`)
-// 4. Date logic (functions starting with `date_`)
-// 5. Month logic (functions starting with `month_`)
-// 6. Year logic (functions starting with `year_`)
-// 7. Time logic (functions starting with `time_`)
-// 8. Duration logic (functions starting with `dur_`)
-// 9. Period logic (functions starting with `period_`)
-// 10. Tempo module logic
-// 11. FFI logic
+// This is a big file. The contents are generally ordered (and searchable) by:
+// - Tempo now functions
+// - Instant logic (functions starting with `_instant`)
+// - DateTime logic (funcctions starting with `datetime_`)
+// - NaiveDateTime logic (functions starting with `naive_datetime_`)
+// - Offset logic (functions starting with `offset_`)
+// - Date logic (functions starting with `date_`)
+// - Month logic (functions starting with `month_`)
+// - Year logic (functions starting with `year_`)
+// - Time logic (functions starting with `time_`)
+// - Duration logic (functions starting with `dur_`)
+// - Period logic (functions starting with `period_`)
+// - Format logic
+// - FFI logic
+
+// -------------------------------------------------------------------------- //
+//                              Now Logic                                     //
+// -------------------------------------------------------------------------- //
+// These functions were written to be released in the tempo module itself to
+// avoid the need to make a call to `now()` and then pass it to a second
+// function, but it ended up being too clunky and verbose. Instead, the instant
+// module is the sole entrypoint into the system time
+
+/// The current instant on the host system.
+@internal
+pub fn now() -> Instant {
+  Instant(
+    timestamp_utc_us: now_utc_ffi(),
+    offset_local_us: offset_local_micro(),
+    monotonic_us: now_monotonic_ffi(),
+    unique: now_unique_ffi(),
+  )
+}
+
+/// Get the current UTC system time adjusted by the given duration. Useful for
+/// checking if a time is more than some time in the past or future. Though
+/// this uses UTC time, UTC datetimes are directly comparable to local datetimes;
+/// formatting is where the difference really shows itself. If you want to 
+/// format this value as a local datetime, you can localise it before formatting.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// // Is the given datetime more than 30 mins old?
+/// datetime.literal("2024-12-26T00:00:00Z")
+/// |> datetime.is_earlier(than: 
+///   tempo.now_adjusted(by: duration.minutes(-30))
+/// )
+@internal
+pub fn now_adjusted(by duration: Duration) -> DateTime {
+  let new_ts = now().timestamp_utc_us + duration.microseconds
+
+  DateTime(
+    date_from_unix_seconds(new_ts / 1_000_000),
+    time_from_unix_micro(new_ts),
+    offset: utc,
+  )
+}
+
+/// Formats the current UTC system time using the provided format.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.format_utc(tempo.ISO8601)
+/// // -> "2024-12-26T16:32:34Z"
+/// ```
+pub fn format_utc(in format: DateTimeFormat) -> String {
+  now() |> instant_as_utc_datetime |> datetime_format(format)
+}
+
+/// Formats the current local system time using the provided format.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.format_local(tempo.ISO8601)
+/// // -> "2024-12-26T12:32:34-04:00"
+/// ```
+pub fn format_local(in format: DateTimeFormat) -> String {
+  case format {
+    HTTP -> format_utc(HTTP)
+    _ -> now() |> instant_as_local_datetime |> datetime_format(format)
+  }
+}
+
+/// Gets the duration between the current system time and the provided instant.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let monotonic_timer = tempo.now()
+/// // Do long task ...
+/// tempo.since(monotonic_timer)
+/// // -> duration.minutes(42)
+@internal
+pub fn since(start start: Instant) -> Duration {
+  now() |> instant_difference(from: start) |> duration_absolute
+}
+
+/// Formats the duration between the current system time and the provided 
+/// instant.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let monotonic_timer = tempo.now()
+/// // Do long task ...
+/// tempo.since_formatted(monotonic_timer)
+/// // -> "42 minutes"
+@internal
+pub fn since_formatted(start start: Instant) -> String {
+  let dur = since(start:)
+  unit.format(dur.microseconds)
+}
+
+/// Compares the current system time to the provided datetime value.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare(datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> order.Lt
+pub fn compare(to datetime: DateTime) -> order.Order {
+  datetime_compare(now() |> instant_as_utc_datetime, to: datetime)
+}
+
+/// Checks if the current system time is earlier than the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_earlier(than: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> False
+/// ```
+pub fn is_earlier(than datetime: DateTime) -> Bool {
+  datetime_is_earlier(now() |> instant_as_utc_datetime, than: datetime)
+}
+
+/// Checks if the current system time is earlier or equal to the provided 
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
+/// ```
+pub fn is_earlier_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_earlier_or_equal(now() |> instant_as_utc_datetime, to: datetime)
+}
+
+/// Checks if the current system time is equal to the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> False
+pub fn is_equal(to datetime: DateTime) -> Bool {
+  datetime_is_equal(now() |> instant_as_utc_datetime, to: datetime)
+}
+
+/// Checks if the current system time is later than the provided datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_later(than: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
+/// ```
+pub fn is_later(than datetime: DateTime) -> Bool {
+  datetime_is_later(now() |> instant_as_utc_datetime, than: datetime)
+}
+
+/// Checks if the current system time is later or equal to the provided 
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
+/// // -> True
+/// ```
+pub fn is_later_or_equal(to datetime: DateTime) -> Bool {
+  datetime_is_later_or_equal(now() |> instant_as_utc_datetime, to: datetime)
+}
+
+/// Compares the current UTC system date to the provided date value. The same
+/// as `date.current_utc() |> date.compare`.
+///
+/// ## Example
+///
+/// ```gleam
+/// case tempo.compare_utc_date(to: date.literal("2024-12-26")) {
+///   order.Eq | order.Lt -> "Less than or equal to"
+///   order.Gt -> "Greater than"
+/// }
+/// ``` 
+@internal
+pub fn compare_utc_date(date: Date) -> order.Order {
+  now() |> instant_as_utc_date |> date_compare(to: date)
+}
+
+/// Compares the current local system date to the provided date value. The same
+/// as `date.current_local() |> date.compare`.
+///
+/// ## Example
+///
+/// ```gleam
+/// case tempo.compare_local_date(to: date.literal("2024-12-26")) {
+///   order.Eq | order.Lt -> "Less than or equal to"
+///   order.Gt -> "Greater than"
+/// }
+/// ```
+@internal
+pub fn compare_local_date(date: Date) -> order.Order {
+  now() |> instant_as_local_date |> date_compare(to: date)
+}
+
+/// Checks if the current UTC system date is earlier than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_earlier(than: date.literal("2024-12-26"))
+/// // -> False
+/// ```
+@internal
+pub fn is_utc_date_earlier(than date: Date) -> Bool {
+  date_is_earlier(now() |> instant_as_utc_date, than: date)
+}
+
+/// Checks if the current local system date is earlier than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_earlier(than: date.literal("2024-12-26"))
+/// // -> False
+/// ```
+@internal
+pub fn is_local_date_earlier(than date: Date) -> Bool {
+  date_is_earlier(now() |> instant_as_local_date, than: date)
+}
+
+/// Checks if the current UTC system date is earlier or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_earlier_or_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
+@internal
+pub fn is_utc_date_earlier_or_equal(to date: Date) -> Bool {
+  date_is_earlier_or_equal(now() |> instant_as_utc_date, to: date)
+}
+
+/// Checks if the current local system date is earlier or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_earlier_or_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
+@internal
+pub fn is_local_date_earlier_or_equal(to date: Date) -> Bool {
+  date_is_earlier_or_equal(now() |> instant_as_local_date, to: date)
+}
+
+/// Checks if the current UTC system date is equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
+@internal
+pub fn is_utc_date_equal(to date: Date) -> Bool {
+  date_is_equal(now() |> instant_as_utc_date, to: date)
+}
+
+/// Checks if the current local system date is equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_equal(to: date.literal("2024-12-26"))
+/// // -> False
+/// ```
+@internal
+pub fn is_local_date_equal(to date: Date) -> Bool {
+  date_is_equal(now() |> instant_as_local_date, to: date)
+}
+
+/// Checks if the current UTC system date is later than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_later(than: date.literal("2024-12-26"))
+/// // -> True
+/// ```
+@internal
+pub fn is_utc_date_later(than date: Date) -> Bool {
+  date_is_later(now() |> instant_as_utc_date, than: date)
+}
+
+/// Checks if the current local system date is later than the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_later(than: date.literal("2024-12-26"))
+/// // -> True
+/// ```
+@internal
+pub fn is_local_date_later(than date: Date) -> Bool {
+  date_is_later(now() |> instant_as_local_date, than: date)
+}
+
+/// Checks if the current UTC system date is later or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_date_later_or_equal(to: date.literal("2024-12-26"))
+/// // -> True
+/// ```
+@internal
+pub fn is_utc_date_later_or_equal(to date: Date) -> Bool {
+  date_is_later_or_equal(now() |> instant_as_utc_date, to: date)
+}
+
+/// Checks if the current local system date is later or equal to the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_date_later_or_equal(to: date.literal("2024-12-26"))
+/// // -> True
+/// ```
+@internal
+pub fn is_local_date_later_or_equal(to date: Date) -> Bool {
+  date_is_later_or_equal(now() |> instant_as_local_date, to: date)
+}
+
+/// Compares the current utc system time to the provided time value.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare_utc_time(time.literal("12:55:12"))
+/// // -> order.Gt
+/// ```
+@internal
+pub fn compare_utc_time(to time: Time) -> order.Order {
+  time_compare(now() |> instant_as_utc_time, to: time)
+}
+
+/// Compares the current local system time to the provided time value.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.compare_local_time(time.literal("12:55:12"))
+/// // -> order.Lt
+/// ```
+@internal
+pub fn compare_local_time(to time: Time) -> order.Order {
+  time_compare(now() |> instant_as_local_time, to: time)
+}
+
+/// Checks if the current UTC system time is earlier than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_earlier(than: time.literal("13:42:11"))
+/// // -> False
+/// ```
+@internal
+pub fn is_utc_time_earlier(than time: Time) -> Bool {
+  time_is_earlier(now() |> instant_as_utc_time, than: time)
+}
+
+/// Checks if the current local system time is earlier than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_earlier(than: time.literal("13:42:11"))
+/// // -> False
+/// ```
+@internal
+pub fn is_local_time_earlier(than time: Time) -> Bool {
+  time_is_earlier(now() |> instant_as_local_time, than: time)
+}
+
+/// Checks if the current UTC system time is earlier or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_earlier_or_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
+@internal
+pub fn is_utc_time_earlier_or_equal(to time: Time) -> Bool {
+  time_is_earlier_or_equal(now() |> instant_as_utc_time, to: time)
+}
+
+/// Checks if the current local system time is earlier or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_earlier_or_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
+@internal
+pub fn is_local_time_earlier_or_equal(to time: Time) -> Bool {
+  time_is_earlier_or_equal(now() |> instant_as_local_time, to: time)
+}
+
+/// Checks if the current UTC system time is equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
+@internal
+pub fn is_utc_time_equal(to time: Time) -> Bool {
+  time_is_equal(now() |> instant_as_utc_time, to: time)
+}
+
+/// Checks if the current local system time is equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_equal(to: time.literal("13:42:11"))
+/// // -> False
+/// ```
+@internal
+pub fn is_local_time_equal(to time: Time) -> Bool {
+  time_is_equal(now() |> instant_as_local_time, to: time)
+}
+
+/// Checks if the current UTC system time is later than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_later(than: time.literal("13:42:11"))
+/// // -> True
+/// ```
+@internal
+pub fn is_utc_time_later(than time: Time) -> Bool {
+  time_is_later(now() |> instant_as_utc_time, than: time)
+}
+
+/// Checks if the current local system time is later than the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_later(than: time.literal("13:42:11"))
+/// // -> True
+/// ```
+@internal
+pub fn is_local_time_later(than time: Time) -> Bool {
+  time_is_later(now() |> instant_as_local_time, than: time)
+}
+
+/// Checks if the current UTC system time is later or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_utc_time_later_or_equal(to: time.literal("13:42:11"))
+/// // -> True
+/// ```
+@internal
+pub fn is_utc_time_later_or_equal(to time: Time) -> Bool {
+  time_is_later_or_equal(now() |> instant_as_utc_time, to: time)
+}
+
+/// Checks if the current local system time is later or equal to the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.is_local_time_later_or_equal(to: time.literal("13:42:11"))
+/// // -> True
+/// ```
+@internal
+pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
+  time_is_later_or_equal(now() |> instant_as_local_time, to: time)
+}
+
+/// Gets the difference between the current system datetime and the provided
+/// datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.difference(from: datetime.literal("2024-10-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "54 days, 13 hours, and 46 minutes"
+/// ```
+pub fn difference(from start: DateTime) -> Duration {
+  now() |> instant_as_utc_datetime |> datetime_difference(from: start)
+}
+
+/// Gets the time since the provided datetime relative to the current system
+/// datetime. A duration of 0 will be returned if the datetime is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.since_datetime(datetime.literal("2024-10-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "54 days, 13 hours, and 46 minutes"
+/// ```
+/// 
+/// ```gleam
+/// tempo.since_datetime(datetime.literal("9099-12-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "none"
+/// ```
+@internal
+pub fn since_datetime(start start: DateTime) -> Duration {
+  case difference(start) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+/// Gets the time until the provided datetime relative to the current system
+/// datetime. A duration of 0 will be returned if the datetime in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.until_datetime(datetime.literal("2024-10-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "none"
+/// ```
+/// 
+/// ```gleam
+/// tempo.until_datetime(datetime.literal("2025-02-26T00:00:00Z"))
+/// |> duration.format
+/// // -> "54 days, 13 hours, and 46 minutes"
+/// ```
+@internal
+pub fn until_datetime(end end: DateTime) -> Duration {
+  case now() |> instant_as_utc_datetime |> datetime_difference(to: end) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+/// Gets the difference between the current UTC system time and the provided time.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_time_difference_from(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "42 minutes"
+@internal
+pub fn utc_time_difference_from(from start: Time) -> Duration {
+  now() |> instant_as_utc_time |> time_difference(from: start)
+}
+
+/// Gets the difference between the current local system time and the provided 
+/// time.
+///
+/// ## Example
+///
+/// ```gleam
+/// tempo.local_time_difference_from(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "4 hours and 42 minutes"
+/// ```
+@internal
+pub fn local_time_difference_from(from start: Time) -> Duration {
+  now() |> instant_as_utc_time |> time_difference(from: start)
+}
+
+/// Gets the time since the provided time relative to the current UTC system time.
+/// A duration of 0 will be returned if the time is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_time_since(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "42 minutes"
+/// ```
+@internal
+pub fn utc_time_since(start start: Time) -> Duration {
+  case utc_time_difference_from(from: start) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+/// Gets the time since the provided time relative to the current local system 
+/// time. A duration of 0 will be returned if the time is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_time_since(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "4 hours and 42 minutes"
+/// ```
+@internal
+pub fn local_time_since(start start: Time) -> Duration {
+  case local_time_difference_from(from: start) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+/// Gets the time until the provided time relative to the current UTC system time.
+/// A duration of 0 will be returned if the time in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_time_until(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "none"
+/// ```
+@internal
+pub fn utc_time_until(end end: Time) -> Duration {
+  case now() |> instant_as_utc_time |> time_difference(to: end) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+/// Gets the time until the provided time relative to the current local system 
+/// time. A duration of 0 will be returned if the time in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_time_until(time.literal("13:42:11"))
+/// |> duration.format
+/// // -> "4 hours and 42 minutes"
+/// ```
+@internal
+pub fn local_time_until(end end: Time) -> Duration {
+  case now() |> instant_as_local_time |> time_difference(to: end) {
+    Duration(diff) if diff > 0 -> Duration(diff)
+    _ -> Duration(0)
+  }
+}
+
+/// Gets the difference between the current UTC system date and the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_date_difference_from(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
+@internal
+pub fn utc_date_difference_from(from start: Date) -> Int {
+  now() |> instant_as_utc_date |> date_days_apart(from: start)
+}
+
+/// Gets the difference between the current local system date and the provided date.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_date_difference_from(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
+@internal
+pub fn local_date_difference_from(from start: Date) -> Int {
+  now() |> instant_as_local_date |> date_days_apart(from: start)
+}
+
+/// Gets the number of days since the provided date relative to the current UTC 
+/// system date. A value of 0 will be returned if the date is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_days_since(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
+@internal
+pub fn utc_days_since(start start: Date) -> Int {
+  case utc_date_difference_from(from: start) {
+    diff if diff > 0 -> diff
+    _ -> 0
+  }
+}
+
+/// Gets the number of days since the provided date relative to the current local 
+/// system date. A value of 0 will be returned if the date is in the future.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_days_since(date.literal("2024-10-26"))
+/// // -> 54
+/// ```
+@internal
+pub fn local_days_since(start start: Date) -> Int {
+  case local_date_difference_from(from: start) {
+    diff if diff > 0 -> diff
+    _ -> 0
+  }
+}
+
+/// Gets the number of days until the provided date relative to the current UTC 
+/// system date. A value of 0 will be returned if the date is in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.utc_days_until(date.literal("2024-10-26"))
+/// // -> 0
+/// ```
+@internal
+pub fn utc_days_until(end end: Date) -> Int {
+  case now() |> instant_as_utc_date |> date_days_apart(to: end) {
+    diff if diff > 0 -> diff
+    _ -> 0
+  }
+}
+
+/// Gets the number of days until the provided date relative to the current local 
+/// system date. A value of 0 will be returned if the date is in the past.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.local_days_until(date.literal("2025-10-26"))
+/// // -> 365
+/// ```
+@internal
+pub fn local_days_until(end end: Date) -> Int {
+  case now() |> instant_as_local_date |> date_days_apart(to: end) {
+    diff if diff > 0 -> diff
+    _ -> 0
+  }
+}
+
+// -------------------------------------------------------------------------- //
+//                             Instant Logic                                  //
+// -------------------------------------------------------------------------- //
+
+/// A monotonic type that reperesents a unique point in time on the host system. 
+/// It can be converted to all other date time types, but cannot be serialized
+/// itself. An instant constructed on one host has no meaningful purpose on
+/// another host.
+pub opaque type Instant {
+  Instant(
+    timestamp_utc_us: Int,
+    offset_local_us: Int,
+    monotonic_us: Int,
+    unique: Int,
+  )
+}
+
+@internal
+pub fn instant_as_utc_datetime(instant: Instant) -> DateTime {
+  DateTime(
+    date: instant_as_utc_date(instant),
+    time: instant_as_utc_time(instant),
+    offset: utc,
+  )
+}
+
+@internal
+pub fn instant_as_local_datetime(instant: Instant) -> DateTime {
+  DateTime(
+    date: instant_as_local_date(instant),
+    time: instant_as_local_time(instant),
+    offset: Offset(instant.offset_local_us / 60_000_000),
+  )
+}
+
+@internal
+pub fn instant_as_unix_utc(instant: Instant) -> Int {
+  instant.offset_local_us / 1_000_000
+}
+
+@internal
+pub fn instant_as_unix_milli_utc(instant: Instant) -> Int {
+  instant.offset_local_us / 1000
+}
+
+@internal
+pub fn instant_to_utc_string(instant: Instant) -> String {
+  instant |> instant_as_utc_datetime |> datetime_to_string
+}
+
+@internal
+pub fn instant_to_local_string(instant: Instant) -> String {
+  instant |> instant_as_local_datetime |> datetime_to_string
+}
+
+@internal
+pub fn instant_as_utc_date(instant: Instant) -> Date {
+  date_from_unix_seconds(instant.timestamp_utc_us / 1_000_000)
+}
+
+@internal
+pub fn instant_as_local_date(instant: Instant) -> Date {
+  date_from_unix_seconds(
+    { instant.timestamp_utc_us + instant.offset_local_us } / 1_000_000,
+  )
+}
+
+@internal
+pub fn instant_as_utc_time(instant: Instant) -> Time {
+  time_from_unix_micro(instant.timestamp_utc_us)
+}
+
+@internal
+pub fn instant_as_local_time(instant: Instant) -> Time {
+  time_from_unix_micro(instant.timestamp_utc_us + instant.offset_local_us)
+}
+
+@internal
+pub fn instant_compare(a: Instant, b: Instant) -> order.Order {
+  int.compare(a.unique, b.unique)
+}
+
+@internal
+pub fn instant_is_earlier(a: Instant, than b: Instant) {
+  instant_compare(a, b) == order.Lt
+}
+
+@internal
+pub fn instant_is_earlier_or_equal(a: Instant, to b: Instant) {
+  instant_compare(a, b) == order.Lt || instant_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn instant_is_equal(a: Instant, to b: Instant) {
+  instant_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn instant_is_later(a: Instant, than b: Instant) {
+  instant_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn instant_is_later_or_equal(a: Instant, to b: Instant) {
+  instant_compare(a, b) == order.Gt || instant_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn instant_difference(from a: Instant, to b: Instant) -> Duration {
+  Duration(b.monotonic_us - a.monotonic_us)
+}
 
 // -------------------------------------------------------------------------- //
 //                            DateTime Logic                                  //
@@ -32,14 +895,14 @@ import gtempo/internal as unit
 /// A datetime value with a timezone offset associated with it. It has the 
 /// most amount of information about a point in time, and can be compared to 
 /// all other types in this package by getting its lesser parts.
-pub opaque type DateTime {
-  DateTime(naive: NaiveDateTime, offset: Offset)
-  LocalDateTime(naive: NaiveDateTime, offset: Offset, tz: TimeZoneProvider)
+pub type DateTime {
+  DateTime(date: Date, time: Time, offset: Offset)
+  LocalDateTime(date: Date, time: Time, offset: Offset, tz: TimeZoneProvider)
 }
 
 /// A type for external packages to provide so that datetimes can be converted
 /// between timezones. The package `gtz` was created to provide this and must
-/// be installed separately.
+/// be added as a project dependency separately.
 pub type TimeZoneProvider {
   TimeZoneProvider(
     get_name: fn() -> String,
@@ -48,13 +911,13 @@ pub type TimeZoneProvider {
 }
 
 @internal
-pub fn datetime(naive naive, offset offset) {
-  DateTime(naive, offset)
+pub fn datetime(date date, time time, offset offset) {
+  DateTime(date, time, offset)
 }
 
 @internal
 pub fn datetime_get_naive(datetime: DateTime) {
-  datetime.naive
+  NaiveDateTime(datetime.date, datetime.time)
 }
 
 @internal
@@ -88,15 +951,90 @@ pub fn datetime_to_tz(datetime: DateTime, tz: TimeZoneProvider) {
     datetime_to_offset(utc_dt |> naive_datetime_set_offset(utc), offset)
     |> datetime_drop_offset
 
-  LocalDateTime(naive:, offset:, tz:)
+  LocalDateTime(date: naive.date, time: naive.time, offset:, tz:)
 }
 
 @internal
 pub fn datetime_get_tz(datetime: DateTime) -> option.Option(String) {
   case datetime {
-    DateTime(_, _) -> None
-    LocalDateTime(_, _, tz:) -> Some(tz.get_name())
+    DateTime(..) -> None
+    LocalDateTime(_, _, _, tz:) -> Some(tz.get_name())
   }
+}
+
+@internal
+pub fn datetime_to_string(datetime: DateTime) -> String {
+  NaiveDateTime(date: datetime.date, time: datetime.time)
+  |> naive_datetime_to_string
+  <> case datetime.offset.minutes {
+    0 -> "Z"
+    _ -> datetime.offset |> offset_to_string
+  }
+}
+
+@deprecated("Use `datetime.to_string` instead")
+@internal
+pub fn datetime_serialize(datetime: DateTime) -> String {
+  let d = datetime.date
+  let t = datetime.time
+  let o = datetime.offset
+
+  string_tree.from_strings([
+    d.year |> int.to_string |> string.pad_start(4, with: "0"),
+    d.month
+      |> month_to_int
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    d.day |> int.to_string |> string.pad_start(2, with: "0"),
+    "T",
+    t.hour |> int.to_string |> string.pad_start(2, with: "0"),
+    t.minute |> int.to_string |> string.pad_start(2, with: "0"),
+    t.second |> int.to_string |> string.pad_start(2, with: "0"),
+    ".",
+    t.microsecond |> int.to_string |> string.pad_start(6, with: "0"),
+    case o |> offset_get_minutes {
+      0 -> "Z"
+      _ -> {
+        let str_offset = o |> offset_to_string
+
+        case str_offset |> string.split(":") {
+          [hours, "00"] -> hours
+          _ -> str_offset
+        }
+      }
+    },
+  ])
+  |> string_tree.to_string
+}
+
+@internal
+pub fn datetime_format(datetime: DateTime, in format: DateTimeFormat) -> String {
+  let format_str = get_datetime_format_str(format)
+
+  let assert Ok(re) = regexp.from_string(format_regex)
+
+  regexp.scan(re, format_str)
+  |> list.reverse
+  |> list.fold(from: [], with: fn(acc, match) {
+    case match {
+      regexp.Match(content, []) -> [
+        content
+          |> date_replace_format(datetime.date)
+          |> time_replace_format(datetime.time)
+          |> offset_replace_format(datetime.offset),
+        ..acc
+      ]
+
+      // If there is a non-empty subpattern, then the escape 
+      // character "[ ... ]" matched, so we should not change anything here.
+      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
+
+      // This case is not expected, not really sure what to do with it 
+      // so just prepend whatever was found
+      regexp.Match(content, _) -> [content, ..acc]
+    }
+  })
+  |> string.join("")
 }
 
 @internal
@@ -116,8 +1054,26 @@ pub fn datetime_is_earlier_or_equal(a: DateTime, to b: DateTime) -> Bool {
 }
 
 @internal
+pub fn datetime_is_equal(a: DateTime, to b: DateTime) -> Bool {
+  datetime_compare(a, b) == order.Eq
+}
+
+@internal
 pub fn datetime_is_later_or_equal(a: DateTime, to b: DateTime) -> Bool {
   datetime_compare(a, b) == order.Gt || datetime_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn datetime_is_later(a: DateTime, than b: DateTime) -> Bool {
+  datetime_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn datetime_difference(from a: DateTime, to b: DateTime) -> Duration {
+  naive_datetime_difference(
+    from: datetime_apply_offset(a),
+    to: datetime_apply_offset(b),
+  )
 }
 
 @internal
@@ -129,19 +1085,12 @@ pub fn datetime_apply_offset(datetime: DateTime) -> NaiveDateTime {
 
   // Applying an offset does not change the abosolute time value, so we need
   // to preserve the monotonic and unique values.zzzz
-  NaiveDateTime(
-    date: applied.date,
-    time: Time(
-      ..{ applied.time },
-      monotonic: datetime.naive.time.monotonic,
-      unique: datetime.naive.time.unique,
-    ),
-  )
+  NaiveDateTime(date: applied.date, time: applied.time)
 }
 
 @internal
 pub fn datetime_drop_offset(datetime: DateTime) -> NaiveDateTime {
-  datetime.naive
+  NaiveDateTime(date: datetime.date, time: datetime.time)
 }
 
 @internal
@@ -150,23 +1099,28 @@ pub fn datetime_add(
   duration duration_to_add: Duration,
 ) -> DateTime {
   case datetime {
-    DateTime(naive:, offset:) ->
-      DateTime(
-        naive: naive_datetime_add(naive, duration: duration_to_add),
-        offset:,
-      )
-    LocalDateTime(_, _, tz:) -> {
+    DateTime(date:, time:, offset:) -> {
+      let NaiveDateTime(date: new_date, time: new_time) =
+        naive_datetime_add(
+          NaiveDateTime(date:, time:),
+          duration: duration_to_add,
+        )
+
+      DateTime(date: new_date, time: new_time, offset:)
+    }
+
+    LocalDateTime(_, _, _, tz:) -> {
       let utc_dt_added =
         datetime_to_utc(datetime)
         |> datetime_add(duration: duration_to_add)
 
       let offset = utc_dt_added |> datetime_drop_offset |> tz.calculate_offset
 
-      let naive =
+      let NaiveDateTime(date:, time:) =
         datetime_to_offset(utc_dt_added, offset)
         |> datetime_drop_offset
 
-      LocalDateTime(naive:, offset:, tz:)
+      LocalDateTime(date:, time:, offset:, tz:)
     }
   }
 }
@@ -177,23 +1131,27 @@ pub fn datetime_subtract(
   duration duration_to_subtract: Duration,
 ) -> DateTime {
   case datetime {
-    DateTime(naive:, offset:) ->
-      DateTime(
-        naive: naive_datetime_subtract(naive, duration: duration_to_subtract),
-        offset:,
-      )
-    LocalDateTime(_, _, tz:) -> {
+    DateTime(date:, time:, offset:) -> {
+      let NaiveDateTime(date: new_date, time: new_time) =
+        naive_datetime_subtract(
+          NaiveDateTime(date:, time:),
+          duration: duration_to_subtract,
+        )
+
+      DateTime(date: new_date, time: new_time, offset:)
+    }
+    LocalDateTime(_, _, _, tz:) -> {
       let utc_dt_sub =
         datetime_to_utc(datetime)
         |> datetime_subtract(duration: duration_to_subtract)
 
       let offset = utc_dt_sub |> datetime_drop_offset |> tz.calculate_offset
 
-      let naive =
+      let NaiveDateTime(date:, time:) =
         datetime_to_offset(utc_dt_sub, offset)
         |> datetime_drop_offset
 
-      LocalDateTime(naive:, offset:, tz:)
+      LocalDateTime(date:, time:, offset:, tz:)
     }
   }
 }
@@ -202,10 +1160,10 @@ pub fn datetime_subtract(
 //                         Naive DateTime Logic                               //
 // -------------------------------------------------------------------------- //
 
-/// A datetime value that does not have a timezone offset associated with it. 
+/// A datetime value that does not have a timezone or offset associated with it. 
 /// It cannot be compared to datetimes with a timezone offset accurately, but
 /// can be compared to dates, times, and other naive datetimes.
-pub opaque type NaiveDateTime {
+pub type NaiveDateTime {
   NaiveDateTime(date: Date, time: Time)
 }
 
@@ -226,10 +1184,19 @@ pub fn naive_datetime_get_time(naive_datetime: NaiveDateTime) -> Time {
 
 @internal
 pub fn naive_datetime_set_offset(
-  datetime: NaiveDateTime,
+  naive: NaiveDateTime,
   offset: Offset,
 ) -> DateTime {
-  DateTime(naive: datetime, offset: offset)
+  DateTime(date: naive.date, time: naive.time, offset: offset)
+}
+
+@internal
+pub fn naive_datetime_to_string(datetime: NaiveDateTime) -> String {
+  datetime.date
+  |> date_to_string
+  <> "T"
+  <> datetime.time
+  |> time_to_string
 }
 
 @internal
@@ -284,7 +1251,7 @@ pub fn naive_datetime_add(
   // Positive date overflows are only handled in this function, while negative
   // date overflows are only handled in the subtract function -- so if the 
   // duration is negative, we can just subtract the absolute value of it.
-  use <- bool.lazy_guard(when: duration_to_add.nanoseconds < 0, return: fn() {
+  use <- bool.lazy_guard(when: duration_to_add.microseconds < 0, return: fn() {
     datetime |> naive_datetime_subtract(duration_absolute(duration_to_add))
   })
 
@@ -292,23 +1259,26 @@ pub fn naive_datetime_add(
   let time_to_add: Duration =
     duration_decrease(duration_to_add, by: duration_days(days_to_add))
 
-  let new_time_as_ns =
+  let new_time_as_micro =
     datetime.time
     |> time_to_duration
     |> duration_increase(by: time_to_add)
-    |> duration_as_nanoseconds
+    |> duration_as_microseconds
 
   // If the time to add crossed a day boundary, add an extra day to the 
   // number of days to add and adjust the time to add.
-  let #(new_time_as_ns, days_to_add): #(Int, Int) = case
-    new_time_as_ns >= unit.imprecise_day_nanoseconds
+  let #(new_time_as_micro, days_to_add): #(Int, Int) = case
+    new_time_as_micro >= unit.imprecise_day_microseconds
   {
-    True -> #(new_time_as_ns - unit.imprecise_day_nanoseconds, days_to_add + 1)
-    False -> #(new_time_as_ns, days_to_add)
+    True -> #(
+      new_time_as_micro - unit.imprecise_day_microseconds,
+      days_to_add + 1,
+    )
+    False -> #(new_time_as_micro, days_to_add)
   }
 
   let time_to_add =
-    Duration(new_time_as_ns - time_to_nanoseconds(datetime.time))
+    Duration(new_time_as_micro - time_to_microseconds(datetime.time))
 
   let new_date = datetime.date |> date_add(days: days_to_add)
   let new_time = datetime.time |> time_add(duration: time_to_add)
@@ -325,7 +1295,7 @@ pub fn naive_datetime_subtract(
   // date overflows are only handled in the add function -- so if the 
   // duration is negative, we can just add the absolute value of it.
   use <- bool.lazy_guard(
-    when: duration_to_subtract.nanoseconds < 0,
+    when: duration_to_subtract.microseconds < 0,
     return: fn() {
       datetime |> naive_datetime_add(duration_absolute(duration_to_subtract))
     },
@@ -335,21 +1305,24 @@ pub fn naive_datetime_subtract(
   let time_to_sub: Duration =
     duration_decrease(duration_to_subtract, by: duration_days(days_to_sub))
 
-  let new_time_as_ns =
+  let new_time_as_micro =
     datetime.time
     |> time_to_duration
     |> duration_decrease(by: time_to_sub)
-    |> duration_as_nanoseconds
+    |> duration_as_microseconds
 
   // If the time to subtract crossed a day boundary, add an extra day to the 
   // number of days to subtract and adjust the time to subtract.
-  let #(new_time_as_ns, days_to_sub) = case new_time_as_ns < 0 {
-    True -> #(new_time_as_ns + unit.imprecise_day_nanoseconds, days_to_sub + 1)
-    False -> #(new_time_as_ns, days_to_sub)
+  let #(new_time_as_micro, days_to_sub) = case new_time_as_micro < 0 {
+    True -> #(
+      new_time_as_micro + unit.imprecise_day_microseconds,
+      days_to_sub + 1,
+    )
+    False -> #(new_time_as_micro, days_to_sub)
   }
 
   let time_to_sub =
-    Duration(time_to_nanoseconds(datetime.time) - new_time_as_ns)
+    Duration(time_to_microseconds(datetime.time) - new_time_as_micro)
 
   // Using the proper subtract functions here to modify the date and time
   // values instead of declaring a new date is important for perserving date 
@@ -368,7 +1341,7 @@ pub fn naive_datetime_subtract(
 //                             Offset Logic                                   //
 // -------------------------------------------------------------------------- //
 
-/// A timezone offset value. It represents the difference between UTC and the
+/// A datetime offset value. It represents the difference between UTC and the
 /// datetime value it is associated with.
 pub opaque type Offset {
   Offset(minutes: Int)
@@ -384,7 +1357,7 @@ pub fn offset_get_minutes(offset: Offset) {
   offset.minutes
 }
 
-/// The Tempo representation of the UTC offset.
+@internal
 pub const utc = Offset(0)
 
 @internal
@@ -393,8 +1366,10 @@ pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Nil) {
 }
 
 @internal
-pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
-  use offset <- result.try(case offset {
+pub fn offset_from_string(
+  offset_str: String,
+) -> Result(Offset, tempo_error.OffsetParseError) {
+  use offset <- result.try(case offset_str {
     // Parse Z format
     "Z" -> Ok(utc)
     "z" -> Ok(utc)
@@ -402,7 +1377,7 @@ pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
     // Parse +-hh:mm format
     _ -> {
       use #(sign, hour, minute): #(String, String, String) <- result.try(case
-        string.split(offset, ":")
+        string.split(offset_str, ":")
       {
         [hour, minute] ->
           case string.length(hour), string.length(minute) {
@@ -412,30 +1387,30 @@ pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
                 string.slice(hour, at_index: 1, length: 2),
                 minute,
               ))
-            _, _ -> Error(OffsetInvalidFormat("Invalid hour or minute length"))
+            _, _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
           }
         _ ->
           // Parse +-hhmm format, +-hh format, or +-h format
-          case string.length(offset) {
+          case string.length(offset_str) {
             5 ->
               Ok(#(
-                string.slice(offset, at_index: 0, length: 1),
-                string.slice(offset, at_index: 1, length: 2),
-                string.slice(offset, at_index: 3, length: 2),
+                string.slice(offset_str, at_index: 0, length: 1),
+                string.slice(offset_str, at_index: 1, length: 2),
+                string.slice(offset_str, at_index: 3, length: 2),
               ))
             3 ->
               Ok(#(
-                string.slice(offset, at_index: 0, length: 1),
-                string.slice(offset, at_index: 1, length: 2),
+                string.slice(offset_str, at_index: 0, length: 1),
+                string.slice(offset_str, at_index: 1, length: 2),
                 "0",
               ))
             2 ->
               Ok(#(
-                string.slice(offset, at_index: 0, length: 1),
-                string.slice(offset, at_index: 1, length: 1),
+                string.slice(offset_str, at_index: 0, length: 1),
+                string.slice(offset_str, at_index: 1, length: 1),
                 "0",
               ))
-            _ -> Error(OffsetInvalidFormat("Invalid offset length"))
+            _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
           }
       })
 
@@ -445,12 +1420,43 @@ pub fn offset_from_string(offset: String) -> Result(Offset, OffsetParseError) {
           Ok(Offset(-{ hour * 60 + minute }))
         "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
           Ok(Offset(hour * 60 + minute))
-        _, _, _ ->
-          Error(OffsetInvalidFormat("Invalid sign or non-integer value"))
+        _, _, _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
       }
     }
   })
-  validate_offset(offset) |> result.replace_error(OffsetOutOfBounds)
+  validate_offset(offset)
+  |> result.replace_error(tempo_error.OffsetOutOfBounds(offset_str))
+}
+
+@internal
+pub fn offset_to_string(offset: Offset) -> String {
+  let #(is_negative, hours) = case offset_get_minutes(offset) / 60 {
+    h if h <= 0 -> #(True, -h)
+    h -> #(False, h)
+  }
+
+  let mins = case offset_get_minutes(offset) % 60 {
+    m if m < 0 -> -m
+    m -> m
+  }
+
+  case is_negative, hours, mins {
+    _, 0, 0 -> "-00:00"
+
+    _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_start(2, with: "0")
+
+    True, h, m ->
+      "-"
+      <> int.to_string(h) |> string.pad_start(2, with: "0")
+      <> ":"
+      <> int.to_string(m) |> string.pad_start(2, with: "0")
+
+    False, h, m ->
+      "+"
+      <> int.to_string(h) |> string.pad_start(2, with: "0")
+      <> ":"
+      <> int.to_string(m) |> string.pad_start(2, with: "0")
+  }
 }
 
 @internal
@@ -464,7 +1470,30 @@ pub fn validate_offset(offset: Offset) -> Result(Offset, Nil) {
 
 @internal
 pub fn offset_to_duration(offset: Offset) -> Duration {
-  -offset.minutes * 60_000_000_000 |> Duration
+  -offset.minutes * 60_000_000 |> Duration
+}
+
+fn offset_replace_format(content: String, offset: Offset) -> String {
+  case content {
+    "z" ->
+      case offset.minutes {
+        0 -> "Z"
+        _ -> {
+          let str_offset = offset |> offset_to_string
+
+          case str_offset |> string.split(":") {
+            [hours, "00"] -> hours
+            _ -> str_offset
+          }
+        }
+      }
+    "Z" -> offset |> offset_to_string
+    "ZZ" ->
+      offset
+      |> offset_to_string
+      |> string.replace(":", "")
+    _ -> content
+  }
 }
 
 // -------------------------------------------------------------------------- //
@@ -493,6 +1522,11 @@ pub fn date_get_month(date: Date) {
 }
 
 @internal
+pub fn date_get_month_year(date: Date) {
+  MonthYear(date.month, date.year)
+}
+
+@internal
 pub fn date_get_day(date: Date) {
   date.day
 }
@@ -502,30 +1536,252 @@ pub fn new_date(
   year year: Int,
   month month: Int,
   day day: Int,
-) -> Result(Date, DateOutOfBoundsError) {
+) -> Result(Date, tempo_error.DateOutOfBoundsError) {
   date_from_tuple(#(year, month, day))
+}
+
+@internal
+pub fn date_to_string(date: Date) -> String {
+  string_tree.from_strings([
+    int.to_string(date.year),
+    "-",
+    month_to_int(date.month)
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    "-",
+    int.to_string(date.day) |> string.pad_start(2, with: "0"),
+  ])
+  |> string_tree.to_string
+}
+
+@internal
+pub fn date_replace_format(content: String, date: Date) -> String {
+  case content {
+    "YY" ->
+      date.year
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 2)
+      |> string.slice(at_index: -2, length: 2)
+    "YYYY" ->
+      date.year
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 4)
+    "M" ->
+      date.month
+      |> month_to_int
+      |> int.to_string
+    "MM" ->
+      date.month
+      |> month_to_int
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 2)
+    "MMM" ->
+      date.month
+      |> month_to_short_string
+    "MMMM" ->
+      date.month
+      |> month_to_long_string
+    "D" ->
+      date.day
+      |> int.to_string
+    "DD" ->
+      date.day
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 2)
+    "d" ->
+      date
+      |> date_to_day_of_week_number
+      |> int.to_string
+    "dd" ->
+      date
+      |> date_to_day_of_week_short
+      |> string.slice(at_index: 0, length: 2)
+    "ddd" -> date |> date_to_day_of_week_short
+    "dddd" -> date |> date_to_day_of_week_long
+    _ -> content
+  }
+}
+
+fn date_to_day_of_week_short(date: Date) -> String {
+  case date_to_day_of_week_number(date) {
+    0 -> "Sun"
+    1 -> "Mon"
+    2 -> "Tue"
+    3 -> "Wed"
+    4 -> "Thu"
+    5 -> "Fri"
+    6 -> "Sat"
+    _ -> panic as "Invalid day of week found after modulo by 7"
+  }
+}
+
+fn date_to_day_of_week_long(date: Date) -> String {
+  case date_to_day_of_week_number(date) {
+    0 -> "Sunday"
+    1 -> "Monday"
+    2 -> "Tuesday"
+    3 -> "Wednesday"
+    4 -> "Thursday"
+    5 -> "Friday"
+    6 -> "Saturday"
+    _ -> panic as "Invalid day of week found after modulo by 7"
+  }
+}
+
+@internal
+pub fn date_to_day_of_week_number(date: Date) -> Int {
+  let year_code =
+    date.year % 100
+    |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
+
+  let month_code = case date.month {
+    Jan -> 0
+    Feb -> 3
+    Mar -> 3
+    Apr -> 6
+    May -> 1
+    Jun -> 4
+    Jul -> 6
+    Aug -> 2
+    Sep -> 5
+    Oct -> 0
+    Nov -> 3
+    Dec -> 5
+  }
+
+  let century_code = case date.year {
+    year if year < 1752 -> 0
+    year if year < 1800 -> 4
+    year if year < 1900 -> 2
+    year if year < 2000 -> 0
+    year if year < 2100 -> 6
+    year if year < 2200 -> 4
+    year if year < 2300 -> 2
+    year if year < 2400 -> 4
+    _ -> 0
+  }
+
+  let leap_year_code = case is_leap_year(date.year) {
+    True ->
+      case date.month {
+        Jan | Feb -> 1
+        _ -> 0
+      }
+    False -> 0
+  }
+
+  { year_code + month_code + century_code + date.day - leap_year_code } % 7
 }
 
 @internal
 pub fn date_from_tuple(
   date: #(Int, Int, Int),
-) -> Result(Date, DateOutOfBoundsError) {
+) -> Result(Date, tempo_error.DateOutOfBoundsError) {
   let year = date.0
   let month = date.1
   let day = date.2
 
   use month <- result.try(
-    month_from_int(month) |> result.replace_error(DateMonthOutOfBounds),
+    month_from_int(month)
+    |> result.replace_error(
+      tempo_error.DateMonthOutOfBounds(int.to_string(month)),
+    ),
   )
 
   case year >= 1000 && year <= 9999 {
     True ->
       case day >= 1 && day <= month_days_of(month, in: year) {
         True -> Ok(Date(year, month, day))
-        False -> Error(DateDayOutOfBounds)
+        False ->
+          Error(tempo_error.DateDayOutOfBounds(
+            month_to_short_string(month) <> " " <> int.to_string(day),
+          ))
       }
-    False -> Error(DateYearOutOfBounds)
+    False -> Error(tempo_error.DateYearOutOfBounds(int.to_string(year)))
   }
+}
+
+@internal
+pub fn date_from_unix_seconds(unix_ts: Int) -> Date {
+  let z = unix_ts / 86_400 + 719_468
+  let era =
+    case z >= 0 {
+      True -> z
+      False -> z - 146_096
+    }
+    / 146_097
+  let doe = z - era * 146_097
+  let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
+  let y = yoe + era * 400
+  let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
+  let mp = { 5 * doy + 2 } / 153
+  let d = doy - { 153 * mp + 2 } / 5 + 1
+  let m =
+    mp
+    + case mp < 10 {
+      True -> 3
+      False -> -9
+    }
+  let y = case m <= 2 {
+    True -> y + 1
+    False -> y
+  }
+
+  let assert Ok(month) = month_from_int(m)
+
+  Date(y, month, d)
+}
+
+@internal
+pub fn date_to_unix_seconds(date: Date) -> Int {
+  let full_years_since_epoch = date_get_year(date) - 1970
+  // Offset the year by one to cacluate the number of leap years since the
+  // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
+  // so when the date is 1972, the elpased leap years (1972 has not elapsed
+  // yet) is equal to (2 + 1) / 4, which is 0. When the date is 1973, the
+  // elapsed leap years is equal to (3 + 1) / 4, which is 1, because one leap
+  // year, 1972, has fully elapsed.
+  let full_elapsed_leap_years_since_epoch = { full_years_since_epoch + 1 } / 4
+  let full_elapsed_non_leap_years_since_epoch =
+    full_years_since_epoch - full_elapsed_leap_years_since_epoch
+
+  let year_sec =
+    { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
+    + { full_elapsed_leap_years_since_epoch * 31_622_400 }
+
+  let feb_milli = case is_leap_year(date |> date_get_year) {
+    True -> 2_505_600
+    False -> 2_419_200
+  }
+
+  let month_sec = case date |> date_get_month {
+    Jan -> 0
+    Feb -> 2_678_400
+    Mar -> 2_678_400 + feb_milli
+    Apr -> 5_356_800 + feb_milli
+    May -> 7_948_800 + feb_milli
+    Jun -> 10_627_200 + feb_milli
+    Jul -> 13_219_200 + feb_milli
+    Aug -> 15_897_600 + feb_milli
+    Sep -> 18_576_000 + feb_milli
+    Oct -> 21_168_000 + feb_milli
+    Nov -> 23_846_400 + feb_milli
+    Dec -> 26_438_400 + feb_milli
+  }
+
+  let day_sec = { date_get_day(date) - 1 } * 86_400
+
+  year_sec + month_sec + day_sec
+}
+
+@internal
+pub fn date_from_unix_micro(unix_ts: Int) -> Date {
+  date_from_unix_seconds(unix_ts / 1_000_000)
+}
+
+@internal
+pub fn date_to_unix_micro(date: Date) -> Int {
+  date_to_unix_seconds(date) * 1_000_000
 }
 
 @internal
@@ -535,13 +1791,11 @@ pub fn date_add(date: Date, days days: Int) -> Date {
   case days <= days_left_this_month {
     True -> Date(date.year, date.month, { date.day } + days)
     False -> {
-      let next_month = month_next(date.month)
-      let year = case next_month == Jan {
-        True -> { date.year } + 1
-        False -> date.year
-      }
-
-      date_add(Date(year, next_month, 1), days - days_left_this_month - 1)
+      let next_month = month_year_next(date |> date_get_month_year)
+      date_add(
+        Date(next_month.year, next_month.month, 1),
+        days - days_left_this_month - 1,
+      )
     }
   }
 }
@@ -551,14 +1805,14 @@ pub fn date_subtract(date: Date, days days: Int) -> Date {
   case days < date.day {
     True -> Date(date.year, date.month, { date.day } - days)
     False -> {
-      let prior_month = month_prior(date.month)
-      let year = case prior_month == Dec {
-        True -> { date.year } - 1
-        False -> date.year
-      }
+      let prior_month = month_year_prior(date |> date_get_month_year)
 
       date_subtract(
-        Date(year, prior_month, month_days_of(prior_month, in: year)),
+        Date(
+          prior_month.year,
+          prior_month.month,
+          month_year_days_of(prior_month),
+        ),
         days - date_get_day(date),
       )
     }
@@ -633,8 +1887,8 @@ fn exclusive_months_between_days(from: Date, to: Date) {
   case to.year == from.year {
     True ->
       list.range(
-        month_to_int(from |> date_get_month |> month_next),
-        month_to_int(to |> date_get_month |> month_prior),
+        month_to_int({ from |> date_get_month_year |> month_year_next }.month),
+        month_to_int({ to |> date_get_month_year |> month_year_prior }.month),
       )
       |> list.map(fn(m) {
         let assert Ok(m) = month_from_int(m)
@@ -644,7 +1898,12 @@ fn exclusive_months_between_days(from: Date, to: Date) {
       case to |> date_get_month == Jan {
         True -> []
         False ->
-          list.range(1, month_to_int(to |> date_get_month |> month_prior))
+          list.range(
+            1,
+            month_to_int(
+              { to |> date_get_month_year |> month_year_prior }.month,
+            ),
+          )
       }
       |> list.map(fn(m) {
         let assert Ok(m) = month_from_int(m)
@@ -654,7 +1913,12 @@ fn exclusive_months_between_days(from: Date, to: Date) {
         case from |> date_get_month == Dec {
           True -> []
           False ->
-            list.range(month_to_int(from |> date_get_month |> month_next), 12)
+            list.range(
+              month_to_int(
+                { from |> date_get_month_year |> month_year_next }.month,
+              ),
+              12,
+            )
         }
         |> list.map(fn(m) {
           let assert Ok(m) = month_from_int(m)
@@ -692,18 +1956,33 @@ pub fn date_compare(a: Date, to b: Date) -> order.Order {
 }
 
 @internal
+pub fn date_is_earlier(a: Date, than b: Date) -> Bool {
+  date_compare(a, b) == order.Lt
+}
+
+@internal
 pub fn date_is_earlier_or_equal(a: Date, to b: Date) -> Bool {
   date_compare(a, b) == order.Lt || date_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn date_is_equal(a: Date, to b: Date) -> Bool {
+  date_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn date_is_later(a: Date, than b: Date) -> Bool {
+  date_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn date_is_later_or_equal(a: Date, to b: Date) -> Bool {
+  date_compare(a, b) == order.Gt || date_compare(a, b) == order.Eq
 }
 
 // -------------------------------------------------------------------------- //
 //                              Month Logic                                   //
 // -------------------------------------------------------------------------- //
-
-/// A month in a specific year.
-pub type MonthYear {
-  MonthYear(month: Month, year: Int)
-}
 
 /// A specific month on the civil calendar. 
 pub type Month {
@@ -721,7 +2000,7 @@ pub type Month {
   Dec
 }
 
-/// An ordered list of all months in the year.
+@internal
 pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
 
 @internal
@@ -800,13 +2079,99 @@ pub fn month_to_int(month: Month) -> Int {
 }
 
 @internal
+pub fn month_to_short_string(month: Month) -> String {
+  case month {
+    Jan -> "Jan"
+    Feb -> "Feb"
+    Mar -> "Mar"
+    Apr -> "Apr"
+    May -> "May"
+    Jun -> "Jun"
+    Jul -> "Jul"
+    Aug -> "Aug"
+    Sep -> "Sep"
+    Oct -> "Oct"
+    Nov -> "Nov"
+    Dec -> "Dec"
+  }
+}
+
+@internal
+pub fn month_to_long_string(month: Month) -> String {
+  case month {
+    Jan -> "January"
+    Feb -> "February"
+    Mar -> "March"
+    Apr -> "April"
+    May -> "May"
+    Jun -> "June"
+    Jul -> "July"
+    Aug -> "August"
+    Sep -> "September"
+    Oct -> "October"
+    Nov -> "November"
+    Dec -> "December"
+  }
+}
+
+@internal
+pub fn month_days_of(month: Month, in year: Int) -> Int {
+  month_year_days_of(MonthYear(month, year))
+}
+
+// -------------------------------------------------------------------------- //
+//                             Month Year Logic                               //
+// -------------------------------------------------------------------------- //
+
+/// A month in a specific year.
+pub type MonthYear {
+  MonthYear(month: Month, year: Int)
+}
+
+@internal
 pub fn month_year_to_int(month_year: MonthYear) -> Int {
   month_year.year * 100 + month_to_int(month_year.month)
 }
 
 @internal
-pub fn month_days_of(month: Month, in year: Int) -> Int {
-  case month {
+pub fn month_year_prior(month_year: MonthYear) -> MonthYear {
+  case month_year.month {
+    Jan -> MonthYear(Dec, month_year.year - 1)
+    Feb -> MonthYear(Jan, month_year.year)
+    Mar -> MonthYear(Feb, month_year.year)
+    Apr -> MonthYear(Mar, month_year.year)
+    May -> MonthYear(Apr, month_year.year)
+    Jun -> MonthYear(May, month_year.year)
+    Jul -> MonthYear(Jun, month_year.year)
+    Aug -> MonthYear(Jul, month_year.year)
+    Sep -> MonthYear(Aug, month_year.year)
+    Oct -> MonthYear(Sep, month_year.year)
+    Nov -> MonthYear(Oct, month_year.year)
+    Dec -> MonthYear(Nov, month_year.year)
+  }
+}
+
+@internal
+pub fn month_year_next(month_year: MonthYear) -> MonthYear {
+  case month_year.month {
+    Jan -> MonthYear(Feb, month_year.year)
+    Feb -> MonthYear(Mar, month_year.year)
+    Mar -> MonthYear(Apr, month_year.year)
+    Apr -> MonthYear(May, month_year.year)
+    May -> MonthYear(Jun, month_year.year)
+    Jun -> MonthYear(Jul, month_year.year)
+    Jul -> MonthYear(Aug, month_year.year)
+    Aug -> MonthYear(Sep, month_year.year)
+    Sep -> MonthYear(Oct, month_year.year)
+    Oct -> MonthYear(Nov, month_year.year)
+    Nov -> MonthYear(Dec, month_year.year)
+    Dec -> MonthYear(Jan, month_year.year + 1)
+  }
+}
+
+@internal
+pub fn month_year_days_of(my: MonthYear) -> Int {
+  case my.month {
     Jan -> 31
     Mar -> 31
     May -> 31
@@ -815,69 +2180,17 @@ pub fn month_days_of(month: Month, in year: Int) -> Int {
     Oct -> 31
     Dec -> 31
     _ ->
-      case month {
+      case my.month {
         Apr -> 30
         Jun -> 30
         Sep -> 30
         Nov -> 30
         _ ->
-          case is_leap_year(year) {
+          case is_leap_year(my.year) {
             True -> 29
             False -> 28
           }
       }
-  }
-}
-
-@internal
-pub fn month_next(month: Month) -> Month {
-  case month {
-    Jan -> Feb
-    Feb -> Mar
-    Mar -> Apr
-    Apr -> May
-    May -> Jun
-    Jun -> Jul
-    Jul -> Aug
-    Aug -> Sep
-    Sep -> Oct
-    Oct -> Nov
-    Nov -> Dec
-    Dec -> Jan
-  }
-}
-
-@internal
-pub fn month_year_prior(month_year: MonthYear) -> MonthYear {
-  case month_year.month {
-    Jan -> MonthYear(Dec, month_year.year - 1)
-    month -> MonthYear(month_prior(month), month_year.year)
-  }
-}
-
-@internal
-pub fn month_prior(month: Month) -> Month {
-  case month {
-    Jan -> Dec
-    Feb -> Jan
-    Mar -> Feb
-    Apr -> Mar
-    May -> Apr
-    Jun -> May
-    Jul -> Jun
-    Aug -> Jul
-    Sep -> Aug
-    Oct -> Sep
-    Nov -> Oct
-    Dec -> Nov
-  }
-}
-
-@internal
-pub fn month_year_next(month_year: MonthYear) -> MonthYear {
-  case month_year.month {
-    Dec -> MonthYear(Jan, month_year.year + 1)
-    month -> MonthYear(month_next(month), month_year.year)
   }
 }
 
@@ -914,30 +2227,15 @@ pub fn year_days(of year: Int) -> Int {
 // -------------------------------------------------------------------------- //
 
 /// A time of day value. It represents a specific time on an unspecified date.
-/// It cannot be greater than 24 hours or less than 0 hours. It can have 
-/// different precisions between second and nanosecond, depending on what 
-/// your application needs.
+/// It cannot be greater than 24 hours or less than 0 hours. It has microsecond
+/// precision.
 pub opaque type Time {
-  Time(
-    hour: Int,
-    minute: Int,
-    second: Int,
-    nanosecond: Int,
-    monotonic: option.Option(Int),
-    unique: option.Option(Int),
-  )
+  Time(hour: Int, minute: Int, second: Int, microsecond: Int)
 }
 
 @internal
-pub fn time(
-  hour hour,
-  minute minute,
-  second second,
-  nano nanosecond,
-  mono monotonic,
-  unique unique,
-) {
-  Time(hour:, minute:, second:, nanosecond:, monotonic:, unique:)
+pub fn time(hour hour, minute minute, second second, micro microsecond) {
+  Time(hour:, minute:, second:, microsecond:)
 }
 
 @internal
@@ -956,34 +2254,8 @@ pub fn time_get_second(time: Time) {
 }
 
 @internal
-pub fn time_get_nano(time: Time) {
-  time.nanosecond
-}
-
-@internal
-pub fn time_get_mono(time: Time) {
-  time.monotonic
-}
-
-@internal
-pub fn time_get_unique(time: Time) {
-  time.unique
-}
-
-@internal
-pub fn time_set_mono(
-  time: Time,
-  monotonic: option.Option(Int),
-  unique: option.Option(Int),
-) {
-  Time(
-    time.hour,
-    time.minute,
-    time.second,
-    time.nanosecond,
-    monotonic:,
-    unique:,
-  )
+pub fn time_get_micro(time: Time) {
+  time.microsecond
 }
 
 @internal
@@ -991,8 +2263,8 @@ pub fn new_time(
   hour: Int,
   minute: Int,
   second: Int,
-) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, 0, None, None) |> validate_time
+) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
+  Time(hour, minute, second, 0) |> validate_time
 }
 
 @internal
@@ -1001,8 +2273,8 @@ pub fn new_time_milli(
   minute: Int,
   second: Int,
   millisecond: Int,
-) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, millisecond * 1_000_000, None, None)
+) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
+  Time(hour, minute, second, millisecond * 1000)
   |> validate_time
 }
 
@@ -1012,23 +2284,15 @@ pub fn new_time_micro(
   minute: Int,
   second: Int,
   microsecond: Int,
-) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, microsecond * 1000, None, None)
+) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
+  Time(hour, minute, second, microsecond)
   |> validate_time
 }
 
 @internal
-pub fn new_time_nano(
-  hour: Int,
-  minute: Int,
-  second: Int,
-  nanosecond: Int,
-) -> Result(Time, TimeOutOfBoundsError) {
-  Time(hour, minute, second, nanosecond, None, None) |> validate_time
-}
-
-@internal
-pub fn validate_time(time: Time) -> Result(Time, TimeOutOfBoundsError) {
+pub fn validate_time(
+  time: Time,
+) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
   case
     {
       time.hour >= 0
@@ -1043,24 +2307,106 @@ pub fn validate_time(time: Time) -> Result(Time, TimeOutOfBoundsError) {
       time.hour == 24
       && time.minute == 0
       && time.second == 0
-      && time.nanosecond == 0
+      && time.microsecond == 0
     }
     // For leap seconds https://en.wikipedia.org/wiki/Leap_second. Leap seconds
     // are not fully supported by this package, but can be parsed from ISO 8601
     // dates.
-    || { time.minute == 59 && time.second == 60 && time.nanosecond == 0 }
+    || { time.minute == 59 && time.second == 60 && time.microsecond == 0 }
   {
     True ->
-      case time.nanosecond <= 999_999_999 {
+      case time.microsecond <= 999_999 {
         True -> Ok(time)
-        False -> Error(TimeNanoSecondOutOfBounds)
+        False ->
+          Error(tempo_error.TimeMicroSecondOutOfBounds(time_to_string(time)))
       }
     False ->
       case time.hour, time.minute, time.second {
-        _, _, s if s > 59 || s < 0 -> Error(TimeSecondOutOfBounds)
-        _, m, _ if m > 59 || m < 0 -> Error(TimeMinuteOutOfBounds)
-        _, _, _ -> Error(TimeHourOutOfBounds)
+        _, _, s if s > 59 || s < 0 ->
+          Error(tempo_error.TimeSecondOutOfBounds(time_to_string(time)))
+        _, m, _ if m > 59 || m < 0 ->
+          Error(tempo_error.TimeMinuteOutOfBounds(time_to_string(time)))
+        _, _, _ -> Error(tempo_error.TimeHourOutOfBounds(time_to_string(time)))
       }
+  }
+}
+
+@internal
+pub fn time_to_string(time: Time) -> String {
+  string_tree.from_strings([
+    time.hour
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    ":",
+    time.minute
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    ":",
+    time.second
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+  ])
+  |> string_tree.append(".")
+  |> string_tree.append(
+    time.microsecond
+    |> int.to_string
+    |> string.pad_start(6, with: "0"),
+  )
+  |> string_tree.to_string
+}
+
+@internal
+pub fn time_replace_format(content: String, time: Time) -> String {
+  case content {
+    "H" -> time.hour |> int.to_string
+    "HH" ->
+      time.hour
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 2)
+    "h" ->
+      case time.hour {
+        hour if hour == 0 -> 12
+        hour if hour > 12 -> hour - 12
+        hour -> hour
+      }
+      |> int.to_string
+    "hh" ->
+      case time.hour {
+        hour if hour == 0 -> 12
+        hour if hour > 12 -> hour - 12
+        hour -> hour
+      }
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 2)
+    "a" ->
+      case time.hour >= 12 {
+        True -> "pm"
+        False -> "am"
+      }
+    "A" ->
+      case time.hour >= 12 {
+        True -> "PM"
+        False -> "AM"
+      }
+    "m" -> time.minute |> int.to_string
+    "mm" ->
+      time.minute
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 2)
+    "s" -> time.second |> int.to_string
+    "ss" ->
+      time.second
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 2)
+    "SSS" ->
+      { time.microsecond / 1000 }
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 3)
+    "SSSS" ->
+      { time.microsecond }
+      |> int.to_string
+      |> string.pad_start(with: "0", to: 6)
+    _ -> content
   }
 }
 
@@ -1076,116 +2422,120 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
 
 @internal
 pub fn time_difference(from a: Time, to b: Time) -> Duration {
-  case a.monotonic, b.monotonic {
-    Some(amns), Some(bmns) -> bmns - amns |> Duration
-    _, _ -> time_to_nanoseconds(b) - time_to_nanoseconds(a) |> Duration
-  }
+  time_to_microseconds(b) - time_to_microseconds(a) |> Duration
 }
 
 @internal
-pub fn time_to_nanoseconds(time: Time) -> Int {
-  { time.hour * unit.hour_nanoseconds }
-  + { time.minute * unit.minute_nanoseconds }
-  + { time.second * unit.second_nanoseconds }
-  + time.nanosecond
+pub fn time_to_microseconds(time: Time) -> Int {
+  { time.hour * unit.hour_microseconds }
+  + { time.minute * unit.minute_microseconds }
+  + { time.second * unit.second_microseconds }
+  + { time.microsecond }
 }
 
 @internal
-pub fn time_from_nanoseconds(nanoseconds: Int) -> Time {
-  let in_range_ns = nanoseconds % unit.imprecise_day_nanoseconds
+pub fn time_from_microseconds(microseconds: Int) -> Time {
+  let in_range_micro = microseconds % unit.imprecise_day_microseconds
 
-  let adj_ns = case in_range_ns < 0 {
-    True -> in_range_ns + unit.imprecise_day_nanoseconds
-    False -> in_range_ns
+  let adj_micro = case in_range_micro < 0 {
+    True -> in_range_micro + unit.imprecise_day_microseconds
+    False -> in_range_micro
   }
 
-  let hours = adj_ns / 3_600_000_000_000
+  let hour = adj_micro / 3_600_000_000
 
-  let minutes = { adj_ns - hours * 3_600_000_000_000 } / 60_000_000_000
+  let minute = { adj_micro - hour * 3_600_000_000 } / 60_000_000
 
-  let seconds =
-    { adj_ns - hours * 3_600_000_000_000 - minutes * 60_000_000_000 }
-    / 1_000_000_000
+  let second =
+    { adj_micro - hour * 3_600_000_000 - minute * 60_000_000 } / 1_000_000
 
-  let nanoseconds =
-    adj_ns
-    - hours
-    * 3_600_000_000_000
-    - minutes
-    * 60_000_000_000
-    - seconds
-    * 1_000_000_000
+  let microsecond =
+    adj_micro - hour * 3_600_000_000 - minute * 60_000_000 - second * 1_000_000
 
-  Time(hours, minutes, seconds, nanoseconds, None, None)
+  Time(hour:, minute:, second:, microsecond:)
+}
+
+@internal
+pub fn time_from_unix_micro(unix_ts: Int) -> Time {
+  // Subtract the microseconds that are responsible for the date.
+  { unix_ts - { date_to_unix_micro(date_from_unix_micro(unix_ts)) } }
+  |> time_from_microseconds
 }
 
 @internal
 pub fn time_to_duration(time: Time) -> Duration {
-  time_to_nanoseconds(time) |> Duration
+  time_to_microseconds(time) |> Duration
 }
 
 @internal
 pub fn time_compare(a: Time, to b: Time) -> order.Order {
-  case a.unique, b.unique {
-    Some(au), Some(bu) -> int.compare(au, bu)
-    _, _ ->
-      case a.monotonic, b.monotonic {
-        Some(amns), Some(bmns) -> int.compare(amns, bmns)
-        _, _ ->
-          case a.hour == b.hour {
+  case a.hour == b.hour {
+    True ->
+      case a.minute == b.minute {
+        True ->
+          case a.second == b.second {
             True ->
-              case a.minute == b.minute {
-                True ->
-                  case a.second == b.second {
-                    True ->
-                      case a.nanosecond == b.nanosecond {
-                        True -> order.Eq
-                        False ->
-                          case a.nanosecond < b.nanosecond {
-                            True -> order.Lt
-                            False -> order.Gt
-                          }
-                      }
-                    False ->
-                      case a.second < b.second {
-                        True -> order.Lt
-                        False -> order.Gt
-                      }
-                  }
+              case a.microsecond == b.microsecond {
+                True -> order.Eq
                 False ->
-                  case a.minute < b.minute {
+                  case a.microsecond < b.microsecond {
                     True -> order.Lt
                     False -> order.Gt
                   }
               }
             False ->
-              case a.hour < b.hour {
+              case a.second < b.second {
                 True -> order.Lt
                 False -> order.Gt
               }
           }
+        False ->
+          case a.minute < b.minute {
+            True -> order.Lt
+            False -> order.Gt
+          }
+      }
+    False ->
+      case a.hour < b.hour {
+        True -> order.Lt
+        False -> order.Gt
       }
   }
 }
 
 @internal
-pub fn time_add(a: Time, duration b: Duration) -> Time {
-  let new_time = time_to_nanoseconds(a) + b.nanoseconds |> time_from_nanoseconds
+pub fn time_is_earlier(a: Time, than b: Time) -> Bool {
+  time_compare(a, b) == order.Lt
+}
 
-  case a.monotonic {
-    None -> new_time
-    Some(mns) -> new_time |> time_set_mono(Some(mns + duration_get_ns(b)), None)
-  }
+@internal
+pub fn time_is_earlier_or_equal(a: Time, to b: Time) -> Bool {
+  time_compare(a, b) == order.Lt || time_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn time_is_equal(a: Time, to b: Time) -> Bool {
+  time_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn time_is_later(a: Time, than b: Time) -> Bool {
+  time_compare(a, b) == order.Gt
+}
+
+@internal
+pub fn time_is_later_or_equal(a: Time, to b: Time) -> Bool {
+  time_compare(a, b) == order.Gt || time_compare(a, b) == order.Eq
+}
+
+@internal
+pub fn time_add(a: Time, duration b: Duration) -> Time {
+  time_to_microseconds(a) + b.microseconds |> time_from_microseconds
 }
 
 @internal
 pub fn time_subtract(a: Time, duration b: Duration) -> Time {
-  let new_time = time_to_nanoseconds(a) - b.nanoseconds |> time_from_nanoseconds
-
-  case a.monotonic {
-    None -> new_time
-    Some(mns) -> new_time |> time_set_mono(Some(mns - duration_get_ns(b)), None)
-  }
+  time_to_microseconds(a) - b.microseconds |> time_from_microseconds
 }
 
 // -------------------------------------------------------------------------- //
@@ -1200,17 +2550,17 @@ pub fn time_subtract(a: Time, duration b: Duration) -> Time {
 /// It is also used as the basis for specifying how to increase or decrease
 /// a datetime or time value.
 pub opaque type Duration {
-  Duration(nanoseconds: Int)
+  Duration(microseconds: Int)
 }
 
 @internal
-pub fn duration(nanoseconds nanoseconds) {
-  Duration(nanoseconds)
+pub fn duration(microseconds microseconds) {
+  Duration(microseconds)
 }
 
 @internal
-pub fn duration_get_ns(duration: Duration) {
-  duration.nanoseconds
+pub fn duration_get_microseconds(duration: Duration) -> Int {
+  duration.microseconds
 }
 
 @internal
@@ -1220,30 +2570,30 @@ pub fn duration_days(days: Int) -> Duration {
 
 @internal
 pub fn duration_increase(a: Duration, by b: Duration) -> Duration {
-  Duration(a.nanoseconds + b.nanoseconds)
+  Duration(a.microseconds + b.microseconds)
 }
 
 @internal
 pub fn duration_decrease(a: Duration, by b: Duration) -> Duration {
-  Duration(a.nanoseconds - b.nanoseconds)
+  Duration(a.microseconds - b.microseconds)
 }
 
 @internal
 pub fn duration_absolute(duration: Duration) -> Duration {
-  case duration.nanoseconds < 0 {
-    True -> -{ duration.nanoseconds } |> Duration
+  case duration.microseconds < 0 {
+    True -> -{ duration.microseconds } |> Duration
     False -> duration
   }
 }
 
 @internal
 pub fn duration_as_days(duration: Duration) -> Int {
-  duration.nanoseconds |> unit.as_days_imprecise
+  duration.microseconds |> unit.as_days_imprecise
 }
 
 @internal
-pub fn duration_as_nanoseconds(duration: Duration) -> Int {
-  duration.nanoseconds
+pub fn duration_as_microseconds(duration: Duration) -> Int {
+  duration.microseconds
 }
 
 // -------------------------------------------------------------------------- //
@@ -1307,24 +2657,14 @@ pub fn period_get_start_and_end_date_and_time(
   period,
 ) -> #(Date, Date, Time, Time) {
   case period {
-    DatePeriod(start, end) -> #(
-      start,
-      end,
-      Time(0, 0, 0, 0, None, None),
-      Time(24, 0, 0, 0, None, None),
-    )
+    DatePeriod(start, end) -> #(start, end, Time(0, 0, 0, 0), Time(24, 0, 0, 0))
     NaiveDateTimePeriod(start, end) -> #(
       start.date,
       end.date,
       start.time,
       end.time,
     )
-    DateTimePeriod(start, end) -> #(
-      start.naive.date,
-      end.naive.date,
-      start.naive.time,
-      end.naive.time,
-    )
+    DateTimePeriod(start, end) -> #(start.date, end.date, start.time, end.time)
   }
 }
 
@@ -1337,7 +2677,11 @@ pub fn period_contains_datetime(period: Period, datetime: DateTime) -> Bool {
       && datetime
       |> datetime_is_earlier_or_equal(to: end)
 
-    _ -> period_contains_naive_datetime(period, datetime.naive)
+    _ ->
+      period_contains_naive_datetime(
+        period,
+        NaiveDateTime(date: datetime.date, time: datetime.time),
+      )
   }
 }
 
@@ -1356,23 +2700,30 @@ pub fn period_contains_naive_datetime(
 }
 
 @internal
-pub fn period_comprising_dates(period: Period) -> yielder.Yielder(Date) {
+pub fn period_comprising_dates(period: Period) -> List(Date) {
   let #(start_date, end_date): #(Date, Date) = case period {
     DatePeriod(start, end) -> #(start, end)
     NaiveDateTimePeriod(start, end) -> #(start.date, end.date)
-    DateTimePeriod(start, end) -> #(start.naive.date, end.naive.date)
+    DateTimePeriod(start, end) -> #(start.date, end.date)
   }
 
-  yielder.unfold(from: start_date, with: fn(date) {
-    case date |> date_is_earlier_or_equal(to: end_date) {
-      True -> yielder.Next(date, date |> date_add(days: 1))
-      False -> yielder.Done
-    }
-  })
+  do_period_comprising_dates([], end_date, start_date)
+}
+
+fn do_period_comprising_dates(dates, date, start_date) {
+  case date |> date_is_later_or_equal(to: start_date) {
+    True ->
+      do_period_comprising_dates(
+        [date, ..dates],
+        date |> date_subtract(days: 1),
+        start_date,
+      )
+    False -> dates
+  }
 }
 
 @internal
-pub fn period_comprising_months(period: Period) -> yielder.Yielder(MonthYear) {
+pub fn period_comprising_months(period: Period) -> List(MonthYear) {
   let #(start_date, end_date) = case period {
     DatePeriod(start, end) -> #(start, end)
     NaiveDateTimePeriod(start, end) -> #(
@@ -1385,153 +2736,208 @@ pub fn period_comprising_months(period: Period) -> yielder.Yielder(MonthYear) {
     )
   }
 
-  yielder.unfold(
-    from: MonthYear(start_date.month, start_date.year),
-    with: fn(miy: MonthYear) {
-      case
-        date(miy.year, miy.month, 1)
-        |> date_is_earlier_or_equal(to: end_date)
-      {
-        True ->
-          yielder.Next(
-            miy,
-            MonthYear(miy.month |> month_next, case miy.month == Dec {
-              True -> miy.year + 1
-              False -> miy.year
-            }),
-          )
-        False -> yielder.Done
-      }
-    },
+  do_period_comprising_months(
+    [],
+    MonthYear(start_date.month, start_date.year),
+    end_date,
   )
+  |> list.reverse
 }
 
-/// Error values that can be returned from functions in this package.
-pub type OffsetParseError {
-  OffsetInvalidFormat(msg: String)
-  OffsetOutOfBounds
-}
-
-pub type TimeParseError {
-  TimeInvalidFormat(msg: String)
-  TimeOutOfBounds(TimeOutOfBoundsError)
-}
-
-pub type TimeOutOfBoundsError {
-  TimeHourOutOfBounds
-  TimeMinuteOutOfBounds
-  TimeSecondOutOfBounds
-  TimeNanoSecondOutOfBounds
-}
-
-pub type DateParseError {
-  DateInvalidFormat(msg: String)
-  DateOutOfBounds(DateOutOfBoundsError)
-}
-
-pub type DateOutOfBoundsError {
-  DateDayOutOfBounds
-  DateMonthOutOfBounds
-  DateYearOutOfBounds
-}
-
-pub type DateTimeOutOfBoundsError {
-  DateTimeDateOutOfBounds(DateOutOfBoundsError)
-  DateTimeTimeOutOfBounds(TimeOutOfBoundsError)
-  DateTimeOffsetOutOfBounds
-}
-
-pub type DateTimeParseError {
-  DateTimeInvalidFormat
-  DateTimeTimeParseError(TimeParseError)
-  DateTimeDateParseError(DateParseError)
-  DateTimeOffsetParseError(OffsetParseError)
-}
-
-pub type NaiveDateTimeOutOfBoundsError {
-  NaiveDateTimeDateOutOfBounds(DateOutOfBoundsError)
-  NaiveDateTimeTimeOutOfBounds(TimeOutOfBoundsError)
-}
-
-pub type NaiveDateTimeParseError {
-  NaiveDateTimeInvalidFormat
-  NaiveDateTimeTimeParseError(TimeParseError)
-  NaiveDateTimeDateParseError(DateParseError)
-}
-
-pub type NaiveDateTimeParseAnyError {
-  NaiveDateTimeMissingDate
-  NaiveDateTimeMissingTime
-}
-
-pub type DateTimeParseAnyError {
-  DateTimeMissingDate
-  DateTimeMissingTime
-  DateTimeMissingOffset
-}
-
-// -------------------------------------------------------------------------- //
-//                          Tempo Module Logic                                //
-// -------------------------------------------------------------------------- //
-
-/// The result of an uncertain conversion. Since this package does not track
-/// timezone offsets, it uses the host system's offset to convert to local
-/// time. If the datetime being converted to local time is of a different
-/// day than the current one, the offset value provided by the host may
-/// not be accurate (and could be accurate by up to the amount the offset 
-/// changes throughout the year). To account for this, when converting to 
-/// local time, a precise value is returned when the datetime being converted
-/// is in th current date, while an imprecise value is returned when it is
-/// on any other date. This allows the application logic to handle the 
-/// two cases differently: some applications may only need to convert to 
-/// local time on the current date or may only need generic time 
-/// representations, while other applications may need precise conversions 
-/// for arbitrary dates. More notes on how to plug time zones into this
-/// package to aviod uncertain conversions can be found in the README.
-pub type UncertainConversion(a) {
-  Precise(a)
-  Imprecise(a)
-}
-
-/// Accepts either a precise or imprecise value of an uncertain conversion.
-/// Useful for pipelines.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-21T23:17:00Z")
-/// |> datetime.to_local
-/// |> tempo.accept_imprecision
-/// |> datetime.to_string
-/// // -> "2024-06-21T19:17:00-04:00"
-/// ```
-pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {
-  case conv {
-    Precise(a) -> a
-    Imprecise(a) -> a
+fn do_period_comprising_months(mys, my: MonthYear, end_date) {
+  case
+    date(my.year, my.month, 1)
+    |> date_is_earlier_or_equal(to: end_date)
+  {
+    True ->
+      do_period_comprising_months([my, ..mys], month_year_next(my), end_date)
+    False -> mys
   }
 }
 
-/// Either returns a precise value or an error from an uncertain conversion.
-/// Useful for pipelines. 
+// -------------------------------------------------------------------------- //
+//                             Format Logic                                   //
+// -------------------------------------------------------------------------- //
+
+/// Provides common datetime formatting templates.
 /// 
-/// ## Examples
+/// The Custom format takes a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format, plus condensed offsets.
 /// 
-/// ```gleam
-/// datetime.literal("2024-06-21T23:17:00Z")
-/// |> datetime.to_local
-/// |> tempo.error_on_imprecision
-/// |> result.try(do_important_precise_task)
-/// ```
-pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
-  case conv {
-    Precise(a) -> Ok(a)
-    Imprecise(_) -> Error(Nil)
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digint day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+pub type DateTimeFormat {
+  ISO8601Seconds
+  ISO8601Milli
+  ISO8601Micro
+  HTTP
+  Custom(format: String)
+  CustomLocalised(format: String, locale: Locale)
+  DateFormat(DateFormat)
+  TimeFormat(TimeFormat)
+  // LanguageLong
+  // LanguageLongLocalised(locale: Locale)
+  // LanguageShort
+  // LanguageShortLocalised(locale: Locale)
+  // HumanReadable
+  // HumanReadable
+}
+
+/// Provides common naive datetime formatting templates.
+/// 
+/// The CustomNaive format takes a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format, plus condensed offsets.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digint day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+pub type NaiveDateTimeFormat {
+  NaiveISO8601Seconds
+  NaiveISO8601Milli
+  NaiveISO8601Micro
+  CustomNaive(format: String)
+  CustomNaiveLocalised(format: String, locale: Locale)
+  NaiveDateFormat(DateFormat)
+  NaiveTimeFormat(TimeFormat)
+  // LanguageLong
+  // LanguageLongLocalised(locale: Locale)
+  // LanguageShort
+  // LanguageShortLocalised(locale: Locale)
+  // HumanReadable
+  // HumanReadable
+}
+
+/// Provides common date formatting templates.
+/// 
+/// The CustomDate format takes a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
+/// 
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
+/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+/// dd (min day of the week), ddd (short day of week), and
+/// dddd (full day of the week).
+pub type DateFormat {
+  ISO8601Date
+  CustomDate(format: String)
+  CustomDateLocalised(format: String, locale: Locale)
+  // LanguageDate
+  // LanguageDateLocalised(locale: Locale)
+  // HumanDate
+}
+
+/// Provides common time formatting templates.
+/// 
+/// The CustomTime format takes a format string that implements the same 
+/// formatting directives as the nice Day.js 
+/// library: https://day.js.org/docs/en/display/format.
+/// 
+/// Values can be escaped by putting brackets around them, like "[Hello!] HH".
+/// 
+/// Available custom format directives: H (hour), HH (two-digit hour), h (12-hour clock hour),
+/// hh (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// A (AM/PM), a (am/pm).
+pub type TimeFormat {
+  ISO8601Time
+  ISO8601TimeMilli
+  ISO8601TimeMicro
+  CustomTime(format: String)
+  CustomTimeLocalised(format: String, locale: Locale)
+  // LanguageTime
+  // LanguageTimeLocalised(locale: Locale)
+  // HumanTime
+}
+
+// Provide the locale API for now with no logic
+/// A type that provides information on how to format dates and times for a 
+/// specific region or language.
+pub type Locale
+
+@internal
+pub fn get_datetime_format_str(format: DateTimeFormat) {
+  case format {
+    ISO8601Seconds -> "YYYY/MM/DDTHH:mm:ssZ"
+    ISO8601Milli -> "YYYY/MM/DDTHH:mm:ss.SSSZ"
+    ISO8601Micro -> "YYYY/MM/DDTHH:mm:ss.SSSSZ"
+    HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
+    DateFormat(ISO8601Date) -> "YYYY/MM/DD"
+    TimeFormat(ISO8601Time) -> "HH:mm:ssZ"
+    TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSSZ"
+    TimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSSZ"
+    TimeFormat(CustomTime(format)) -> format
+    TimeFormat(CustomTimeLocalised(format, _locale)) -> format
+    DateFormat(CustomDate(format)) -> format
+    DateFormat(CustomDateLocalised(format, _locale)) -> format
+    Custom(format) -> format
+    CustomLocalised(format, _locale) -> format
   }
 }
 
 @internal
-pub const format_regexp = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
+pub fn get_naive_datetime_format_str(format: NaiveDateTimeFormat) {
+  case format {
+    NaiveISO8601Seconds -> "YYYY-MM-DDTHH:mm:ss"
+    NaiveISO8601Milli -> "YYYY-MM-DDTHH:mm:ss.SSS"
+    NaiveISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSS"
+    CustomNaive(format) -> format
+    CustomNaiveLocalised(format, _locale) -> format
+    NaiveDateFormat(ISO8601Date) -> "YYYY-MM-DD"
+    NaiveTimeFormat(ISO8601Time) -> "HH:mm:ss"
+    NaiveTimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSS"
+    NaiveTimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSS"
+    NaiveTimeFormat(CustomTime(format)) -> format
+    NaiveTimeFormat(CustomTimeLocalised(format, _locale)) -> format
+    NaiveDateFormat(CustomDate(format)) -> format
+    NaiveDateFormat(CustomDateLocalised(format, _locale)) -> format
+  }
+}
+
+@internal
+pub fn get_time_format_str(format: TimeFormat) {
+  case format {
+    ISO8601Time -> "HH:mm:ssZ"
+    ISO8601TimeMilli -> "HH:mm:ss.SSSZ"
+    ISO8601TimeMicro -> "HH:mm:ss.SSSSZ"
+    CustomTime(format) -> format
+    CustomTimeLocalised(format, _locale) -> format
+  }
+}
+
+@internal
+pub fn get_date_format_str(format: DateFormat) {
+  case format {
+    ISO8601Date -> "YYYY-MM-DD"
+    CustomDate(format) -> format
+    CustomDateLocalised(format, _locale) -> format
+  }
+}
+
+// regex to pull the supported formatting directives from a string
+@internal
+pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
@@ -1756,16 +3162,6 @@ pub fn parse_any(
                   _ -> #(None, unconsumed)
                 }
 
-              9, Ok(nano) ->
-                case adj_hour(hour) |> new_time_nano(minute, second, nano) {
-                  Ok(date) -> #(
-                    Some(date),
-                    string.replace(unconsumed, content, ""),
-                  )
-
-                  _ -> #(None, unconsumed)
-                }
-
               _, _ -> #(None, unconsumed)
             }
 
@@ -1813,7 +3209,6 @@ pub type DatetimePart {
   Second(Int)
   Millisecond(Int)
   Microsecond(Int)
-  Nanosecond(Int)
   OffsetStr(String)
   TwelveHour(Int)
   AMPeriod
@@ -1959,13 +3354,6 @@ fn consume_part(fmt, from str) {
 
       #(Microsecond(micro), string.drop_start(str, 6))
     }
-    "SSSSS" -> {
-      use nano <- result.map(
-        string.slice(str, at_index: 0, length: 9) |> int.parse,
-      )
-
-      #(Nanosecond(nano), string.drop_start(str, 9))
-    }
     "z" -> {
       // Offsets can be 1, 3, 5, or 6 characters long. Try parsing from
       // largest to smallest because a small pattern may incorrectly match
@@ -2087,7 +3475,7 @@ pub fn find_date(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(DateInvalidFormat("Missing year")),
+    |> result.replace_error(tempo_error.DateInvalidFormat("Missing year")),
   )
 
   use month <- result.try(
@@ -2097,7 +3485,7 @@ pub fn find_date(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(DateInvalidFormat("Missing month")),
+    |> result.replace_error(tempo_error.DateInvalidFormat("Missing month")),
   )
 
   use day <- result.try(
@@ -2107,11 +3495,11 @@ pub fn find_date(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(DateInvalidFormat("Missing day")),
+    |> result.replace_error(tempo_error.DateInvalidFormat("Missing day")),
   )
 
   new_date(year, month, day)
-  |> result.map_error(fn(e) { DateOutOfBounds(e) })
+  |> result.map_error(tempo_error.DateOutOfBounds("Out of bounds", _))
 }
 
 @internal
@@ -2133,7 +3521,7 @@ pub fn find_time(in parts) {
           _ -> Error(Nil)
         }
       })
-      |> result.replace_error(TimeInvalidFormat("Missing hour")),
+      |> result.replace_error(tempo_error.TimeInvalidFormat("Missing hour")),
     )
 
     let am_period =
@@ -2158,7 +3546,8 @@ pub fn find_time(in parts) {
       Error(Nil), Ok(Nil) ->
         adjust_12_hour_to_24_hour(twelve_hour, am: False) |> Ok
 
-      _, _ -> Error(TimeInvalidFormat("Missing period in 12 hour time"))
+      _, _ ->
+        Error(tempo_error.TimeInvalidFormat("Missing period in 12 hour time"))
     }
   })
 
@@ -2169,7 +3558,7 @@ pub fn find_time(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(TimeInvalidFormat("Missing minute")),
+    |> result.replace_error(tempo_error.TimeInvalidFormat("Missing minute")),
   )
 
   let second =
@@ -2197,21 +3586,12 @@ pub fn find_time(in parts) {
       }
     })
 
-  let nanosecond =
-    list.find_map(parts, fn(p) {
-      case p {
-        Nanosecond(n) -> Ok(n)
-        _ -> Error(Nil)
-      }
-    })
-
-  case nanosecond, microsecond, millisecond {
-    Ok(nano), _, _ -> new_time_nano(hour, minute, second, nano)
-    _, Ok(micro), _ -> new_time_micro(hour, minute, second, micro)
-    _, _, Ok(milli) -> new_time_milli(hour, minute, second, milli)
-    _, _, _ -> new_time(hour, minute, second)
+  case microsecond, millisecond {
+    Ok(micro), _ -> new_time_micro(hour, minute, second, micro)
+    _, Ok(milli) -> new_time_milli(hour, minute, second, milli)
+    _, _ -> new_time(hour, minute, second)
   }
-  |> result.map_error(fn(e) { TimeOutOfBounds(e) })
+  |> result.map_error(tempo_error.TimeOutOfBounds("Out of bounds", _))
 }
 
 @internal
@@ -2223,7 +3603,7 @@ pub fn find_offset(in parts) {
         _ -> Error(Nil)
       }
     })
-    |> result.replace_error(OffsetInvalidFormat("Missing offset")),
+    |> result.replace_error(tempo_error.OffsetInvalidFormat("Missing offset")),
   )
 
   offset_from_string(offset_str)
@@ -2243,22 +3623,27 @@ fn result_guard(when_error e, return v, or run) {
 @external(erlang, "tempo_ffi", "now")
 @external(javascript, "./tempo_ffi.mjs", "now")
 @internal
-pub fn now_utc() -> Int
+pub fn now_utc_ffi() -> Int
 
 @external(erlang, "tempo_ffi", "now_monotonic")
 @external(javascript, "./tempo_ffi.mjs", "now_monotonic")
 @internal
-pub fn now_monotonic() -> Int
+pub fn now_monotonic_ffi() -> Int
 
 @external(erlang, "tempo_ffi", "now_unique")
 @external(javascript, "./tempo_ffi.mjs", "now_unique")
 @internal
-pub fn now_unique() -> Int
+pub fn now_unique_ffi() -> Int
 
 @internal
-pub fn now_monounique() -> #(Int, Int) {
-  #(now_monotonic(), now_unique())
+pub fn offset_local_micro() -> Int {
+  offset_local_minutes() * 60_000_000
 }
+
+@external(erlang, "tempo_ffi", "local_offset")
+@external(javascript, "../tempo_ffi.mjs", "local_offset")
+@internal
+pub fn offset_local_minutes() -> Int
 
 @external(erlang, "tempo_ffi", "current_year")
 @external(javascript, "./tempo_ffi.mjs", "current_year")

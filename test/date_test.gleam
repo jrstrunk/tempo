@@ -1,13 +1,9 @@
 import gleam/dynamic
 import gleam/order
 import gleam/string
-import gleeunit
 import gleeunit/should
+import tempo
 import tempo/date
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn date_current_test() {
   date.current_utc()
@@ -124,7 +120,7 @@ pub fn to_string_test() {
 
 pub fn format_test() {
   date.literal("2024-06-13")
-  |> date.format("MMMM 'YY")
+  |> date.format(tempo.CustomDate("MMMM 'YY"))
   |> should.equal("June '24")
 }
 
@@ -260,85 +256,85 @@ pub fn is_later_or_equal_test() {
 
 pub fn date_to_unix_test() {
   date.literal("1970-01-01")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(0)
 
   date.literal("1970-01-14")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(1_123_200)
 
   date.literal("1970-03-14")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(6_220_800)
 
   date.literal("1970-04-11")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(8_640_000)
 
   date.literal("1970-04-20")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(9_417_600)
 
   date.literal("1970-04-16")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(9_072_000)
 
   date.literal("1970-04-14")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(8_899_200)
 
   date.literal("1970-04-25")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(9_849_600)
 
   date.literal("1970-04-26")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(9_936_000)
 
   date.literal("1970-04-27")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(10_022_400)
 
   date.literal("1978-06-28")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(267_840_000)
 
   date.literal("1978-01-01")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(252_460_800)
 
   date.literal("1979-01-01")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(283_996_800)
 
   date.literal("1980-01-01")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(315_532_800)
 
   date.literal("2000-01-01")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(946_684_800)
 
   date.literal("2024-06-12")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(1_718_150_400)
 
   date.literal("2024-12-05")
-  |> date.to_unix_utc
+  |> date.to_unix_seconds
   |> should.equal(1_733_356_800)
 }
 
-pub fn from_unix_utc_test() {
-  date.from_unix_utc(0)
+pub fn from_unix_seconds_test() {
+  date.from_unix_seconds(0)
   |> should.equal(date.literal("1970-01-01"))
 
-  date.from_unix_utc(267_840_000)
+  date.from_unix_seconds(267_840_000)
   |> should.equal(date.literal("1978-06-28"))
 
-  date.from_unix_milli_utc(267_840_000_000)
+  date.from_unix_milli(267_840_000_000)
   |> should.equal(date.literal("1978-06-28"))
 
-  date.from_unix_milli_utc(267_839_999_999)
+  date.from_unix_milli(267_839_999_999)
   |> should.equal(date.literal("1978-06-27"))
 }
 
@@ -489,13 +485,7 @@ pub fn from_dynamic_string_int_test() {
   dynamic.from("153")
   |> date.from_dynamic_string
   |> should.equal(
-    Error([
-      dynamic.DecodeError(
-        expected: "tempo.Date",
-        found: "Invalid format: 153",
-        path: [],
-      ),
-    ]),
+    Error([dynamic.DecodeError(expected: "tempo.Date", found: "153", path: [])]),
   )
 }
 
@@ -504,11 +494,7 @@ pub fn from_dynamic_string_bad_format_test() {
   |> date.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(
-        expected: "tempo.Date",
-        found: "Invalid format: 2024,06,13",
-        path: [],
-      ),
+      dynamic.DecodeError(expected: "tempo.Date", found: "2024,06,13", path: []),
     ]),
   )
 }
@@ -518,11 +504,7 @@ pub fn from_dynamic_string_bad_values_test() {
   |> date.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(
-        expected: "tempo.Date",
-        found: "Date day out of bounds: 2024-06-35",
-        path: [],
-      ),
+      dynamic.DecodeError(expected: "tempo.Date", found: "2024-06-35", path: []),
     ]),
   )
 }

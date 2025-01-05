@@ -1,61 +1,46 @@
 //// Functions to use with the `DateTime` type in Tempo.
 //// 
-//// ## Example
+//// ## Examples
 //// 
 //// ```gleam
 //// import tempo/datetime
+//// import snag
 //// 
 //// pub fn main() {
-//// datetime.literal("2024-12-25T06:00:00+05:00")
+////   datetime.literal("2024-12-25T06:00:00+05:00")
 ////   |> datetime.format("ddd @ h:mm A, Z")
 ////   // -> "Fri @ 6:00 AM, +05:00"
 //// 
 ////   datetime.parse("06:21:2024 23:17:07.123Z", "MM:DD:YYYY HH:mm:ss.SSSZ")
-////   |> datetime.to_string
-////   // -> "2024-06-21T23:17:07.123Z"
-//// 
-////   datetime.now_local()
-////   |> datetime.to_string
-////   // -> "2024-10-09T13:42:11.195Z"
+////   |> snag.map_error(datetime.describe_parse_error)
+////   |> result.map(datetime.to_string)
+////   // -> Ok("2024-06-21T23:17:07.123Z")
 //// }
 //// ```
 //// 
 //// ```gleam
-//// import tempo/datetime
-//// 
-//// pub fn is_30_mins_old(unix_ts: Int) {
-////   datetime.from_unix_utc(unix_ts)
-////   |> datetime.is_equal_or_earlier(
-////      to: datetime.now_utc() |> datetime.subtract(duration.minutes(30))
-////   )
-//// }
-//// ```
-//// 
-//// ```gleam
+//// import gleam/list
 //// import tempo/datetime
 //// import tempo/period
 //// 
 //// pub fn get_every_friday_between(datetime1, datetime2) {
 ////   period.new(datetime1, datetime2)
 ////   |> period.comprising_dates
-////   |> iterator.filter(fn(date) { 
+////   |> list.filter(fn(date) { 
 ////     date |> date.to_day_of_week == date.Fri
 ////   })
-////   |> iterator.to_list
 ////   // -> ["2024-06-21", "2024-06-28", "2024-07-05"]
 //// }
 //// ```
 
 import gleam/bool
 import gleam/dynamic
-import gleam/list
 import gleam/option.{None, Some}
-import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import tempo
 import tempo/date
+import tempo/error as tempo_error
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
@@ -77,7 +62,7 @@ pub fn new(
   time time: tempo.Time,
   offset offset: tempo.Offset,
 ) -> tempo.DateTime {
-  tempo.datetime(naive_datetime.new(date, time), offset: offset)
+  tempo.datetime(date:, time:, offset:)
 }
 
 /// Create a new datetime value from a string literal, but will panic if
@@ -97,57 +82,14 @@ pub fn new(
 pub fn literal(datetime: String) -> tempo.DateTime {
   case from_string(datetime) {
     Ok(datetime) -> datetime
-    Error(tempo.DateTimeInvalidFormat) ->
+    Error(tempo_error.DateTimeInvalidFormat(..)) ->
       panic as "Invalid datetime literal format"
-    Error(tempo.DateTimeDateParseError(_)) ->
+    Error(tempo_error.DateTimeDateParseError(..)) ->
       panic as "Invalid date in datetime literal value"
-    Error(tempo.DateTimeTimeParseError(_)) ->
+    Error(tempo_error.DateTimeTimeParseError(..)) ->
       panic as "Invalid time in datetime literal value"
     Error(_) -> panic as "Invalid datetime literal"
   }
-}
-
-/// Gets the current local datetime of the host. Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.now()
-/// |> datetime.to_string
-/// // -> "2024-06-14T04:19:20.006809349-04:00"
-/// ```
-pub fn now_local() -> tempo.DateTime {
-  // This should always be precise because it is the current time.
-  case now_utc() |> to_local {
-    tempo.Precise(datetime) -> datetime
-    tempo.Imprecise(datetime) -> datetime
-  }
-}
-
-/// Gets the current UTC datetime of the host.Always prefer using 
-/// `duration.start_monotonic` to record time passing and `time.now_unique`
-/// to sort events by time.
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.now_utc()
-/// |> datetime.to_string
-/// // -> "2024-06-14T08:19:20.006809349Z"
-/// ```
-pub fn now_utc() -> tempo.DateTime {
-  let #(now_monotonic, now_unique) = tempo.now_monounique()
-
-  let now_ts_nano = tempo.now_utc()
-
-  new(
-    date.from_unix_utc(now_ts_nano / 1_000_000_000),
-    time.from_unix_nano_utc(now_ts_nano)
-      |> tempo.time_set_mono(Some(now_monotonic), Some(now_unique)),
-    tempo.utc,
-  )
 }
 
 /// Parses a datetime string in the format `YYYY-MM-DDThh:mm:ss.sTZD`,
@@ -164,30 +106,39 @@ pub fn now_utc() -> tempo.DateTime {
 /// ```
 pub fn from_string(
   datetime: String,
-) -> Result(tempo.DateTime, tempo.DateTimeParseError) {
+) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   let split_dt = case string.contains(datetime, "T") {
     True -> string.split(datetime, "T")
-    False -> string.split(datetime, " ")
+    False ->
+      case string.contains(datetime, "t") {
+        True -> string.split(datetime, "t")
+        False ->
+          case string.contains(datetime, "_") {
+            True -> string.split(datetime, "_")
+            False -> string.split(datetime, " ")
+          }
+      }
   }
 
   case split_dt {
     [date, time] -> {
       use date: tempo.Date <- result.try(
         date.from_string(date)
-        |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) }),
+        |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _)),
       )
 
       use #(time, offset): #(String, String) <- result.try(
-        split_time_and_offset(time),
+        split_time_and_offset(time)
+        |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime)),
       )
 
       use time: tempo.Time <- result.try(
         time.from_string(time)
-        |> result.map_error(fn(e) { tempo.DateTimeTimeParseError(e) }),
+        |> result.map_error(tempo_error.DateTimeTimeParseError(datetime, _)),
       )
       use offset: tempo.Offset <- result.map(
         offset.from_string(offset)
-        |> result.map_error(fn(e) { tempo.DateTimeOffsetParseError(e) }),
+        |> result.map_error(tempo_error.DateTimeOffsetParseError(datetime, _)),
       )
 
       new(date, time, offset)
@@ -195,10 +146,10 @@ pub fn from_string(
 
     [date] ->
       date.from_string(date)
-      |> result.map(new(_, tempo.time(0, 0, 0, 0, None, None), tempo.utc))
-      |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) })
+      |> result.map(new(_, tempo.time(0, 0, 0, 0), tempo.utc))
+      |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _))
 
-    _ -> Error(tempo.DateTimeInvalidFormat)
+    _ -> Error(tempo_error.DateTimeInvalidFormat(datetime))
   }
 }
 
@@ -212,28 +163,25 @@ fn split_time_and_offset(time_with_offset: String) {
         _ ->
           case string.split(time_with_offset, "+") {
             [time, offset] -> #(time, "+" <> offset) |> Ok
-            _ -> Error(tempo.DateTimeInvalidFormat)
+            _ -> Error(Nil)
           }
       }
   }
 }
 
 /// Returns a string representation of a datetime value in the ISO 8601
-/// format.
+/// format with millisecond precision. If a different precision is needed, 
+/// use the `format` function. If serializing to send outside of Gleam and then
+/// parse back into a datetime value, use the `serialize` function.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.now_utc()
-/// |> datetime.to_string
-/// // -> "2024-06-21T05:22:22.009Z" 
+/// datetime.to_string(my_datetime)
+/// // -> "2024-06-21T05:22:22.009534Z" 
 /// ```
 pub fn to_string(datetime: tempo.DateTime) -> String {
-  datetime |> tempo.datetime_get_naive |> naive_datetime.to_string
-  <> case datetime |> tempo.datetime_get_offset |> tempo.offset_get_minutes {
-    0 -> "Z"
-    _ -> datetime |> tempo.datetime_get_offset |> offset.to_string
-  }
+  tempo.datetime_to_string(datetime)
 }
 
 /// Parses a datetime string in the provided format. Always prefer using
@@ -249,7 +197,7 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
+/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 /// 
 /// ## Example
@@ -270,26 +218,28 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// ```
 pub fn parse(
   str: String,
-  in fmt: String,
-) -> Result(tempo.DateTime, tempo.DateTimeParseError) {
+  in format: tempo.DateTimeFormat,
+) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
+  let format_str = tempo.get_datetime_format_str(format)
+
   use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: fmt)
-    |> result.replace_error(tempo.DateTimeInvalidFormat),
+    tempo.consume_format(str, in: format_str)
+    |> result.map_error(tempo_error.DateTimeInvalidFormat(_)),
   )
 
   use date <- result.try(
     tempo.find_date(in: parts)
-    |> result.map_error(fn(e) { tempo.DateTimeDateParseError(e) }),
+    |> result.map_error(tempo_error.DateTimeDateParseError(str, _)),
   )
 
   use time <- result.try(
     tempo.find_time(in: parts)
-    |> result.map_error(fn(e) { tempo.DateTimeTimeParseError(e) }),
+    |> result.map_error(tempo_error.DateTimeTimeParseError(str, _)),
   )
 
   use offset <- result.try(
     tempo.find_offset(in: parts)
-    |> result.map_error(fn(e) { tempo.DateTimeOffsetParseError(e) }),
+    |> result.map_error(tempo_error.DateTimeOffsetParseError(str, _)),
   )
 
   Ok(new(date, time, offset))
@@ -312,107 +262,68 @@ pub fn parse(
 /// ```
 pub fn parse_any(
   str: String,
-) -> Result(tempo.DateTime, tempo.DateTimeParseAnyError) {
+) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   case tempo.parse_any(str) {
     #(Some(date), Some(time), Some(offset)) -> Ok(new(date, time, offset))
-    #(_, _, None) -> Error(tempo.DateTimeMissingOffset)
-    #(_, None, _) -> Error(tempo.DateTimeMissingTime)
-    #(None, _, _) -> Error(tempo.DateTimeMissingDate)
+    #(_, _, None) ->
+      Error(tempo_error.DateTimeInvalidFormat(
+        "Unable to find offset in " <> str,
+      ))
+    #(_, None, _) ->
+      Error(tempo_error.DateTimeInvalidFormat("Unable to find time in " <> str))
+    #(None, _, _) ->
+      Error(tempo_error.DateTimeInvalidFormat("Unable to find date in " <> str))
   }
 }
 
-/// Formats a datetime value into a string using the provided format string.
-/// Implements the same formatting directives as the great Day.js 
-/// library: https://day.js.org/docs/en/display/format, plus short timezones
-/// and nanosecond precision.
-/// 
-/// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
-/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
-/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
-/// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// SSSSS (nanosecond), Z (offset from UTC), ZZ (offset from UTC with no ":"),
-/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+/// Converts a datetime parse error to a human readable error message.
 /// 
 /// ## Example
 /// 
 /// ```gleam
-/// datetime.literal("2024-06-21T13:42:11.314-04:00")
+/// datetime.parse("13:42:11.314-04:00", "YYYY-MM-DDTHH:mm:ss.SSSZ")
+/// |> snag.map_error(with: datetime.describe_parse_error)
+/// // -> snag.error("Invalid date format in datetime: 13:42:11.314-04:00")
+pub fn describe_parse_error(error: tempo_error.DateTimeParseError) {
+  tempo_error.describe_datetime_parse_error(error)
+}
+
+/// Formats a datetime value into a string using the provided format.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.literal(tempo.Custom("2024-06-21T13:42:11.314-04:00"))
 /// |> datetime.format("ddd @ h:mm A (z)")
 /// // -> "Fri @ 1:42 PM (-04)"
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-03T09:02:01-04:00")
-/// |> datetime.format("YY YYYY M MM MMM MMMM D DD d dd ddd")
-/// // --------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
+/// |> datetime.format(tempo.Custom("YY YYYY M MM MMM MMMM D DD d dd ddd"))
+/// // -----------:---------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
 /// ```
 /// 
 /// ```gleam 
 /// datetime.literal("2024-06-03T09:02:01.014920202-00:00")
-/// |> datetime.format("dddd SSS SSSS SSSSS Z ZZ z")
+/// |> datetime.format(tempo.Custom("dddd SSS SSSS SSSSS Z ZZ z"))
 /// // -> "Monday 014 014920 014920202 -00:00 -0000 Z"
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-03T13:02:01-04:00")
-/// |> datetime.format("H HH h hh m mm s ss a A [An ant]")
-/// // -------------> "13 13 1 01 2 02 1 01 pm PM An ant"
+/// |> datetime.format(tempo.Custom("H HH h hh m mm s ss a A [An ant]"))
+/// // --------------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
-pub fn format(datetime: tempo.DateTime, in fmt: String) -> String {
-  let assert Ok(re) = regexp.from_string(tempo.format_regexp)
-
-  regexp.scan(re, fmt)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        content
-          |> date.replace_format(datetime |> get_date)
-          |> time.replace_format(datetime |> get_time)
-          |> replace_format(datetime),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape 
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it 
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
-    }
-  })
-  |> string.join("")
-}
-
-fn replace_format(content: String, datetime) -> String {
-  let offset = datetime |> get_offset
-
-  case content {
-    "z" ->
-      case offset |> tempo.offset_get_minutes {
-        0 -> "Z"
-        _ -> {
-          let str_offset = offset |> offset.to_string
-
-          case str_offset |> string.split(":") {
-            [hours, "00"] -> hours
-            _ -> str_offset
-          }
-        }
-      }
-    "Z" -> offset |> offset.to_string
-    "ZZ" ->
-      offset
-      |> offset.to_string
-      |> string.replace(":", "")
-    _ -> content
+pub fn format(
+  datetime: tempo.DateTime,
+  in format: tempo.DateTimeFormat,
+) -> String {
+  case format {
+    tempo.HTTP -> to_utc(datetime)
+    _ -> datetime
   }
+  |> tempo.datetime_format(in: format)
 }
 
 /// Returns the UTC datetime of a unix timestamp.
@@ -420,11 +331,15 @@ fn replace_format(content: String, datetime) -> String {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.from_unix_utc(1_718_829_191)
+/// datetime.from_unix_seconds(1_718_829_191)
 /// // -> datetime.literal("2024-06-17T12:59:51Z")
 /// ```
-pub fn from_unix_utc(unix_ts: Int) -> tempo.DateTime {
-  new(date.from_unix_utc(unix_ts), time.from_unix_utc(unix_ts), tempo.utc)
+pub fn from_unix_seconds(unix_ts: Int) -> tempo.DateTime {
+  new(
+    date.from_unix_seconds(unix_ts),
+    time.from_unix_seconds(unix_ts),
+    tempo.utc,
+  )
 }
 
 /// Returns the UTC unix timestamp of a datetime.
@@ -433,16 +348,16 @@ pub fn from_unix_utc(unix_ts: Int) -> tempo.DateTime {
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-17T12:59:51Z")
-/// |> datetime.to_unix_utc
+/// |> datetime.to_unix_seconds
 /// // -> 1_718_829_191
 /// ```
-pub fn to_unix_utc(datetime: tempo.DateTime) -> Int {
+pub fn to_unix_seconds(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_utc(utc_dt |> tempo.naive_datetime_get_date)
+  date.to_unix_seconds(utc_dt |> tempo.naive_datetime_get_date)
   + {
-    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time)
-    / 1_000_000_000
+    tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time)
+    / 1_000_000
   }
 }
 
@@ -451,15 +366,11 @@ pub fn to_unix_utc(datetime: tempo.DateTime) -> Int {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.from_unix_milli_utc(1_718_629_314_334)
+/// datetime.from_unix_milli(1_718_629_314_334)
 /// // -> datetime.literal("2024-06-17T13:01:54.334Z")
 /// ```
-pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.DateTime {
-  new(
-    date.from_unix_milli_utc(unix_ts),
-    time.from_unix_milli_utc(unix_ts),
-    tempo.utc,
-  )
+pub fn from_unix_milli(unix_ts: Int) -> tempo.DateTime {
+  new(date.from_unix_milli(unix_ts), time.from_unix_milli(unix_ts), tempo.utc)
 }
 
 /// Returns the UTC unix timestamp in milliseconds of a datetime.
@@ -468,16 +379,15 @@ pub fn from_unix_milli_utc(unix_ts: Int) -> tempo.DateTime {
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-17T13:01:54.334Z")
-/// |> datetime.to_unix_milli_utc
+/// |> datetime.to_unix_milli
 /// // -> 1_718_629_314_334
 /// ```
-pub fn to_unix_milli_utc(datetime: tempo.DateTime) -> Int {
+pub fn to_unix_milli(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_milli_utc(utc_dt |> tempo.naive_datetime_get_date)
+  date.to_unix_milli(utc_dt |> tempo.naive_datetime_get_date)
   + {
-    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time)
-    / 1_000_000
+    tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000
   }
 }
 
@@ -486,15 +396,11 @@ pub fn to_unix_milli_utc(datetime: tempo.DateTime) -> Int {
 /// ## Examples
 /// 
 /// ```gleam
-/// datetime.from_unix_micro_utc(1_718_629_314_334_734)
+/// datetime.from_unix_micro(1_718_629_314_334_734)
 /// // -> datetime.literal("2024-06-17T13:01:54.334734Z")
 /// ```
-pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.DateTime {
-  new(
-    date.from_unix_micro_utc(unix_ts),
-    time.from_unix_micro_utc(unix_ts),
-    tempo.utc,
-  )
+pub fn from_unix_micro(unix_ts: Int) -> tempo.DateTime {
+  new(date.from_unix_micro(unix_ts), time.from_unix_micro(unix_ts), tempo.utc)
 }
 
 /// Returns the UTC unix timestamp in microseconds of a datetime.
@@ -503,16 +409,14 @@ pub fn from_unix_micro_utc(unix_ts: Int) -> tempo.DateTime {
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-17T13:01:54.334734Z")
-/// |> datetime.to_unix_micro_utc
+/// |> datetime.to_unix_micro
 /// // -> 1_718_629_314_334_734
 /// ```
-pub fn to_unix_micro_utc(datetime: tempo.DateTime) -> Int {
+pub fn to_unix_micro(datetime: tempo.DateTime) -> Int {
   let utc_dt = datetime |> apply_offset
 
-  date.to_unix_micro_utc(utc_dt |> tempo.naive_datetime_get_date)
-  + {
-    tempo.time_to_nanoseconds(utc_dt |> tempo.naive_datetime_get_time) / 1000
-  }
+  date.to_unix_micro(utc_dt |> tempo.naive_datetime_get_date)
+  + { tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time) }
 }
 
 /// Checks if a dynamic value is a valid datetime string, and returns the
@@ -549,38 +453,11 @@ pub fn from_dynamic_string(
         dynamic.DecodeError(
           expected: "tempo.DateTime",
           found: case tempo_error {
-            tempo.DateTimeInvalidFormat -> "Invalid format: "
-            tempo.DateTimeTimeParseError(tempo.TimeInvalidFormat(_)) ->
-              "Invalid time format: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeHourOutOfBounds,
-            )) -> "Invalid time hour value: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeMinuteOutOfBounds,
-            )) -> "Invalid time minute value: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeSecondOutOfBounds,
-            )) -> "Invalid time second value: "
-            tempo.DateTimeTimeParseError(tempo.TimeOutOfBounds(
-              tempo.TimeNanoSecondOutOfBounds,
-            )) -> "Invalid time subsecond value: "
-            tempo.DateTimeDateParseError(tempo.DateInvalidFormat(_)) ->
-              "Invalid date format: "
-            tempo.DateTimeDateParseError(tempo.DateOutOfBounds(
-              tempo.DateDayOutOfBounds,
-            )) -> "Invalid date day value: "
-            tempo.DateTimeDateParseError(tempo.DateOutOfBounds(
-              tempo.DateMonthOutOfBounds,
-            )) -> "Invalid date month value: "
-            tempo.DateTimeDateParseError(tempo.DateOutOfBounds(
-              tempo.DateYearOutOfBounds,
-            )) -> "Invalid date year value: "
-            tempo.DateTimeOffsetParseError(tempo.OffsetInvalidFormat(_)) ->
-              "Invalid offset format: "
-            tempo.DateTimeOffsetParseError(tempo.OffsetOutOfBounds) ->
-              "Invalid offset value: "
-          }
-            <> dt,
+            tempo_error.DateTimeInvalidFormat(msg) -> msg
+            tempo_error.DateTimeTimeParseError(msg, _) -> msg
+            tempo_error.DateTimeDateParseError(msg, _) -> msg
+            tempo_error.DateTimeOffsetParseError(msg, _) -> msg
+          },
           path: [],
         ),
       ])
@@ -614,7 +491,7 @@ pub fn from_dynamic_unix_utc(
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
   use dt: Int <- result.map(dynamic.int(dynamic_ts))
 
-  from_unix_utc(dt)
+  from_unix_seconds(dt)
 }
 
 /// Checks if a dynamic value is a valid unix timestamp in milliseconds, and 
@@ -644,7 +521,7 @@ pub fn from_dynamic_unix_milli_utc(
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
   use dt: Int <- result.map(dynamic.int(dynamic_ts))
 
-  from_unix_milli_utc(dt)
+  from_unix_milli(dt)
 }
 
 /// Checks if a dynamic value is a valid unix timestamp in microseconds, and 
@@ -674,7 +551,7 @@ pub fn from_dynamic_unix_micro_utc(
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
   use dt: Int <- result.map(dynamic.int(dynamic_ts))
 
-  from_unix_micro_utc(dt)
+  from_unix_micro(dt)
 }
 
 /// Gets the date of a datetime.
@@ -739,8 +616,10 @@ pub fn drop_offset(datetime: tempo.DateTime) -> tempo.NaiveDateTime {
 /// // -> naive_datetime.literal("2024-06-18T00:00:00Z")
 /// ```
 pub fn drop_time(datetime: tempo.DateTime) -> tempo.DateTime {
+  let naive = naive_datetime.drop_time(datetime |> tempo.datetime_get_naive)
   tempo.datetime(
-    naive_datetime.drop_time(datetime |> tempo.datetime_get_naive),
+    date: naive.date,
+    time: naive.time,
     offset: datetime |> tempo.datetime_get_offset,
   )
 }
@@ -789,6 +668,62 @@ pub fn to_offset(
   tempo.datetime_to_offset(datetime, offset)
 }
 
+/// The result of an uncertain conversion. Since this package does not track
+/// timezone offsets, it uses the host system's offset to convert to local
+/// time. If the datetime being converted to local time is of a different
+/// day than the current one, the offset value provided by the host may
+/// not be accurate (and could be accurate by up to the amount the offset 
+/// changes throughout the year). To account for this, when converting to 
+/// local time, a precise value is returned when the datetime being converted
+/// is in th current date, while an imprecise value is returned when it is
+/// on any other date. This allows the application logic to handle the 
+/// two cases differently: some applications may only need to convert to 
+/// local time on the current date or may only need generic time 
+/// representations, while other applications may need precise conversions 
+/// for arbitrary dates. More notes on how to plug time zones into this
+/// package to aviod uncertain conversions can be found in the README.
+pub type UncertainConversion(a) {
+  Precise(a)
+  Imprecise(a)
+}
+
+/// Accepts either a precise or imprecise value of an uncertain conversion.
+/// Useful for pipelines.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T23:17:00Z")
+/// |> datetime.to_local
+/// |> tempo.accept_imprecision
+/// |> datetime.to_string
+/// // -> "2024-06-21T19:17:00-04:00"
+/// ```
+pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {
+  case conv {
+    Precise(a) -> a
+    Imprecise(a) -> a
+  }
+}
+
+/// Either returns a precise value or an error from an uncertain conversion.
+/// Useful for pipelines. 
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T23:17:00Z")
+/// |> datetime.to_local
+/// |> tempo.error_on_imprecision
+/// |> result.try(do_important_precise_task)
+/// ```
+pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
+  case conv {
+    Precise(a) -> Ok(a)
+    Imprecise(_) -> Error(Nil)
+  }
+}
+
 /// Converts a datetime to the equivalent local datetime. The return value
 /// indicates if the conversion was precise or imprecise. Use pattern
 /// matching or the `tempo.accept_imprecision` function to handle the two cases.
@@ -817,12 +752,10 @@ pub fn to_offset(
 /// |> datetime.to_local
 /// // -> tempo.Imprecise(datetime.literal("1998-08-23T05:57:11.195-04:00"))
 /// ```
-pub fn to_local(
-  datetime: tempo.DateTime,
-) -> tempo.UncertainConversion(tempo.DateTime) {
+pub fn to_local(datetime: tempo.DateTime) -> UncertainConversion(tempo.DateTime) {
   use <- bool.lazy_guard(
     when: datetime |> tempo.datetime_get_offset == offset.local(),
-    return: fn() { tempo.Precise(datetime) },
+    return: fn() { Precise(datetime) },
   )
 
   let local_dt = datetime |> to_offset(offset.local())
@@ -831,8 +764,8 @@ pub fn to_local(
     local_dt |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date
     == date.current_local()
   {
-    True -> tempo.Precise(local_dt)
-    False -> tempo.Imprecise(local_dt)
+    True -> Precise(local_dt)
+    False -> Imprecise(local_dt)
   }
 }
 
@@ -866,18 +799,18 @@ pub fn to_local(
 /// ```
 pub fn to_local_time(
   datetime: tempo.DateTime,
-) -> tempo.UncertainConversion(tempo.Time) {
+) -> UncertainConversion(tempo.Time) {
   case to_local(datetime) {
-    tempo.Precise(datetime) ->
+    Precise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_time
-      |> tempo.Precise
-    tempo.Imprecise(datetime) ->
+      |> Precise
+    Imprecise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_time
-      |> tempo.Imprecise
+      |> Imprecise
   }
 }
 
@@ -911,18 +844,18 @@ pub fn to_local_time(
 /// ```
 pub fn to_local_date(
   datetime: tempo.DateTime,
-) -> tempo.UncertainConversion(tempo.Date) {
+) -> UncertainConversion(tempo.Date) {
   case to_local(datetime) {
-    tempo.Precise(datetime) ->
+    Precise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_date
-      |> tempo.Precise
-    tempo.Imprecise(datetime) ->
+      |> Precise
+    Imprecise(datetime) ->
       datetime
       |> tempo.datetime_get_naive
       |> tempo.naive_datetime_get_date
-      |> tempo.Imprecise
+      |> Imprecise
   }
 }
 
@@ -945,7 +878,7 @@ pub fn to_local_date(
 /// ```gleam
 /// import gtz
 /// let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
-/// datetime.from_unix_utc(1_729_257_776)
+/// datetime.from_unix_seconds(1_729_257_776)
 /// |> datetime.to_timezone(local_tz)
 /// |> datetime.to_string
 /// // -> "2024-10-18T14:22:56.000+01:00"
@@ -970,8 +903,7 @@ pub fn to_timezone(
 /// ```gleam
 /// import gtz
 /// let assert Ok(tz) = gtz.timezone("Europe/London")
-/// datetime.now_local()
-/// |> datetime.to_timezone(tz)
+/// datetime.to_timezone(my_datetime, tz)
 /// |> datetime.get_timezone_name
 /// // -> Some("Europe/London")
 /// ```
@@ -1068,7 +1000,7 @@ pub fn is_earlier_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// // -> False
 /// ```
 pub fn is_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
-  compare(a, b) == order.Eq
+  tempo.datetime_is_equal(a, to: b)
 }
 
 /// Checks if the first datetime is later than the second datetime.
@@ -1091,7 +1023,7 @@ pub fn is_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// // -> True
 /// ```
 pub fn is_later(a: tempo.DateTime, than b: tempo.DateTime) -> Bool {
-  compare(a, b) == order.Gt
+  tempo.datetime_is_later(a, than: b)
 }
 
 /// Checks if the first datetime is later or equal to the second datetime.

@@ -1,22 +1,11 @@
 //// Functions to use with the `Month` type in Tempo.
-//// 
-//// ## Example
-//// 
-//// ```gleam
-//// import tempo/month
-//// import tempo/date
-//// 
-//// pub fn get_next_month_name() {
-////   date.now_local()
-////   |> date.get_month
-////   |> month.next
-////   |> month.to_long_string
-////   // -> "November"
-//// }
-//// ```
 
 import gleam/result
 import tempo
+
+/// An ordered list of all months in the year.
+/// -> [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+pub const months = tempo.months
 
 /// Returns a month's short name.
 /// 
@@ -29,20 +18,7 @@ import tempo
 /// // -> "Jun"
 /// ```
 pub fn to_short_string(month: tempo.Month) -> String {
-  case month {
-    tempo.Jan -> "Jan"
-    tempo.Feb -> "Feb"
-    tempo.Mar -> "Mar"
-    tempo.Apr -> "Apr"
-    tempo.May -> "May"
-    tempo.Jun -> "Jun"
-    tempo.Jul -> "Jul"
-    tempo.Aug -> "Aug"
-    tempo.Sep -> "Sep"
-    tempo.Oct -> "Oct"
-    tempo.Nov -> "Nov"
-    tempo.Dec -> "Dec"
-  }
+  tempo.month_to_short_string(month)
 }
 
 /// Returns a month's long name.
@@ -56,20 +32,7 @@ pub fn to_short_string(month: tempo.Month) -> String {
 /// // -> "June"
 /// ```
 pub fn to_long_string(month: tempo.Month) -> String {
-  case month {
-    tempo.Jan -> "January"
-    tempo.Feb -> "February"
-    tempo.Mar -> "March"
-    tempo.Apr -> "April"
-    tempo.May -> "May"
-    tempo.Jun -> "June"
-    tempo.Jul -> "July"
-    tempo.Aug -> "August"
-    tempo.Sep -> "September"
-    tempo.Oct -> "October"
-    tempo.Nov -> "November"
-    tempo.Dec -> "December"
-  }
+  tempo.month_to_long_string(month)
 }
 
 /// Gets a month from a month string.
@@ -180,46 +143,4 @@ pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
 /// ```
 pub fn days(of month: tempo.Month, in year: Int) -> Int {
   tempo.month_days_of(month, in: year)
-}
-
-/// Returns the next month in the civil calendar.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// date.literal("2024-06-13")
-/// |> date.get_month
-/// |> month.next
-/// // -> tempo.Jul
-/// ```
-/// 
-/// ```gleam
-/// date.literal("2024-12-03")
-/// |> date.get_month
-/// |> month.next
-/// // -> tempo.Jan
-/// ```
-pub fn next(month: tempo.Month) -> tempo.Month {
-  tempo.month_next(month)
-}
-
-/// Returns the previous month in the civil calendar.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// date.literal("2024-06-13")
-/// |> date.get_month
-/// |> month.prior
-/// // -> tempo.May
-/// ```
-/// 
-/// ```gleam
-/// date.literal("2024-01-03")
-/// |> date.get_month
-/// |> month.prior
-/// // -> tempo.Dec
-/// ```
-pub fn prior(month: tempo.Month) -> tempo.Month {
-  tempo.month_prior(month)
 }

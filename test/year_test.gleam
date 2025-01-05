@@ -1,10 +1,5 @@
-import gleeunit
 import gleeunit/should
 import tempo/year
-
-pub fn main() {
-  gleeunit.main()
-}
 
 pub fn is_leap_year_test() {
   year.is_leap_year(1900) |> should.be_false()

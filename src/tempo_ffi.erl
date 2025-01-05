@@ -8,9 +8,9 @@
     current_year/0
 ]).
 
-now() -> erlang:system_time(nanosecond).
+now() -> erlang:system_time(microsecond).
 
-now_monotonic() -> erlang:monotonic_time(nanosecond).
+now_monotonic() -> erlang:monotonic_time(microsecond).
 
 now_unique() -> erlang:unique_integer([positive, monotonic]).
 

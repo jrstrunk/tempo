@@ -11,40 +11,57 @@ pub type Unit {
   Week
   Day
   Hour
-  CalculatedYear(years: Int, nanoseconds: Int)
-  CalculatedMonth(months: Int, nanoseconds: Int)
+  CalculatedYear(years: Int, microseconds: Int)
+  CalculatedMonth(months: Int, microseconds: Int)
   Minute
   Second
   Millisecond
   Microsecond
-  Nanosecond
   Nothing
 }
 
-pub const imprecise_year_nanoseconds = 31_449_600_000_000_000
+pub const imprecise_year_microseconds = 31_449_600_000_000
 
-pub const imprecise_month_nanoseconds = 2_592_000_000_000_000
+pub const imprecise_month_microseconds = 2_592_000_000_000
 
-pub const imprecise_week_nanoseconds = 604_800_000_000_000
+pub const imprecise_week_microseconds = 604_800_000_000
 
-pub const imprecise_day_nanoseconds = 86_400_000_000_000
+pub const imprecise_day_microseconds = 86_400_000_000
 
-pub const hour_nanoseconds = 3_600_000_000_000
+pub const hour_microseconds = 3_600_000_000
 
-pub const minute_nanoseconds = 60_000_000_000
+pub const minute_microseconds = 60_000_000
 
-pub const second_nanoseconds = 1_000_000_000
+pub const second_microseconds = 1_000_000
 
-pub const millisecond_nanoseconds = 1_000_000
+pub const millisecond_microseconds = 1000
 
-pub const microsecond_nanoseconds = 1000
+pub fn format(microseconds: Int) {
+  case microseconds {
+    n if n >= imprecise_year_microseconds ->
+      format_as_many(microseconds, [Year, Week, Day, Hour, Minute], decimals: 0)
+    n if n >= imprecise_week_microseconds ->
+      format_as_many(microseconds, [Week, Day, Hour, Minute], decimals: 0)
+    n if n >= imprecise_day_microseconds ->
+      format_as_many(microseconds, [Day, Hour, Minute], decimals: 0)
+    n if n >= hour_microseconds ->
+      format_as_many(microseconds, [Hour, Minute, Second], decimals: 2)
+    n if n >= minute_microseconds ->
+      format_as_many(microseconds, [Minute, Second], decimals: 3)
+    n if n >= second_microseconds ->
+      format_as(microseconds, Second, decimals: 3)
+    n if n >= millisecond_microseconds ->
+      format_as(microseconds, Millisecond, decimals: 0)
+    _ -> format_as(microseconds, Microsecond, decimals: 0)
+  }
+}
 
 pub fn format_as(
-  nanoseconds: Int,
+  microseconds: Int,
   unit unit: Unit,
   decimals decimals: Int,
 ) -> String {
-  let in_unit = as_unit_fractional(nanoseconds, unit)
+  let in_unit = as_unit_fractional(microseconds, unit)
 
   let decimal =
     float.truncate(in_unit)
@@ -75,8 +92,8 @@ pub fn format_as(
   }
 }
 
-pub fn format_as_many(nanoseconds, units units: List(Unit), decimals decimals) {
-  list.index_fold(units, #(nanoseconds, ""), fn(accumulator, unit: Unit, i) {
+pub fn format_as_many(microseconds, units units: List(Unit), decimals decimals) {
+  list.index_fold(units, #(microseconds, ""), fn(accumulator, unit: Unit, i) {
     case list.length(units) == i + 1 {
       // Handle the last unit differently
       True -> #(
@@ -94,7 +111,7 @@ pub fn format_as_many(nanoseconds, units units: List(Unit), decimals decimals) {
       // Handle every non-last unit the same
       False -> {
         // The duration left after the taking off the whole current unit
-        let remaining_duration = nanoseconds % in_nanoseconds(unit)
+        let remaining_duration = microseconds % in_microseconds(unit)
 
         let formated_current_unit =
           accumulator.0 - remaining_duration
@@ -129,177 +146,165 @@ pub fn unit_to_string(unit: Unit) -> String {
     Second -> "second"
     Millisecond -> "millisecond"
     Microsecond -> "microsecond"
-    Nanosecond -> "nanosecond"
     Nothing -> "no time"
   }
 }
 
-pub fn in_nanoseconds(unit) {
+pub fn in_microseconds(unit) {
   case unit {
-    Year -> imprecise_year_nanoseconds
-    Month -> imprecise_month_nanoseconds
-    Week -> imprecise_week_nanoseconds
-    Day -> imprecise_day_nanoseconds
-    CalculatedYear(_, nanoseconds: nanoseconds) -> nanoseconds
-    CalculatedMonth(_, nanoseconds: nanoseconds) -> nanoseconds
-    Hour -> hour_nanoseconds
-    Minute -> minute_nanoseconds
-    Second -> second_nanoseconds
-    Millisecond -> millisecond_nanoseconds
-    Microsecond -> microsecond_nanoseconds
-    Nanosecond -> 1
+    Year -> imprecise_year_microseconds
+    Month -> imprecise_month_microseconds
+    Week -> imprecise_week_microseconds
+    Day -> imprecise_day_microseconds
+    CalculatedYear(_, microseconds: microseconds) -> microseconds
+    CalculatedMonth(_, microseconds: microseconds) -> microseconds
+    Hour -> hour_microseconds
+    Minute -> minute_microseconds
+    Second -> second_microseconds
+    Millisecond -> millisecond_microseconds
+    Microsecond -> 1
     Nothing -> 0
   }
 }
 
-pub fn as_unit(nanoseconds: Int, unit: Unit) {
+pub fn as_unit(microseconds: Int, unit: Unit) {
   case unit {
-    Year -> as_years_imprecise(nanoseconds)
+    Year -> as_years_imprecise(microseconds)
     CalculatedYear(_, years: years) -> years
-    Month -> as_months_imprecise(nanoseconds)
+    Month -> as_months_imprecise(microseconds)
     CalculatedMonth(_, months: months) -> months
-    Week -> as_weeks_imprecise(nanoseconds)
-    Day -> as_days_imprecise(nanoseconds)
-    Hour -> as_hours(nanoseconds)
-    Minute -> as_minutes(nanoseconds)
-    Second -> as_seconds(nanoseconds)
-    Millisecond -> as_milliseconds(nanoseconds)
-    Microsecond -> as_microseconds(nanoseconds)
-    Nanosecond -> as_nanoseconds(nanoseconds)
+    Week -> as_weeks_imprecise(microseconds)
+    Day -> as_days_imprecise(microseconds)
+    Hour -> as_hours(microseconds)
+    Minute -> as_minutes(microseconds)
+    Second -> as_seconds(microseconds)
+    Millisecond -> as_milliseconds(microseconds)
+    Microsecond -> as_microseconds(microseconds)
     Nothing -> 0
   }
 }
 
-pub fn as_unit_fractional(nanoseconds: Int, unit: Unit) {
+pub fn as_unit_fractional(microseconds: Int, unit: Unit) {
   case unit {
-    Year -> as_years_imprecise_fractional(nanoseconds)
+    Year -> as_years_imprecise_fractional(microseconds)
     CalculatedYear(_, years: years) -> years |> int.to_float
-    Month -> as_months_imprecise_fractional(nanoseconds)
+    Month -> as_months_imprecise_fractional(microseconds)
     CalculatedMonth(_, months: months) -> months |> int.to_float
-    Week -> as_weeks_imprecise_fractional(nanoseconds)
-    Day -> as_days_fractional(nanoseconds)
-    Hour -> as_hours_fractional(nanoseconds)
-    Minute -> as_minutes_fractional(nanoseconds)
-    Second -> as_seconds_fractional(nanoseconds)
-    Millisecond -> as_milliseconds_fractional(nanoseconds)
-    Microsecond -> as_microseconds_fractional(nanoseconds)
-    Nanosecond -> as_nanoseconds(nanoseconds) |> int.to_float
+    Week -> as_weeks_imprecise_fractional(microseconds)
+    Day -> as_days_fractional(microseconds)
+    Hour -> as_hours_fractional(microseconds)
+    Minute -> as_minutes_fractional(microseconds)
+    Second -> as_seconds_fractional(microseconds)
+    Millisecond -> as_milliseconds_fractional(microseconds)
+    Microsecond -> as_microseconds_fractional(microseconds)
     Nothing -> 0.0
   }
 }
 
 pub fn imprecise_years(years: Int) -> Int {
-  years * imprecise_year_nanoseconds
+  years * imprecise_year_microseconds
 }
 
 pub fn imprecise_months(months: Int) -> Int {
-  months * imprecise_month_nanoseconds
+  months * imprecise_month_microseconds
 }
 
 pub fn imprecise_weeks(weeks: Int) -> Int {
-  weeks * imprecise_week_nanoseconds
+  weeks * imprecise_week_microseconds
 }
 
 pub fn imprecise_days(days: Int) -> Int {
-  days * imprecise_day_nanoseconds
+  days * imprecise_day_microseconds
 }
 
 pub fn hours(hours: Int) -> Int {
-  hours * hour_nanoseconds
+  hours * hour_microseconds
 }
 
 pub fn minutes(minutes: Int) -> Int {
-  minutes * minute_nanoseconds
+  minutes * minute_microseconds
 }
 
 pub fn seconds(seconds: Int) -> Int {
-  seconds * second_nanoseconds
+  seconds * second_microseconds
 }
 
 pub fn milliseconds(milliseconds: Int) {
-  milliseconds * millisecond_nanoseconds
+  milliseconds * millisecond_microseconds
 }
 
 pub fn microseconds(microseconds: Int) {
-  microseconds * microsecond_nanoseconds
+  microseconds
 }
 
-pub fn nanoseconds(nanoseconds: Int) {
-  nanoseconds
+pub fn as_years_imprecise(microseconds: Int) {
+  microseconds / imprecise_year_microseconds
 }
 
-pub fn as_years_imprecise(nanoseconds: Int) {
-  nanoseconds / imprecise_year_nanoseconds
+pub fn as_years_imprecise_fractional(microseconds: Int) {
+  int.to_float(microseconds) /. int.to_float(imprecise_year_microseconds)
 }
 
-pub fn as_years_imprecise_fractional(nanoseconds: Int) {
-  int.to_float(nanoseconds) /. int.to_float(imprecise_year_nanoseconds)
+pub fn as_months_imprecise(microseconds: Int) {
+  microseconds / imprecise_month_microseconds
 }
 
-pub fn as_months_imprecise(nanoseconds: Int) {
-  nanoseconds / imprecise_month_nanoseconds
+pub fn as_months_imprecise_fractional(microseconds: Int) {
+  int.to_float(microseconds) /. int.to_float(imprecise_month_microseconds)
 }
 
-pub fn as_months_imprecise_fractional(nanoseconds: Int) {
-  int.to_float(nanoseconds) /. int.to_float(imprecise_month_nanoseconds)
+pub fn as_weeks_imprecise(microseconds: Int) -> Int {
+  microseconds / imprecise_week_microseconds
 }
 
-pub fn as_weeks_imprecise(nanoseconds: Int) -> Int {
-  nanoseconds / imprecise_week_nanoseconds
+pub fn as_weeks_imprecise_fractional(microseconds: Int) -> Float {
+  int.to_float(microseconds) /. int.to_float(imprecise_week_microseconds)
 }
 
-pub fn as_weeks_imprecise_fractional(nanoseconds: Int) -> Float {
-  int.to_float(nanoseconds) /. int.to_float(imprecise_week_nanoseconds)
+pub fn as_days_imprecise(microseconds: Int) -> Int {
+  microseconds / imprecise_day_microseconds
 }
 
-pub fn as_days_imprecise(nanoseconds: Int) -> Int {
-  nanoseconds / imprecise_day_nanoseconds
+pub fn as_days_fractional(microseconds: Int) -> Float {
+  int.to_float(microseconds) /. int.to_float(imprecise_day_microseconds)
 }
 
-pub fn as_days_fractional(nanoseconds: Int) -> Float {
-  int.to_float(nanoseconds) /. int.to_float(imprecise_day_nanoseconds)
+pub fn as_hours(microseconds: Int) -> Int {
+  microseconds / hour_microseconds
 }
 
-pub fn as_hours(nanoseconds: Int) -> Int {
-  nanoseconds / hour_nanoseconds
+pub fn as_hours_fractional(microseconds: Int) -> Float {
+  int.to_float(microseconds) /. int.to_float(hour_microseconds)
 }
 
-pub fn as_hours_fractional(nanoseconds: Int) -> Float {
-  int.to_float(nanoseconds) /. int.to_float(hour_nanoseconds)
+pub fn as_minutes(microseconds: Int) -> Int {
+  microseconds / minute_microseconds
 }
 
-pub fn as_minutes(nanoseconds: Int) -> Int {
-  nanoseconds / minute_nanoseconds
+pub fn as_minutes_fractional(microseconds: Int) -> Float {
+  int.to_float(microseconds) /. int.to_float(minute_microseconds)
 }
 
-pub fn as_minutes_fractional(nanoseconds: Int) -> Float {
-  int.to_float(nanoseconds) /. int.to_float(minute_nanoseconds)
+pub fn as_seconds(microseconds: Int) -> Int {
+  microseconds / second_microseconds
 }
 
-pub fn as_seconds(nanoseconds: Int) -> Int {
-  nanoseconds / second_nanoseconds
+pub fn as_seconds_fractional(microseconds: Int) -> Float {
+  int.to_float(microseconds) /. int.to_float(second_microseconds)
 }
 
-pub fn as_seconds_fractional(nanoseconds: Int) -> Float {
-  int.to_float(nanoseconds) /. int.to_float(second_nanoseconds)
+pub fn as_milliseconds(microseconds: Int) -> Int {
+  microseconds / millisecond_microseconds
 }
 
-pub fn as_milliseconds(nanoseconds: Int) -> Int {
-  nanoseconds / millisecond_nanoseconds
+pub fn as_milliseconds_fractional(microseconds: Int) -> Float {
+  int.to_float(microseconds) /. int.to_float(millisecond_microseconds)
 }
 
-pub fn as_milliseconds_fractional(nanoseconds: Int) -> Float {
-  int.to_float(nanoseconds) /. int.to_float(millisecond_nanoseconds)
+pub fn as_microseconds(microseconds: Int) -> Int {
+  microseconds
 }
 
-pub fn as_microseconds(nanoseconds: Int) -> Int {
-  nanoseconds / microsecond_nanoseconds
-}
-
-pub fn as_microseconds_fractional(nanoseconds: Int) -> Float {
-  int.to_float(nanoseconds) /. int.to_float(microsecond_nanoseconds)
-}
-
-pub fn as_nanoseconds(nanoseconds: Int) -> Int {
-  nanoseconds
+pub fn as_microseconds_fractional(microseconds: Int) -> Float {
+  int.to_float(microseconds)
 }
