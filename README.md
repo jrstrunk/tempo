@@ -57,17 +57,15 @@ pub fn main() {
   datetime.from_unix_seconds(1_729_257_776)
   |> datetime.to_timezone(local_tz)
   |> datetime.to_string
-  |> io.println
+  // -> "2024-10-18T14:22:56.000+01:00"
 
   let assert Ok(tz) = gtz.timezone("America/New_York")
 
   datetime.literal("2024-01-03T05:30:02.334Z")
   |> datetime.to_timezone(tz)
   |> datetime.to_string
-  |> io.println
+  // -> "2024-01-03T00:30:02.334-05:00"
 }
-// -> "2024-10-18T14:22:56.000+01:00"
-// -> "2024-01-03T00:30:02.334-05:00"
 ```
 
 #### Handling Current System Time
@@ -106,6 +104,7 @@ pub fn main() {
       )
     False -> io.println("We are on time!")
   }
+  // -> We are late by 54 minutes
 }
 ```
 
@@ -128,7 +127,7 @@ pub fn main() {
 }
 ```
 
-#### Waiting Until a Specific Time
+#### Waiting Until a Specific Time of Day
 
 ```gleam
 import gleam/erlang/process
