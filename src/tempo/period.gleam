@@ -36,6 +36,16 @@ import tempo/duration
 import tempo/month
 import tempo/time
 
+@deprecated("Use `period.from_datetimes` instead")
+pub fn new(start start, end end) {
+  from_datetimes(start:, end:)
+}
+
+@deprecated("Use `period.from_naive_datetimes` instead")
+pub fn new_naive(start start, end end) {
+  from_naive_datetimes(start:, end:)
+}
+
 /// Creates a new period from the start and end datetimes.
 /// 
 /// ## Examples
