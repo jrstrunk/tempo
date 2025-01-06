@@ -37,6 +37,40 @@ import tempo/date
 import tempo/duration
 import tempo/error as tempo_error
 
+/// The first second of the day.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.start_of_day
+/// |> time.to_string
+/// // "00:00:00.000000"
+/// ```
+/// 
+/// ```gleam
+/// tempo.DateTime(date.literal("2024-06-21"), time.start_of_day, offset.utc)
+/// |> datetime.to_string
+/// // "2024-06-21T00:00:00.000000Z"
+/// ```
+pub const start_of_day = tempo.time_start_of_day
+
+/// The end of the last second of the day.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// time.end_of_day
+/// |> time.to_string
+/// // "24:00:00.000000"
+/// ```
+/// 
+/// ```gleam
+/// tempo.DateTime(date.literal("2024-06-21"), time.end_of_day, offset.utc)
+/// |> datetime.to_string
+/// // "2024-06-21T24:00:00.000000Z"
+/// ```
+pub const end_of_day = tempo.time_end_of_day
+
 /// Creates a new time value with second precision.
 /// 
 /// ## Example

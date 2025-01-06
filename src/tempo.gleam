@@ -2233,6 +2233,12 @@ pub opaque type Time {
 }
 
 @internal
+pub const time_start_of_day = Time(0, 0, 0, 0)
+
+@internal
+pub const time_end_of_day = Time(24, 0, 0, 0)
+
+@internal
 pub fn time(hour hour, minute minute, second second, micro microsecond) {
   Time(hour:, minute:, second:, microsecond:)
 }

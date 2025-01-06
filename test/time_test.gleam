@@ -628,6 +628,18 @@ pub fn since_negative_test() {
   |> duration.as_milliseconds
   |> should.equal(0)
 }
+
+pub fn start_of_day_test() {
+  time.start_of_day
+  |> time.to_string
+  |> should.equal("00:00:00.000000")
+}
+
+pub fn end_of_day_test() {
+  time.end_of_day
+  |> time.to_string
+  |> should.equal("24:00:00.000000")
+}
 // pub fn monotonic_difference_override_test() {
 //   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
 //   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
