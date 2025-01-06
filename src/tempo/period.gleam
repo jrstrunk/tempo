@@ -7,9 +7,8 @@
 //// import tempo/period
 //// import tempo/date
 //// 
-//// pub fn get_days_between(date1, date2) {
-////   date1
-////   |> date.difference(from: date2)
+//// pub fn get_days_between(datetime1, datetime2) {
+////   period.from_datetimes(start: datetime1, end: datetime2)
 ////   |> period.as_days
 ////   // -> 11
 //// }
@@ -20,10 +19,10 @@
 //// import tempo/date
 //// 
 //// pub fn get_every_friday_between(date1, date2) {
-////   period.new(date1, date2)
+////   period.from_days(date1, date2)
 ////   |> period.comprising_dates
 ////   |> list.filter(fn(date) { 
-////     date |> date.to_day_of_week == date.Fri
+////     date.to_day_of_week(date) == date.Fri
 ////   })
 ////   // -> ["2024-06-21", "2024-06-28", "2024-07-05"]
 //// }
@@ -42,15 +41,37 @@ import tempo/time
 /// ## Examples
 /// 
 /// ```gleam
-/// period.new(
+/// period.from_datetimes(
 ///   start: datetime.literal("2024-06-13T15:47:00+06:00"),
 ///   end: datetime.literal("2024-06-21T07:16:12+06:00"),
 /// )
 /// |> period.as_days
 /// // -> 7
 /// ```
-pub fn new(start start: tempo.DateTime, end end: tempo.DateTime) -> tempo.Period {
+pub fn from_datetimes(
+  start start: tempo.DateTime,
+  end end: tempo.DateTime,
+) -> tempo.Period {
   tempo.period_new(start:, end:)
+}
+
+/// Creates a new period from the start and end dates.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// period.from_dates(
+///   start: date.literal("2024-06-13"),
+///   end: date.literal("2024-06-21"),
+/// )
+/// |> period.as_days
+/// // -> 7
+/// ```
+pub fn from_dates(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
+  tempo.period_new_naive(
+    start: tempo.NaiveDateTime(start, time.start_of_day),
+    end: tempo.NaiveDateTime(end, time.end_of_day),
+  )
 }
 
 /// Creates a new period from the start and end naive datetimes.
@@ -58,18 +79,18 @@ pub fn new(start start: tempo.DateTime, end end: tempo.DateTime) -> tempo.Period
 /// ## Examples
 /// 
 /// ```gleam
-/// period.new_naive(
+/// period.from_naive_datetimes(
 ///   start: naive_datetime.literal("2024-06-13T15:47:00"),
 ///   end: naive_datetime.literal("2024-06-21T07:16:12"),
 /// )
 /// |> period.as_days
 /// // -> 7
 /// ```
-pub fn new_naive(
+pub fn from_naive_datetimes(
   start start: tempo.NaiveDateTime,
   end end: tempo.NaiveDateTime,
 ) -> tempo.Period {
-  tempo.period_new_naive(start: start, end: end)
+  tempo.period_new_naive(start:, end:)
 }
 
 // The period API is very similar to the duration API, mostly just with a 
@@ -242,7 +263,7 @@ pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
       tempo.time(24, 0, 0, 0),
     )
 
-  new_naive(start, end)
+  from_naive_datetimes(start, end)
 }
 
 /// Checks if a date is contained within a period, inclusive of the start and
@@ -324,6 +345,8 @@ pub fn contains_date(period: tempo.Period, date: tempo.Date) -> Bool {
 /// )
 /// // -> True
 /// ```
+/// Making internal because this might encourage bad practices
+@internal
 pub fn contains_naive_datetime(
   period: tempo.Period,
   naive_datetime: tempo.NaiveDateTime,

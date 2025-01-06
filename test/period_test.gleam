@@ -121,7 +121,7 @@ pub fn days_apart_one_day_test() {
 }
 
 pub fn days_apart_one_same_day_test() {
-  period.new_naive(
+  period.from_naive_datetimes(
     naive_datetime.literal("2024-06-21T00:00:00"),
     naive_datetime.literal("2024-06-21T24:00:00"),
   )
@@ -220,7 +220,7 @@ pub fn date_difference_one_day_month_boundary_test() {
 }
 
 pub fn date_difference_fractional_neagative_diff_test() {
-  period.new_naive(
+  period.from_naive_datetimes(
     start: naive_datetime.literal("2024-06-13T15:47:00"),
     end: naive_datetime.literal("2024-06-21T07:16:12"),
   )
@@ -229,7 +229,7 @@ pub fn date_difference_fractional_neagative_diff_test() {
 }
 
 pub fn date_difference_fractional_positive_diff_test() {
-  period.new_naive(
+  period.from_naive_datetimes(
     start: naive_datetime.literal("2024-06-13T07:47:00"),
     end: naive_datetime.literal("2024-06-21T15:16:12"),
   )
@@ -238,7 +238,7 @@ pub fn date_difference_fractional_positive_diff_test() {
 }
 
 pub fn date_difference_fractional_one_day_diff_test() {
-  period.new_naive(
+  period.from_naive_datetimes(
     start: naive_datetime.literal("2024-06-20T15:16:12"),
     end: naive_datetime.literal("2024-06-21T15:16:12"),
   )
@@ -508,7 +508,7 @@ pub fn date_as_period_inclusive_test() {
 }
 
 pub fn comprising_dates_test() {
-  period.new(
+  period.from_datetimes(
     start: datetime.literal("2024-06-19T23:59:59-04:00"),
     end: datetime.literal("2024-06-21T00:16:12+01:00"),
   )
@@ -521,7 +521,7 @@ pub fn comprising_dates_test() {
 }
 
 pub fn comprising_dates_one_day_test() {
-  period.new(
+  period.from_datetimes(
     start: datetime.literal("2024-06-21T00:59:59Z"),
     end: datetime.literal("2024-06-21T02:16:12Z"),
   )
@@ -530,7 +530,7 @@ pub fn comprising_dates_one_day_test() {
 }
 
 pub fn comprising_dates_month_boundary_test() {
-  period.new_naive(
+  period.from_naive_datetimes(
     start: naive_datetime.literal("2024-06-21T15:47:00"),
     end: naive_datetime.literal("2024-07-04T07:16:12"),
   )
@@ -554,7 +554,7 @@ pub fn comprising_dates_month_boundary_test() {
 }
 
 pub fn comprising_dates_year_boundary_test() {
-  period.new_naive(
+  period.from_naive_datetimes(
     start: naive_datetime.literal("2024-12-25T00:47:00"),
     end: naive_datetime.literal("2025-01-04T07:16:12"),
   )
@@ -575,7 +575,7 @@ pub fn comprising_dates_year_boundary_test() {
 }
 
 pub fn comprising_months_one_month_test() {
-  period.new(
+  period.from_datetimes(
     start: datetime.literal("2024-06-19T23:59:59-04:00"),
     end: datetime.literal("2024-06-21T00:16:12+01:00"),
   )
@@ -584,7 +584,7 @@ pub fn comprising_months_one_month_test() {
 }
 
 pub fn comprising_months_multiple_months_test() {
-  period.new(
+  period.from_datetimes(
     start: datetime.literal("2024-06-19T23:59:59-04:00"),
     end: datetime.literal("2024-09-21T00:16:12+01:00"),
   )
@@ -598,7 +598,7 @@ pub fn comprising_months_multiple_months_test() {
 }
 
 pub fn comprising_months_year_boundary_test() {
-  period.new(
+  period.from_datetimes(
     start: datetime.literal("2024-10-25T00:47:00-04:00"),
     end: datetime.literal("2025-04-30T23:59:59-04:00"),
   )
