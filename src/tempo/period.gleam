@@ -355,8 +355,6 @@ pub fn contains_date(period: tempo.Period, date: tempo.Date) -> Bool {
 /// )
 /// // -> True
 /// ```
-/// Making internal because this might encourage bad practices
-@internal
 pub fn contains_naive_datetime(
   period: tempo.Period,
   naive_datetime: tempo.NaiveDateTime,
