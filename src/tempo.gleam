@@ -1486,6 +1486,11 @@ fn offset_replace_format(content: String, offset: Offset) -> String {
           }
         }
       }
+    "zz" ->
+      case offset.minutes {
+        0 -> "Z"
+        _ -> offset |> offset_to_string
+      }
     "Z" -> offset |> offset_to_string
     "ZZ" ->
       offset
@@ -2812,9 +2817,10 @@ pub type DateTimeFormat {
 /// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
 /// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// Z (offset from UTC), ZZ (offset from UTC with no ":"),
-/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
+/// Z (full offset from UTC in the format "+-00:00"), ZZ (full offset from UTC
+/// with no ":"), z (short offset from UTC as "-04" or "Z" if UTC), zz (full 
+/// offset from UTC as "-04:00" or "Z" if UTC), A (AM/PM), a (am/pm).
 pub type NaiveDateTimeFormat {
   NaiveISO8601Seconds
   NaiveISO8601Milli
@@ -2884,14 +2890,14 @@ pub type Locale
 @internal
 pub fn get_datetime_format_str(format: DateTimeFormat) {
   case format {
-    ISO8601Seconds -> "YYYY-MM-DDTHH:mm:ssZ"
-    ISO8601Milli -> "YYYY-MM-DDTHH:mm:ss.SSSZ"
-    ISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSSZ"
+    ISO8601Seconds -> "YYYY-MM-DDTHH:mm:sszz"
+    ISO8601Milli -> "YYYY-MM-DDTHH:mm:ss.SSSzz"
+    ISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSSzz"
     HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
     DateFormat(ISO8601Date) -> "YYYY-MM-DD"
-    TimeFormat(ISO8601Time) -> "HH:mm:ssZ"
-    TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSSZ"
-    TimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSSZ"
+    TimeFormat(ISO8601Time) -> "HH:mm:sszz"
+    TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSSzz"
+    TimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSSzz"
     TimeFormat(CustomTime(format)) -> format
     TimeFormat(CustomTimeLocalised(format, _locale)) -> format
     DateFormat(CustomDate(format)) -> format
@@ -2923,9 +2929,9 @@ pub fn get_naive_datetime_format_str(format: NaiveDateTimeFormat) {
 @internal
 pub fn get_time_format_str(format: TimeFormat) {
   case format {
-    ISO8601Time -> "HH:mm:ssZ"
-    ISO8601TimeMilli -> "HH:mm:ss.SSSZ"
-    ISO8601TimeMicro -> "HH:mm:ss.SSSSZ"
+    ISO8601Time -> "HH:mm:sszz"
+    ISO8601TimeMilli -> "HH:mm:ss.SSSzz"
+    ISO8601TimeMicro -> "HH:mm:ss.SSSSzz"
     CustomTime(format) -> format
     CustomTimeLocalised(format, _locale) -> format
   }
@@ -2942,7 +2948,7 @@ pub fn get_date_format_str(format: DateFormat) {
 
 // regex to pull the supported formatting directives from a string
 @internal
-pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z|SSSSS|SSSS|SSS|."
+pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z{1,2}|SSSSS|SSSS|SSS|."
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
