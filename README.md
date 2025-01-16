@@ -47,6 +47,8 @@ pub fn main() {
 
 #### Time Zone Conversion
 
+Time zone conversion is only supported with an external package like `gtz` to provide timezone information.
+
 ```gleam
 import gtz
 import tempo/datetime
@@ -161,22 +163,6 @@ If at all possible, try to design your application so that time zones do not hav
 Since this package ignores leap seconds, historical leap seconds are ignored when doing comparisons and durations. Please keep this in mind when designing your applications. Leap seconds can still be parsed from ISO 8601 strings and will be compared correctly to other times, but will not be preserved when converting to any other time representation (including changing the offset).
 
 When getting the system time, leap second accounting depends on the host's time implementation.
-
-If you must, to convert between time zones with this package, use a separate time zone provider package like `gtz`:
-
-```gleam
-import tempo/datetime
-import gtz
-
-pub fn main() {
-  let convertee = datetime.literal("2024-06-12T10:47:00.000Z")
-
-  datetime.literal("2024-01-03T05:30:02.334Z")
-  |> datetime.to_timezone(tz)
-  |> datetime.to_string
-  // -> "2024-06-12T06:47:00.000-04:00"
-}
-```
 
 To account for leap seconds with this package, use a separate leap seconds provider package to compare dates (this leap second provider is fictional):
 
