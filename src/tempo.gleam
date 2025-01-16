@@ -1944,11 +1944,7 @@ pub fn date_compare(a: Date, to b: Date) -> order.Order {
   case a.year == b.year {
     True ->
       case a.month == b.month {
-        True ->
-          case a.day == b.day {
-            True -> order.Eq
-            False -> int.compare(a.day, b.day)
-          }
+        True -> int.compare(a.day, b.day)
         False ->
           int.compare(
             month_to_int(a |> date_get_month),
