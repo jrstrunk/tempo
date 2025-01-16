@@ -78,7 +78,7 @@ pub fn now_adjusted(by duration: Duration) -> DateTime {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.format_utc(tempo.ISO8601)
+/// tempo.format_utc(tempo.ISO8601Seconds)
 /// // -> "2024-12-26T16:32:34Z"
 /// ```
 pub fn format_utc(in format: DateTimeFormat) -> String {
@@ -90,7 +90,7 @@ pub fn format_utc(in format: DateTimeFormat) -> String {
 /// ## Example
 /// 
 /// ```gleam
-/// tempo.format_local(tempo.ISO8601)
+/// tempo.format_local(tempo.ISO8601Seconds)
 /// // -> "2024-12-26T12:32:34-04:00"
 /// ```
 pub fn format_local(in format: DateTimeFormat) -> String {
@@ -2884,11 +2884,11 @@ pub type Locale
 @internal
 pub fn get_datetime_format_str(format: DateTimeFormat) {
   case format {
-    ISO8601Seconds -> "YYYY/MM/DDTHH:mm:ssZ"
-    ISO8601Milli -> "YYYY/MM/DDTHH:mm:ss.SSSZ"
-    ISO8601Micro -> "YYYY/MM/DDTHH:mm:ss.SSSSZ"
+    ISO8601Seconds -> "YYYY-MM-DDTHH:mm:ssZ"
+    ISO8601Milli -> "YYYY-MM-DDTHH:mm:ss.SSSZ"
+    ISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSSZ"
     HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
-    DateFormat(ISO8601Date) -> "YYYY/MM/DD"
+    DateFormat(ISO8601Date) -> "YYYY-MM-DD"
     TimeFormat(ISO8601Time) -> "HH:mm:ssZ"
     TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSSZ"
     TimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSSZ"
