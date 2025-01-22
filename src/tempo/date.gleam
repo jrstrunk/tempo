@@ -127,8 +127,7 @@ pub fn literal(date: String) -> tempo.Date {
 /// // -> "2024-06-13"
 /// ```
 pub fn current_local() {
-  { tempo.now_utc_ffi() + tempo.offset_local_micro() } / 1_000_000
-  |> from_unix_seconds
+  { tempo.now_utc_ffi() + tempo.offset_local_micro() } |> from_unix_micro
 }
 
 /// Gets the current UTC date of the host.
@@ -141,8 +140,7 @@ pub fn current_local() {
 /// // -> "2024-06-14"
 /// ```
 pub fn current_utc() {
-  tempo.now_utc_ffi() / 1_000_000
-  |> from_unix_seconds
+  tempo.now_utc_ffi() |> from_unix_micro
 }
 
 /// Gets the year value of a date.
@@ -627,6 +625,33 @@ pub fn to_unix_micro(date: tempo.Date) -> Int {
   tempo.date_to_unix_micro(date)
 }
 
+/// Creates a date from a Rata Die value. 
+/// Adapted from the very nice Rada Gleam library!
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.from_rata_die(739_050)
+/// // -> date.literal("2024-06-13")
+/// ```
+pub fn from_rata_die(rata_die: Int) -> tempo.Date {
+  tempo.date_from_rata_die(rata_die)
+}
+
+/// Returns the Rata Die value of the date as an Int.
+/// Adapted from the very nice Rada Gleam library!
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.to_rata_die
+/// // -> 739_050
+/// ```
+pub fn to_rata_die(date: tempo.Date) -> Int {
+  tempo.date_to_rata_die(date)
+}
+
 /// Compares two dates.
 /// 
 /// ## Examples
@@ -978,7 +1003,9 @@ pub fn is_weekend(date: tempo.Date) -> Bool {
 /// // -> date.literal("2024-06-01")
 /// ```
 pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
-  tempo.date(date |> tempo.date_get_year, date |> tempo.date_get_month, 1)
+  let calendar_date = tempo.date_to_calendar_date(date)
+  tempo.CalendarDate(calendar_date.year, calendar_date.month, 1)
+  |> tempo.date_from_calendar_date
 }
 
 /// Gets the last date of the month a date occurs in.
@@ -991,12 +1018,11 @@ pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
 /// // -> date.literal("2024-02-29")
 /// ```
 pub fn last_of_month(for date: tempo.Date) -> tempo.Date {
-  tempo.date(
-    date |> tempo.date_get_year,
-    date |> tempo.date_get_month,
-    month.days(
-      of: date |> tempo.date_get_month,
-      in: date |> tempo.date_get_year,
-    ),
+  let calendar_date = tempo.date_to_calendar_date(date)
+  tempo.CalendarDate(
+    calendar_date.year,
+    calendar_date.month,
+    month.days(of: calendar_date.month, in: calendar_date.year),
   )
+  |> tempo.date_from_calendar_date
 }

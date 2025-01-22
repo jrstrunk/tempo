@@ -67,7 +67,7 @@ pub fn now_adjusted(by duration: Duration) -> DateTime {
   let new_ts = now().timestamp_utc_us + duration.microseconds
 
   DateTime(
-    date_from_unix_seconds(new_ts / 1_000_000),
+    date_from_unix_micro(new_ts),
     time_from_unix_micro(new_ts),
     offset: utc,
   )
@@ -832,14 +832,12 @@ pub fn instant_to_local_string(instant: Instant) -> String {
 
 @internal
 pub fn instant_as_utc_date(instant: Instant) -> Date {
-  date_from_unix_seconds(instant.timestamp_utc_us / 1_000_000)
+  date_from_unix_micro(instant.timestamp_utc_us)
 }
 
 @internal
 pub fn instant_as_local_date(instant: Instant) -> Date {
-  date_from_unix_seconds(
-    { instant.timestamp_utc_us + instant.offset_local_us } / 1_000_000,
-  )
+  date_from_unix_micro(instant.timestamp_utc_us + instant.offset_local_us)
 }
 
 @internal
@@ -969,41 +967,6 @@ pub fn datetime_to_string(datetime: DateTime) -> String {
     0 -> "Z"
     _ -> datetime.offset |> offset_to_string
   }
-}
-
-@deprecated("Use `datetime.to_string` instead")
-@internal
-pub fn datetime_serialize(datetime: DateTime) -> String {
-  let d = datetime.date
-  let t = datetime.time
-  let o = datetime.offset
-
-  string_tree.from_strings([
-    d.year |> int.to_string |> string.pad_start(4, with: "0"),
-    d.month
-      |> month_to_int
-      |> int.to_string
-      |> string.pad_start(2, with: "0"),
-    d.day |> int.to_string |> string.pad_start(2, with: "0"),
-    "T",
-    t.hour |> int.to_string |> string.pad_start(2, with: "0"),
-    t.minute |> int.to_string |> string.pad_start(2, with: "0"),
-    t.second |> int.to_string |> string.pad_start(2, with: "0"),
-    ".",
-    t.microsecond |> int.to_string |> string.pad_start(6, with: "0"),
-    case o |> offset_get_minutes {
-      0 -> "Z"
-      _ -> {
-        let str_offset = o |> offset_to_string
-
-        case str_offset |> string.split(":") {
-          [hours, "00"] -> hours
-          _ -> str_offset
-        }
-      }
-    },
-  ])
-  |> string_tree.to_string
 }
 
 @internal
@@ -1507,32 +1470,74 @@ fn offset_replace_format(content: String, offset: Offset) -> String {
 /// A date value. It represents a specific day on the civil calendar with no
 /// time of day associated with it.
 pub opaque type Date {
-  Date(year: Int, month: Month, day: Int)
+  Date(unix_days: Int)
 }
 
 @internal
-pub fn date(year year, month month, day day) {
-  Date(year: year, month: month, day: day)
+pub type CalendarDate {
+  CalendarDate(year: Int, month: Month, day: Int)
 }
 
 @internal
-pub fn date_get_year(date: Date) {
-  date.year
+pub fn date(unix_days unix_days) {
+  Date(unix_days:)
 }
 
 @internal
-pub fn date_get_month(date: Date) {
-  date.month
+pub fn date_get_unix_days(date: Date) {
+  date.unix_days
+}
+
+@internal
+pub fn date_to_calendar_date(date: Date) {
+  date_calendar_from_unix_days(date.unix_days)
+}
+
+@internal
+pub fn date_from_calendar_date(calendar_date: CalendarDate) {
+  date_calendar_to_unix_days(calendar_date)
 }
 
 @internal
 pub fn date_get_month_year(date: Date) {
-  MonthYear(date.month, date.year)
+  let calendar_date = date_to_calendar_date(date)
+  MonthYear(calendar_date.month, calendar_date.year)
+}
+
+@internal
+pub fn date_get_year(date: Date) {
+  let rd = date_to_rata_die(date)
+
+  let #(n400, r400) =
+    // -- 400 * 365 + 97
+    unit.div_with_remainder(rd, 146_097)
+
+  let #(n100, r100) =
+    // -- 100 * 365 + 24
+    unit.div_with_remainder(r400, 36_524)
+
+  let #(n4, r4) =
+    // -- 4 * 365 + 1
+    unit.div_with_remainder(r100, 1461)
+
+  let #(n1, r1) = unit.div_with_remainder(r4, 365)
+
+  let n = case r1 == 0 {
+    True -> 0
+    False -> 1
+  }
+
+  n400 * 400 + n100 * 100 + n4 * 4 + n1 + n
+}
+
+@internal
+pub fn date_get_month(date: Date) {
+  date_to_calendar_date(date).month
 }
 
 @internal
 pub fn date_get_day(date: Date) {
-  date.day
+  date_to_calendar_date(date).day
 }
 
 @internal
@@ -1545,51 +1550,70 @@ pub fn new_date(
 }
 
 @internal
+pub fn date_from_unix_seconds(unix_ts) {
+  Date(unix_ts / 86_400)
+}
+
+@internal
+pub fn date_from_unix_milli(unix_milli) {
+  Date(unix_milli / 86_400_000)
+}
+
+@internal
+pub fn date_from_unix_micro(unix_micro) {
+  Date(unix_micro / unit.imprecise_day_microseconds)
+}
+
+@internal
 pub fn date_to_string(date: Date) -> String {
+  let calendar_date = date_to_calendar_date(date)
+
   string_tree.from_strings([
-    int.to_string(date.year),
+    int.to_string(calendar_date.year),
     "-",
-    month_to_int(date.month)
+    month_to_int(calendar_date.month)
       |> int.to_string
       |> string.pad_start(2, with: "0"),
     "-",
-    int.to_string(date.day) |> string.pad_start(2, with: "0"),
+    int.to_string(calendar_date.day) |> string.pad_start(2, with: "0"),
   ])
   |> string_tree.to_string
 }
 
 @internal
 pub fn date_replace_format(content: String, date: Date) -> String {
+  let calendar_date = date_to_calendar_date(date)
+
   case content {
     "YY" ->
-      date.year
+      calendar_date.year
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
       |> string.slice(at_index: -2, length: 2)
     "YYYY" ->
-      date.year
+      calendar_date.year
       |> int.to_string
       |> string.pad_start(with: "0", to: 4)
     "M" ->
-      date.month
+      calendar_date.month
       |> month_to_int
       |> int.to_string
     "MM" ->
-      date.month
+      calendar_date.month
       |> month_to_int
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
     "MMM" ->
-      date.month
+      calendar_date.month
       |> month_to_short_string
     "MMMM" ->
-      date.month
+      calendar_date.month
       |> month_to_long_string
     "D" ->
-      date.day
+      calendar_date.day
       |> int.to_string
     "DD" ->
-      date.day
+      calendar_date.day
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
     "d" ->
@@ -1634,47 +1658,7 @@ fn date_to_day_of_week_long(date: Date) -> String {
 
 @internal
 pub fn date_to_day_of_week_number(date: Date) -> Int {
-  let year_code =
-    date.year % 100
-    |> fn(short_year) { { short_year + { short_year / 4 } } % 7 }
-
-  let month_code = case date.month {
-    Jan -> 0
-    Feb -> 3
-    Mar -> 3
-    Apr -> 6
-    May -> 1
-    Jun -> 4
-    Jul -> 6
-    Aug -> 2
-    Sep -> 5
-    Oct -> 0
-    Nov -> 3
-    Dec -> 5
-  }
-
-  let century_code = case date.year {
-    year if year < 1752 -> 0
-    year if year < 1800 -> 4
-    year if year < 1900 -> 2
-    year if year < 2000 -> 0
-    year if year < 2100 -> 6
-    year if year < 2200 -> 4
-    year if year < 2300 -> 2
-    year if year < 2400 -> 4
-    _ -> 0
-  }
-
-  let leap_year_code = case is_leap_year(date.year) {
-    True ->
-      case date.month {
-        Jan | Feb -> 1
-        _ -> 0
-      }
-    False -> 0
-  }
-
-  { year_code + month_code + century_code + date.day - leap_year_code } % 7
+  { date.unix_days + 4 } % 7
 }
 
 @internal
@@ -1695,7 +1679,7 @@ pub fn date_from_tuple(
   case year >= 1000 && year <= 9999 {
     True ->
       case day >= 1 && day <= month_days_of(month, in: year) {
-        True -> Ok(Date(year, month, day))
+        True -> Ok(date_from_calendar_date(CalendarDate(year, month, day)))
         False ->
           Error(tempo_error.DateDayOutOfBounds(
             month_to_short_string(month) <> " " <> int.to_string(day),
@@ -1705,254 +1689,155 @@ pub fn date_from_tuple(
   }
 }
 
+fn date_calendar_from_unix_days(unix_days) {
+  case unix_days >= 0 {
+    // This calculation is faster, but only works for dates after the unix epoch
+    True -> {
+      let z = unix_days + 719_468
+      let era =
+        case z >= 0 {
+          True -> z
+          False -> z - 146_096
+        }
+        / 146_097
+      let doe = z - era * 146_097
+      let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
+      let y = yoe + era * 400
+      let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
+      let mp = { 5 * doy + 2 } / 153
+      let d = doy - { 153 * mp + 2 } / 5 + 1
+      let m =
+        mp
+        + case mp < 10 {
+          True -> 3
+          False -> -9
+        }
+      let y = case m <= 2 {
+        True -> y + 1
+        False -> y
+      }
+
+      let assert Ok(month) = month_from_int(m)
+
+      CalendarDate(y, month, d)
+    }
+
+    // If the date is before unix time, then we will have to use another
+    // method to get the calendar date. Here uses the rata die calculation.
+    False -> {
+      let rata_die = Date(unix_days) |> date_to_rata_die
+      let ordinal_year = Date(unix_days) |> date_get_year
+      let ordinal_date = rata_die - date_days_before_year(ordinal_year)
+
+      do_calculate_rata_die(ordinal_year, Jan, ordinal_date)
+    }
+  }
+}
+
+fn do_calculate_rata_die(year: Int, month: Month, ordinal_day: Int) {
+  let days_in_month = month_days_of(month, in: year)
+
+  case month_to_int(month) < 12 && ordinal_day > days_in_month {
+    True -> {
+      do_calculate_rata_die(
+        year,
+        case month {
+          Jan -> Feb
+          Feb -> Mar
+          Mar -> Apr
+          Apr -> May
+          May -> Jun
+          Jun -> Jul
+          Jul -> Aug
+          Aug -> Sep
+          Sep -> Oct
+          Oct -> Nov
+          _ -> Dec
+        },
+        ordinal_day - days_in_month,
+      )
+    }
+    False -> {
+      CalendarDate(year:, month:, day: ordinal_day)
+    }
+  }
+}
+
 @internal
-pub fn date_from_unix_seconds(unix_ts: Int) -> Date {
-  let z = unix_ts / 86_400 + 719_468
-  let era =
-    case z >= 0 {
-      True -> z
-      False -> z - 146_096
-    }
-    / 146_097
-  let doe = z - era * 146_097
-  let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
-  let y = yoe + era * 400
-  let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
-  let mp = { 5 * doy + 2 } / 153
-  let d = doy - { 153 * mp + 2 } / 5 + 1
-  let m =
-    mp
-    + case mp < 10 {
-      True -> 3
-      False -> -9
-    }
-  let y = case m <= 2 {
-    True -> y + 1
-    False -> y
+pub fn date_calendar_from_unix_seconds(unix_ts: Int) {
+  date_calendar_from_unix_days(unix_ts / 86_400)
+}
+
+@internal
+pub fn date_calendar_to_unix_days(date: CalendarDate) {
+  let year_days = date_days_before_year(date.year)
+
+  let leap_days = case is_leap_year(date.year) {
+    True -> 1
+    False -> 0
   }
 
-  let assert Ok(month) = month_from_int(m)
+  let month_days = case date.month {
+    Jan -> 0
+    Feb -> 31
+    Mar -> 59 + leap_days
+    Apr -> 90 + leap_days
+    May -> 120 + leap_days
+    Jun -> 151 + leap_days
+    Jul -> 181 + leap_days
+    Aug -> 212 + leap_days
+    Sep -> 243 + leap_days
+    Oct -> 273 + leap_days
+    Nov -> 304 + leap_days
+    Dec -> 334 + leap_days
+  }
 
-  Date(y, month, d)
+  year_days + month_days + date.day |> date_from_rata_die
 }
 
 @internal
 pub fn date_to_unix_seconds(date: Date) -> Int {
-  let full_years_since_epoch = date_get_year(date) - 1970
-  // Offset the year by one to cacluate the number of leap years since the
-  // epoch since 1972 is the first leap year after epoch. 1972 is a leap year,
-  // so when the date is 1972, the elpased leap years (1972 has not elapsed
-  // yet) is equal to (2 + 1) / 4, which is 0. When the date is 1973, the
-  // elapsed leap years is equal to (3 + 1) / 4, which is 1, because one leap
-  // year, 1972, has fully elapsed.
-  let full_elapsed_leap_years_since_epoch = { full_years_since_epoch + 1 } / 4
-  let full_elapsed_non_leap_years_since_epoch =
-    full_years_since_epoch - full_elapsed_leap_years_since_epoch
-
-  let year_sec =
-    { full_elapsed_non_leap_years_since_epoch * 31_536_000 }
-    + { full_elapsed_leap_years_since_epoch * 31_622_400 }
-
-  let feb_milli = case is_leap_year(date |> date_get_year) {
-    True -> 2_505_600
-    False -> 2_419_200
-  }
-
-  let month_sec = case date |> date_get_month {
-    Jan -> 0
-    Feb -> 2_678_400
-    Mar -> 2_678_400 + feb_milli
-    Apr -> 5_356_800 + feb_milli
-    May -> 7_948_800 + feb_milli
-    Jun -> 10_627_200 + feb_milli
-    Jul -> 13_219_200 + feb_milli
-    Aug -> 15_897_600 + feb_milli
-    Sep -> 18_576_000 + feb_milli
-    Oct -> 21_168_000 + feb_milli
-    Nov -> 23_846_400 + feb_milli
-    Dec -> 26_438_400 + feb_milli
-  }
-
-  let day_sec = { date_get_day(date) - 1 } * 86_400
-
-  year_sec + month_sec + day_sec
+  date.unix_days * 86_400
 }
 
 @internal
-pub fn date_from_unix_micro(unix_ts: Int) -> Date {
-  date_from_unix_seconds(unix_ts / 1_000_000)
+pub fn date_to_unix_milli(date: Date) -> Int {
+  date.unix_days * 86_400_000
 }
 
 @internal
 pub fn date_to_unix_micro(date: Date) -> Int {
-  date_to_unix_seconds(date) * 1_000_000
+  date.unix_days * 86_400_000_000
+}
+
+const unix_epoch_in_rata_die = 719_163
+
+pub fn date_to_rata_die(date: Date) -> Int {
+  date.unix_days + unix_epoch_in_rata_die
+}
+
+pub fn date_from_rata_die(rata_die: Int) -> Date {
+  Date(rata_die - unix_epoch_in_rata_die)
 }
 
 @internal
 pub fn date_add(date: Date, days days: Int) -> Date {
-  let days_left_this_month = month_days_of(date.month, in: date.year) - date.day
-
-  case days <= days_left_this_month {
-    True -> Date(date.year, date.month, { date.day } + days)
-    False -> {
-      let next_month = month_year_next(date |> date_get_month_year)
-      date_add(
-        Date(next_month.year, next_month.month, 1),
-        days - days_left_this_month - 1,
-      )
-    }
-  }
+  Date(date.unix_days + days)
 }
 
 @internal
 pub fn date_subtract(date: Date, days days: Int) -> Date {
-  case days < date.day {
-    True -> Date(date.year, date.month, { date.day } - days)
-    False -> {
-      let prior_month = month_year_prior(date |> date_get_month_year)
-
-      date_subtract(
-        Date(
-          prior_month.year,
-          prior_month.month,
-          month_year_days_of(prior_month),
-        ),
-        days - date_get_day(date),
-      )
-    }
-  }
+  Date(date.unix_days - days)
 }
 
 @internal
 pub fn date_days_apart(from start_date: Date, to end_date: Date) {
-  case start_date |> date_is_earlier_or_equal(to: end_date) {
-    True -> date_days_apart_positive(start_date, end_date)
-    False -> -date_days_apart_positive(end_date, start_date)
-  }
-}
-
-/// Returns the difference between two dates, assuming the start date
-/// is sooner than the end_date
-fn date_days_apart_positive(from start_date: Date, to end_date: Date) {
-  // Caclulate the number of days in the years that are between (exclusive)
-  // the start and end dates.
-  let days_in_the_years_between = case
-    calendar_years_apart(end_date, start_date)
-  {
-    years_apart if years_apart >= 2 ->
-      list.range(1, years_apart - 1)
-      |> list.map(fn(i) { date_get_year(end_date) + i |> year_days })
-      |> int.sum
-    _ -> 0
-  }
-
-  // Now that we have the number of days in the years between, we can ignore 
-  // the fact that the start and end dates (may) be in different years and 
-  // calculate the number of days in the months between (exclusive).
-  let days_in_the_months_between =
-    exclusive_months_between_days(start_date, end_date)
-
-  // Now that we have the number of days in both the years and months between
-  // the start and end dates, we can calculate the difference between the two 
-  // dates and can ignore the fact that they may be in different years or 
-  // months.
-  let days_apart = case
-    date_get_year(end_date) == date_get_year(start_date)
-    && {
-      date_get_month(end_date) |> month_to_int
-      <= date_get_month(start_date) |> month_to_int
-    }
-  {
-    True -> date_get_day(end_date) - date_get_day(start_date)
-    False ->
-      date_get_day(end_date)
-      + {
-        month_days_of(date_get_month(start_date), date_get_year(start_date))
-        - date_get_day(start_date)
-      }
-  }
-
-  // Now add the days from each section back up together.
-  days_in_the_years_between + days_in_the_months_between + days_apart
-}
-
-fn exclusive_months_between_days(from: Date, to: Date) {
-  use <- bool.guard(
-    when: {
-      to.year == from.year
-      && {
-        month_year_prior(MonthYear(to.month, to.year)) |> month_year_to_int
-        < month_year_next(MonthYear(from.month, from.year)) |> month_year_to_int
-      }
-    },
-    return: 0,
-  )
-
-  case to.year == from.year {
-    True ->
-      list.range(
-        month_to_int({ from |> date_get_month_year |> month_year_next }.month),
-        month_to_int({ to |> date_get_month_year |> month_year_prior }.month),
-      )
-      |> list.map(fn(m) {
-        let assert Ok(m) = month_from_int(m)
-        m
-      })
-    False -> {
-      case to |> date_get_month == Jan {
-        True -> []
-        False ->
-          list.range(
-            1,
-            month_to_int(
-              { to |> date_get_month_year |> month_year_prior }.month,
-            ),
-          )
-      }
-      |> list.map(fn(m) {
-        let assert Ok(m) = month_from_int(m)
-        m
-      })
-      |> list.append(
-        case from |> date_get_month == Dec {
-          True -> []
-          False ->
-            list.range(
-              month_to_int(
-                { from |> date_get_month_year |> month_year_next }.month,
-              ),
-              12,
-            )
-        }
-        |> list.map(fn(m) {
-          let assert Ok(m) = month_from_int(m)
-          m
-        }),
-      )
-    }
-  }
-  |> list.map(fn(m) { month_days_of(m, in: to |> date_get_year) })
-  |> int.sum
-}
-
-fn calendar_years_apart(later: Date, from earlier: Date) -> Int {
-  later.year - earlier.year
+  end_date.unix_days - start_date.unix_days
 }
 
 @internal
 pub fn date_compare(a: Date, to b: Date) -> order.Order {
-  case a.year == b.year {
-    True ->
-      case a.month == b.month {
-        True -> int.compare(a.day, b.day)
-        False ->
-          int.compare(
-            month_to_int(a |> date_get_month),
-            month_to_int(b |> date_get_month),
-          )
-      }
-    False -> int.compare(a.year, b.year)
-  }
+  int.compare(a.unix_days, b.unix_days)
 }
 
 @internal
@@ -1978,6 +1863,16 @@ pub fn date_is_later(a: Date, than b: Date) -> Bool {
 @internal
 pub fn date_is_later_or_equal(a: Date, to b: Date) -> Bool {
   date_compare(a, b) == order.Gt || date_compare(a, b) == order.Eq
+}
+
+fn date_days_before_year(year1: Int) -> Int {
+  let year = year1 - 1
+  let leap_years =
+    unit.floor_div(year, 4)
+    - unit.floor_div(year, 100)
+    + unit.floor_div(year, 400)
+
+  365 * year + leap_years
 }
 
 // -------------------------------------------------------------------------- //
@@ -2173,24 +2068,21 @@ pub fn month_year_next(month_year: MonthYear) -> MonthYear {
 pub fn month_year_days_of(my: MonthYear) -> Int {
   case my.month {
     Jan -> 31
+    Feb ->
+      case is_leap_year(my.year) {
+        True -> 29
+        False -> 28
+      }
     Mar -> 31
+    Apr -> 30
     May -> 31
+    Jun -> 30
     Jul -> 31
     Aug -> 31
+    Sep -> 30
     Oct -> 31
+    Nov -> 30
     Dec -> 31
-    _ ->
-      case my.month {
-        Apr -> 30
-        Jun -> 30
-        Sep -> 30
-        Nov -> 30
-        _ ->
-          case is_leap_year(my.year) {
-            True -> 29
-            False -> 28
-          }
-      }
   }
 }
 
@@ -2464,7 +2356,7 @@ pub fn time_from_microseconds(microseconds: Int) -> Time {
 @internal
 pub fn time_from_unix_micro(unix_ts: Int) -> Time {
   // Subtract the microseconds that are responsible for the date.
-  { unix_ts - { date_to_unix_micro(date_from_unix_micro(unix_ts)) } }
+  unix_ts % unit.imprecise_day_microseconds
   |> time_from_microseconds
 }
 
@@ -2742,6 +2634,8 @@ pub fn period_comprising_months(period: Period) -> List(MonthYear) {
     )
   }
 
+  let start_date = start_date |> date_to_calendar_date
+
   do_period_comprising_months(
     [],
     MonthYear(start_date.month, start_date.year),
@@ -2752,7 +2646,7 @@ pub fn period_comprising_months(period: Period) -> List(MonthYear) {
 
 fn do_period_comprising_months(mys, my: MonthYear, end_date) {
   case
-    date(my.year, my.month, 1)
+    date_from_calendar_date(CalendarDate(my.year, my.month, 1))
     |> date_is_earlier_or_equal(to: end_date)
   {
     True ->
