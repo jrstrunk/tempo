@@ -172,7 +172,7 @@ pub fn format_no_pad_test() {
     "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS Z ZZ z",
   ))
   |> should.equal(
-    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 -00:00 -0000 Z",
+    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920 +00:00 +0000 Z",
   )
 }
 
