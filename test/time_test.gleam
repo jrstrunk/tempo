@@ -334,6 +334,24 @@ pub fn format_test() {
   |> should.equal("01:42:11 pm")
 }
 
+pub fn time_get_hour_test() {
+  time.literal("13:42:11")
+  |> time.get_hour
+  |> should.equal(13)
+}
+
+pub fn time_get_minute_test() {
+  time.literal("13:42:11")
+  |> time.get_minute
+  |> should.equal(42)
+}
+
+pub fn time_get_second_test() {
+  time.literal("13:42:11")
+  |> time.get_second
+  |> should.equal(11)
+}
+
 pub fn to_duration_test() {
   time.literal("0:0:0.000300")
   |> time.to_duration
@@ -410,24 +428,33 @@ pub fn add_time_micro_test() {
   |> should.equal(time.test_literal_micro(13, 42, 2, 1311))
 }
 
-pub fn subtract_time_test() {
+pub fn subtract_minutes_and_seconds_test() {
   time.literal("13:42:11")
   |> time.subtract(duration: duration.minutes(3))
   |> time.subtract(duration: duration.seconds(1))
   |> should.equal(time.test_literal(13, 39, 10))
+}
 
+pub fn subtract_time_1_hour_test() {
   time.literal("13:42:02")
   |> time.subtract(duration: duration.hours(1))
   |> should.equal(time.literal("12:42:02"))
+}
 
+pub fn subtract_time_11_hours_test() {
   time.test_literal(13, 42, 2)
   |> time.subtract(duration: duration.hours(11))
   |> should.equal(time.test_literal(2, 42, 2))
+}
 
+pub fn subtract_time_64_hours_test() {
   time.test_literal(13, 4, 12)
   |> time.subtract(duration: duration.hours(64))
-  |> should.equal(time.test_literal(21, 4, 12))
+  |> time.to_string
+  |> should.equal("21:04:12.000000")
+}
 
+pub fn subtract_time_large_seconds_test() {
   time.test_literal(13, 31, 2)
   |> time.subtract(duration: duration.seconds(60 * 60 * 3))
   |> should.equal(time.test_literal(10, 31, 2))
@@ -640,91 +667,90 @@ pub fn end_of_day_test() {
   |> time.to_string
   |> should.equal("24:00:00.000000")
 }
-// pub fn monotonic_difference_override_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
 
-//   time.difference(warped, from: start)
-//   |> duration.as_microseconds
-//   |> should.equal(400)
-// }
+pub fn time_to_microseconds_zero_test() {
+  time.test_literal(0, 0, 0)
+  |> time.to_duration
+  |> duration.as_microseconds
+  |> should.equal(0)
+}
 
-// pub fn monotonic_difference_no_override_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-//   let warped = tempo.time(8, 30, 12, 600)
+pub fn time_to_microseconds_end_of_day_test() {
+  time.test_literal(24, 0, 0)
+  |> time.to_duration
+  |> duration.as_microseconds
+  |> should.equal(24 * 60 * 60 * 1000 * 1000)
+}
 
-//   time.difference(warped, from: start)
-//   |> duration.as_microseconds
-//   |> should.not_equal(400)
-// }
+pub fn compare_eq_to_end_of_day_test() {
+  tempo.time(24, 0, 0, 0)
+  |> time.compare(to: tempo.time(24, 0, 0, 0))
+  |> should.equal(order.Eq)
+}
 
-// pub fn monotonic_abs_difference_override_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
+pub fn compare_lt_to_end_of_day_test() {
+  tempo.time(23, 59, 59, 999_999)
+  |> time.compare(to: tempo.time(24, 0, 0, 0))
+  |> should.equal(order.Lt)
+}
 
-//   time.difference_abs(start, from: warped)
-//   |> duration.as_microseconds
-//   |> should.equal(400)
-// }
+pub fn compare_gt_to_end_of_day_test() {
+  tempo.time(24, 0, 0, 0)
+  |> time.compare(to: tempo.time(23, 59, 59, 999_999))
+  |> should.equal(order.Gt)
+}
 
-// pub fn monotonic_survives_add_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
+pub fn leap_second_format_test() {
+  time.literal("23:59:60")
+  |> time.to_string
+  |> should.equal("23:59:60.000000")
+}
 
-//   time.add(start, duration: duration.microseconds(500))
-//   |> time.difference(from: warped)
-//   |> duration.as_microseconds
-//   |> should.equal(100)
-// }
+pub fn leap_second_minus_one_test() {
+  time.literal("23:59:60")
+  |> time.subtract(duration.seconds(1))
+  |> time.to_string
+  |> should.equal("23:59:59.000000")
+}
 
-// pub fn monotonic_survives_subtract_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(600), Some(0))
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(0))
+pub fn leap_second_plus_one_second_test() {
+  time.literal("23:59:60")
+  |> time.add(duration.seconds(1))
+  |> time.to_string
+  |> should.equal("00:00:00.000000")
+}
 
-//   time.subtract(warped, duration: duration.microseconds(200))
-//   |> time.difference(from: start)
-//   |> duration.as_microseconds
-//   |> should.equal(200)
-// }
+pub fn leap_second_plus_one_microsecond_test() {
+  time.literal("23:59:60")
+  |> time.add(duration.microseconds(1))
+  |> time.to_string
+  |> should.equal("23:59:60.000001")
+}
 
-// pub fn unique_compare_override_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
+pub fn fractional_leap_second_plus_boundary_test() {
+  time.literal("23:59:60.604540")
+  |> time.add(duration.milliseconds(20))
+  |> time.to_string
+  |> should.equal("23:59:60.624540")
+}
 
-//   time.compare(start, to: warped)
-//   |> should.equal(order.Lt)
-// }
+pub fn near_end_of_day_plus_one_second_test() {
+  time.literal("23:59:59")
+  |> time.add(duration.seconds(1))
+  |> time.to_string
+  |> should.equal("00:00:00.000000")
+}
 
-// pub fn unique_compare_no_override_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-//   let warped = tempo.time(8, 30, 12, 600)
+pub fn end_of_day_plus_one_microsecond_test() {
+  time.literal("24:00:00")
+  |> time.add(duration.microseconds(1))
+  |> time.to_string
+  |> should.equal("00:00:00.000001")
+}
 
-//   time.compare(start, to: warped)
-//   |> should.equal(order.Gt)
-// }
-
-// pub fn monotonic_compare_override_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(100), None)
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), None)
-
-//   time.compare(start, to: warped)
-//   |> should.equal(order.Lt)
-// }
-
-// pub fn unique_compare_does_not_survive_add_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
-
-//   time.add(warped, duration: duration.microseconds(500))
-//   |> time.compare(to: start)
-//   |> should.equal(order.Lt)
-// }
-
-// pub fn unique_compare_does_not_survive_subtract_test() {
-//   let start = tempo.time(9, 30, 12, 300, Some(10_000), Some(1))
-//   let warped = tempo.time(8, 30, 12, 600, Some(1000), Some(2))
-
-//   time.subtract(warped, duration: duration.microseconds(500))
-//   |> time.compare(to: start)
-//   |> should.equal(order.Lt)
-// }
+pub fn end_of_day_plus_one_second_test() {
+  time.literal("24:00:00")
+  |> time.add(duration.seconds(1))
+  |> time.to_string
+  |> should.equal("00:00:01.000000")
+}

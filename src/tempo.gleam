@@ -4,6 +4,7 @@
 
 import gleam/bool
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
@@ -13,6 +14,13 @@ import gleam/string
 import gleam/string_tree
 import gtempo/internal as unit
 import tempo/error as tempo_error
+
+pub fn main() {
+  time_from_microseconds(-3_000_000)
+  |> time_to_string
+  |> io.debug
+  // |> should.equal("23:59:57.000000")
+}
 
 // This is a big file. The contents are generally ordered (and searchable) by:
 // - Tempo now functions
@@ -1230,12 +1238,9 @@ pub fn naive_datetime_add(
   // If the time to add crossed a day boundary, add an extra day to the 
   // number of days to add and adjust the time to add.
   let #(new_time_as_micro, days_to_add): #(Int, Int) = case
-    new_time_as_micro >= unit.imprecise_day_microseconds
+    new_time_as_micro >= unit.day_microseconds
   {
-    True -> #(
-      new_time_as_micro - unit.imprecise_day_microseconds,
-      days_to_add + 1,
-    )
+    True -> #(new_time_as_micro - unit.day_microseconds, days_to_add + 1)
     False -> #(new_time_as_micro, days_to_add)
   }
 
@@ -1276,10 +1281,7 @@ pub fn naive_datetime_subtract(
   // If the time to subtract crossed a day boundary, add an extra day to the 
   // number of days to subtract and adjust the time to subtract.
   let #(new_time_as_micro, days_to_sub) = case new_time_as_micro < 0 {
-    True -> #(
-      new_time_as_micro + unit.imprecise_day_microseconds,
-      days_to_sub + 1,
-    )
+    True -> #(new_time_as_micro + unit.day_microseconds, days_to_sub + 1)
     False -> #(new_time_as_micro, days_to_sub)
   }
 
@@ -1561,7 +1563,7 @@ pub fn date_from_unix_milli(unix_milli) {
 
 @internal
 pub fn date_from_unix_micro(unix_micro) {
-  Date(unix_micro / unit.imprecise_day_microseconds)
+  Date(unix_micro / unit.day_microseconds)
 }
 
 @internal
@@ -2122,38 +2124,139 @@ pub fn year_days(of year: Int) -> Int {
 /// It cannot be greater than 24 hours or less than 0 hours. It has microsecond
 /// precision.
 pub opaque type Time {
-  Time(hour: Int, minute: Int, second: Int, microsecond: Int)
+  // Represents the microseconds since the beginning of the day.
+  TimeOfDay(microseconds: Int)
+  // Represents the 24:00:00 time, which cannot be represented by microseconds
+  // since the beginning of the day.
+  LastInstantOfDay
+  EndOfDayLeapSecond(microseconds: Int)
 }
 
 @internal
-pub const time_start_of_day = Time(0, 0, 0, 0)
+pub const time_start_of_day = TimeOfDay(0)
 
 @internal
-pub const time_end_of_day = Time(24, 0, 0, 0)
+pub const time_end_of_day = LastInstantOfDay
 
+/// Used only internally to construct a time value after the inputs have been
+/// validated.
 @internal
 pub fn time(hour hour, minute minute, second second, micro microsecond) {
-  Time(hour:, minute:, second:, microsecond:)
+  case hour == 24 && minute == 0 && second == 0 && microsecond == 0 {
+    True -> LastInstantOfDay
+    False ->
+      case hour == 23 && minute == 59 && second == 60 {
+        True -> EndOfDayLeapSecond(microsecond)
+        False ->
+          TimeOfDay(
+            { hour * unit.hour_microseconds }
+            + { minute * unit.minute_microseconds }
+            + { second * unit.second_microseconds }
+            + microsecond,
+          )
+      }
+  }
+}
+
+/// We really only want to normalise on the way out of the time type 
+/// representation (like displaying a time) to preserve correct comparibility.
+fn time_normalise(time: Time) {
+  case time {
+    TimeOfDay(microseconds) if microseconds < 0 -> {
+      TimeOfDay(
+        unit.day_microseconds + { microseconds % unit.day_microseconds },
+      )
+    }
+    TimeOfDay(microseconds) if microseconds >= unit.day_microseconds -> {
+      TimeOfDay(microseconds % unit.day_microseconds)
+    }
+    _ -> time
+  }
+}
+
+@internal
+pub fn time_from_microseconds(microseconds) {
+  TimeOfDay(microseconds)
 }
 
 @internal
 pub fn time_get_hour(time: Time) {
-  time.hour
+  case time_normalise(time) {
+    TimeOfDay(microseconds) -> microseconds / unit.hour_microseconds
+    LastInstantOfDay -> 24
+    EndOfDayLeapSecond(..) -> 23
+  }
 }
 
 @internal
 pub fn time_get_minute(time: Time) {
-  time.minute
+  case time_normalise(time) {
+    TimeOfDay(microseconds) -> {
+      let hour = microseconds / unit.hour_microseconds
+
+      { microseconds - hour * unit.hour_microseconds }
+      / unit.minute_microseconds
+    }
+    LastInstantOfDay -> 0
+    EndOfDayLeapSecond(..) -> 59
+  }
 }
 
 @internal
 pub fn time_get_second(time: Time) {
-  time.second
+  case time_normalise(time) {
+    TimeOfDay(microseconds) -> {
+      let hour = microseconds / unit.hour_microseconds
+
+      let minute =
+        { microseconds - hour * unit.hour_microseconds }
+        / unit.minute_microseconds
+
+      {
+        microseconds
+        - hour
+        * unit.hour_microseconds
+        - minute
+        * unit.minute_microseconds
+      }
+      / unit.second_microseconds
+    }
+    LastInstantOfDay -> 0
+    EndOfDayLeapSecond(..) -> 60
+  }
 }
 
 @internal
 pub fn time_get_micro(time: Time) {
-  time.microsecond
+  case time_normalise(time) {
+    TimeOfDay(microseconds) -> {
+      let hour = microseconds / unit.hour_microseconds
+
+      let minute =
+        { microseconds - hour * unit.hour_microseconds }
+        / unit.minute_microseconds
+
+      let second =
+        {
+          microseconds
+          - hour
+          * unit.hour_microseconds
+          - minute
+          * unit.minute_microseconds
+        }
+        / unit.second_microseconds
+
+      microseconds
+      - hour
+      * unit.hour_microseconds
+      - minute
+      * unit.minute_microseconds
+      - second
+      * unit.second_microseconds
+    }
+    LastInstantOfDay -> 0
+    EndOfDayLeapSecond(microsecond) -> microsecond
+  }
 }
 
 @internal
@@ -2162,7 +2265,7 @@ pub fn new_time(
   minute: Int,
   second: Int,
 ) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
-  Time(hour, minute, second, 0) |> validate_time
+  validate_time(hour, minute, second, 0)
 }
 
 @internal
@@ -2172,8 +2275,7 @@ pub fn new_time_milli(
   second: Int,
   millisecond: Int,
 ) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
-  Time(hour, minute, second, millisecond * 1000)
-  |> validate_time
+  validate_time(hour, minute, second, millisecond * 1000)
 }
 
 @internal
@@ -2183,70 +2285,120 @@ pub fn new_time_micro(
   second: Int,
   microsecond: Int,
 ) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
-  Time(hour, minute, second, microsecond)
-  |> validate_time
+  validate_time(hour, minute, second, microsecond)
 }
 
 @internal
 pub fn validate_time(
-  time: Time,
+  hour: Int,
+  minute: Int,
+  second: Int,
+  microsecond: Int,
 ) -> Result(Time, tempo_error.TimeOutOfBoundsError) {
   case
     {
-      time.hour >= 0
-      && time.hour <= 23
-      && time.minute >= 0
-      && time.minute <= 59
-      && time.second >= 0
-      && time.second <= 59
+      hour >= 0
+      && hour <= 23
+      && minute >= 0
+      && minute <= 59
+      && second >= 0
+      && second <= 59
     }
     // For end of day time https://en.wikipedia.org/wiki/ISO_8601
-    || {
-      time.hour == 24
-      && time.minute == 0
-      && time.second == 0
-      && time.microsecond == 0
-    }
+    || { hour == 24 && minute == 0 && second == 0 && microsecond == 0 }
     // For leap seconds https://en.wikipedia.org/wiki/Leap_second. Leap seconds
     // are not fully supported by this package, but can be parsed from ISO 8601
     // dates.
-    || { time.minute == 59 && time.second == 60 && time.microsecond == 0 }
+    || { hour == 23 && minute == 59 && second == 60 }
   {
     True ->
-      case time.microsecond <= 999_999 {
-        True -> Ok(time)
+      case microsecond <= 999_999 {
+        True -> Ok(time(hour, minute, second, microsecond))
         False ->
-          Error(tempo_error.TimeMicroSecondOutOfBounds(time_to_string(time)))
+          Error(
+            tempo_error.TimeMicroSecondOutOfBounds(time_parts_to_string(
+              hour,
+              minute,
+              second,
+              microsecond,
+            )),
+          )
       }
     False ->
-      case time.hour, time.minute, time.second {
+      case hour, minute, second {
         _, _, s if s > 59 || s < 0 ->
-          Error(tempo_error.TimeSecondOutOfBounds(time_to_string(time)))
+          Error(
+            tempo_error.TimeSecondOutOfBounds(time_parts_to_string(
+              hour,
+              minute,
+              second,
+              microsecond,
+            )),
+          )
         _, m, _ if m > 59 || m < 0 ->
-          Error(tempo_error.TimeMinuteOutOfBounds(time_to_string(time)))
-        _, _, _ -> Error(tempo_error.TimeHourOutOfBounds(time_to_string(time)))
+          Error(
+            tempo_error.TimeMinuteOutOfBounds(time_parts_to_string(
+              hour,
+              minute,
+              second,
+              microsecond,
+            )),
+          )
+        _, _, _ ->
+          Error(
+            tempo_error.TimeHourOutOfBounds(time_parts_to_string(
+              hour,
+              minute,
+              second,
+              microsecond,
+            )),
+          )
       }
   }
 }
 
-@internal
-pub fn time_to_string(time: Time) -> String {
+fn time_parts_to_string(hour, minute, second, microsecond) {
   string_tree.from_strings([
-    time.hour
+    hour
       |> int.to_string
       |> string.pad_start(2, with: "0"),
     ":",
-    time.minute
+    minute
       |> int.to_string
       |> string.pad_start(2, with: "0"),
     ":",
-    time.second
+    second
       |> int.to_string
       |> string.pad_start(2, with: "0"),
   ])
   |> string_tree.append(".")
   |> string_tree.append(
-    time.microsecond
+    microsecond
+    |> int.to_string
+    |> string.pad_start(6, with: "0"),
+  )
+  |> string_tree.to_string
+}
+
+@internal
+pub fn time_to_string(time: Time) -> String {
+  let #(hour, minute, second, microsecond) = time_to_parts(time)
+  string_tree.from_strings([
+    hour
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    ":",
+    minute
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+    ":",
+    second
+      |> int.to_string
+      |> string.pad_start(2, with: "0"),
+  ])
+  |> string_tree.append(".")
+  |> string_tree.append(
+    microsecond
     |> int.to_string
     |> string.pad_start(6, with: "0"),
   )
@@ -2256,20 +2408,20 @@ pub fn time_to_string(time: Time) -> String {
 @internal
 pub fn time_replace_format(content: String, time: Time) -> String {
   case content {
-    "H" -> time.hour |> int.to_string
+    "H" -> time_get_hour(time) |> int.to_string
     "HH" ->
-      time.hour
+      time_get_hour(time)
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
     "h" ->
-      case time.hour {
+      case time_get_hour(time) {
         hour if hour == 0 -> 12
         hour if hour > 12 -> hour - 12
         hour -> hour
       }
       |> int.to_string
     "hh" ->
-      case time.hour {
+      case time_get_hour(time) {
         hour if hour == 0 -> 12
         hour if hour > 12 -> hour - 12
         hour -> hour
@@ -2277,31 +2429,31 @@ pub fn time_replace_format(content: String, time: Time) -> String {
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
     "a" ->
-      case time.hour >= 12 {
+      case time_get_hour(time) >= 12 {
         True -> "pm"
         False -> "am"
       }
     "A" ->
-      case time.hour >= 12 {
+      case time_get_hour(time) >= 12 {
         True -> "PM"
         False -> "AM"
       }
-    "m" -> time.minute |> int.to_string
+    "m" -> time_get_minute(time) |> int.to_string
     "mm" ->
-      time.minute
+      time_get_minute(time)
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
-    "s" -> time.second |> int.to_string
+    "s" -> time_get_second(time) |> int.to_string
     "ss" ->
-      time.second
+      time_get_second(time)
       |> int.to_string
       |> string.pad_start(with: "0", to: 2)
     "SSS" ->
-      { time.microsecond / 1000 }
+      { time_get_micro(time) / 1000 }
       |> int.to_string
       |> string.pad_start(with: "0", to: 3)
     "SSSS" ->
-      { time.microsecond }
+      { time_get_micro(time) }
       |> int.to_string
       |> string.pad_start(with: "0", to: 6)
     _ -> content
@@ -2325,39 +2477,53 @@ pub fn time_difference(from a: Time, to b: Time) -> Duration {
 
 @internal
 pub fn time_to_microseconds(time: Time) -> Int {
-  { time.hour * unit.hour_microseconds }
-  + { time.minute * unit.minute_microseconds }
-  + { time.second * unit.second_microseconds }
-  + { time.microsecond }
+  case time_normalise(time) {
+    TimeOfDay(microseconds) -> microseconds
+    LastInstantOfDay -> unit.day_microseconds
+    EndOfDayLeapSecond(microsecond) -> unit.day_microseconds + microsecond
+  }
 }
 
 @internal
-pub fn time_from_microseconds(microseconds: Int) -> Time {
-  let in_range_micro = microseconds % unit.imprecise_day_microseconds
+pub fn time_to_parts(time: Time) {
+  case time_normalise(time) {
+    TimeOfDay(microseconds) -> {
+      let hour = microseconds / unit.hour_microseconds
 
-  let adj_micro = case in_range_micro < 0 {
-    True -> in_range_micro + unit.imprecise_day_microseconds
-    False -> in_range_micro
+      let minute =
+        { microseconds - hour * unit.hour_microseconds }
+        / unit.minute_microseconds
+
+      let second =
+        {
+          microseconds
+          - hour
+          * unit.hour_microseconds
+          - minute
+          * unit.minute_microseconds
+        }
+        / unit.second_microseconds
+
+      let microsecond =
+        microseconds
+        - hour
+        * unit.hour_microseconds
+        - minute
+        * unit.minute_microseconds
+        - second
+        * unit.second_microseconds
+
+      #(hour, minute, second, microsecond)
+    }
+    LastInstantOfDay -> #(24, 0, 0, 0)
+    EndOfDayLeapSecond(microsecond) -> #(23, 59, 60, microsecond)
   }
-
-  let hour = adj_micro / 3_600_000_000
-
-  let minute = { adj_micro - hour * 3_600_000_000 } / 60_000_000
-
-  let second =
-    { adj_micro - hour * 3_600_000_000 - minute * 60_000_000 } / 1_000_000
-
-  let microsecond =
-    adj_micro - hour * 3_600_000_000 - minute * 60_000_000 - second * 1_000_000
-
-  Time(hour:, minute:, second:, microsecond:)
 }
 
 @internal
 pub fn time_from_unix_micro(unix_ts: Int) -> Time {
   // Subtract the microseconds that are responsible for the date.
-  unix_ts % unit.imprecise_day_microseconds
-  |> time_from_microseconds
+  time_from_microseconds(unix_ts % unit.day_microseconds)
 }
 
 @internal
@@ -2367,38 +2533,7 @@ pub fn time_to_duration(time: Time) -> Duration {
 
 @internal
 pub fn time_compare(a: Time, to b: Time) -> order.Order {
-  case a.hour == b.hour {
-    True ->
-      case a.minute == b.minute {
-        True ->
-          case a.second == b.second {
-            True ->
-              case a.microsecond == b.microsecond {
-                True -> order.Eq
-                False ->
-                  case a.microsecond < b.microsecond {
-                    True -> order.Lt
-                    False -> order.Gt
-                  }
-              }
-            False ->
-              case a.second < b.second {
-                True -> order.Lt
-                False -> order.Gt
-              }
-          }
-        False ->
-          case a.minute < b.minute {
-            True -> order.Lt
-            False -> order.Gt
-          }
-      }
-    False ->
-      case a.hour < b.hour {
-        True -> order.Lt
-        False -> order.Gt
-      }
-  }
+  int.compare(time_to_microseconds(a), time_to_microseconds(b))
 }
 
 @internal
@@ -2428,12 +2563,35 @@ pub fn time_is_later_or_equal(a: Time, to b: Time) -> Bool {
 
 @internal
 pub fn time_add(a: Time, duration b: Duration) -> Time {
-  time_to_microseconds(a) + b.microseconds |> time_from_microseconds
+  case b.microseconds == 0 {
+    True -> a
+    False -> {
+      case a {
+        EndOfDayLeapSecond(microsecond)
+          if b.microseconds + microsecond < 1_000_000
+        -> EndOfDayLeapSecond(microsecond + b.microseconds)
+        EndOfDayLeapSecond(..) ->
+          time_to_microseconds(a) + { b.microseconds - 1_000_000 }
+          |> time_from_microseconds
+          |> time_normalise
+        _ ->
+          time_to_microseconds(a) + b.microseconds
+          |> time_from_microseconds
+          |> time_normalise
+      }
+    }
+  }
 }
 
 @internal
 pub fn time_subtract(a: Time, duration b: Duration) -> Time {
-  time_to_microseconds(a) - b.microseconds |> time_from_microseconds
+  case b.microseconds == 0 {
+    True -> a
+    False ->
+      time_to_microseconds(a) - b.microseconds
+      |> time_from_microseconds
+      |> time_normalise
+  }
 }
 
 // -------------------------------------------------------------------------- //
@@ -2555,7 +2713,7 @@ pub fn period_get_start_and_end_date_and_time(
   period,
 ) -> #(Date, Date, Time, Time) {
   case period {
-    DatePeriod(start, end) -> #(start, end, Time(0, 0, 0, 0), Time(24, 0, 0, 0))
+    DatePeriod(start, end) -> #(start, end, time_start_of_day, time_end_of_day)
     NaiveDateTimePeriod(start, end) -> #(
       start.date,
       end.date,

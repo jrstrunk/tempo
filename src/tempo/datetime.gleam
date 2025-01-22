@@ -146,7 +146,7 @@ pub fn from_string(
 
     [date] ->
       date.from_string(date)
-      |> result.map(new(_, tempo.time(0, 0, 0, 0), tempo.utc))
+      |> result.map(new(_, tempo.time_start_of_day, tempo.utc))
       |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _))
 
     _ -> Error(tempo_error.DateTimeInvalidFormat(datetime))
