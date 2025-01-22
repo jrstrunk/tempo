@@ -22,7 +22,7 @@ pub fn new_offset_test() {
 
 pub fn to_string_zero_test() {
   offset.to_string(tempo.offset(0))
-  |> should.equal("-00:00")
+  |> should.equal("+00:00")
 }
 
 pub fn to_string_test() {
@@ -41,6 +41,9 @@ pub fn to_string_test() {
 
 pub fn from_string_test() {
   offset.from_string("-00:00")
+  |> should.equal(Ok(tempo.offset(0)))
+
+  offset.from_string("+00:00")
   |> should.equal(Ok(tempo.offset(0)))
 
   offset.from_string("-00:05")
@@ -85,7 +88,7 @@ pub fn from_string_single_num_zero_test() {
   offset.from_string("-0")
   |> should.be_ok
   |> offset.to_string
-  |> should.equal("-00:00")
+  |> should.equal("+00:00")
 }
 
 pub fn from_string_z_test() {

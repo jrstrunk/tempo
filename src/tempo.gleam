@@ -1403,7 +1403,7 @@ pub fn offset_to_string(offset: Offset) -> String {
   }
 
   case is_negative, hours, mins {
-    _, 0, 0 -> "-00:00"
+    _, 0, 0 -> "+00:00"
 
     _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_start(2, with: "0")
 
