@@ -200,7 +200,7 @@ pub fn literal(time: String) -> tempo.Time {
 /// updated and these functions removed.
 @internal
 pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
-  let assert Ok(time) = tempo.time(hour, minute, second, 0) |> validate
+  let assert Ok(time) = tempo.validate_time(hour, minute, second, 0)
   time
 }
 
@@ -212,8 +212,7 @@ pub fn test_literal_milli(
   millisecond: Int,
 ) -> tempo.Time {
   let assert Ok(time) =
-    tempo.time(hour, minute, second, millisecond * 1000)
-    |> validate
+    tempo.validate_time(hour, minute, second, millisecond * 1000)
   time
 }
 
@@ -224,16 +223,8 @@ pub fn test_literal_micro(
   second: Int,
   microsecond: Int,
 ) -> tempo.Time {
-  let assert Ok(time) =
-    tempo.time(hour, minute, second, microsecond)
-    |> validate
+  let assert Ok(time) = tempo.validate_time(hour, minute, second, microsecond)
   time
-}
-
-fn validate(
-  time: tempo.Time,
-) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
-  tempo.validate_time(time)
 }
 
 /// Gets the hour value of a time.
@@ -388,7 +379,7 @@ pub fn from_string(
             int.parse(second_fraction |> string.pad_end(3, with: "0"))
           {
             Ok(second), Ok(milli) ->
-              Ok(tempo.time(hour, minute, second, milli * 1000))
+              Ok(tempo.validate_time(hour, minute, second, milli * 1000))
             _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
           }
         len if len <= 6 ->
@@ -396,7 +387,8 @@ pub fn from_string(
             int.parse(second),
             int.parse(second_fraction |> string.pad_end(6, with: "0"))
           {
-            Ok(second), Ok(micro) -> Ok(tempo.time(hour, minute, second, micro))
+            Ok(second), Ok(micro) ->
+              Ok(tempo.validate_time(hour, minute, second, micro))
             _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
           }
         _ -> Error(tempo_error.TimeInvalidFormat(time_str))
@@ -405,15 +397,14 @@ pub fn from_string(
 
     Ok(hour), Ok(minute), _ ->
       case int.parse(second) {
-        Ok(second) -> Ok(tempo.time(hour, minute, second, 0))
+        Ok(second) -> Ok(tempo.validate_time(hour, minute, second, 0))
         _ -> Error(tempo_error.TimeInvalidFormat(time_str))
       }
 
     _, _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
   })
 
-  validate(time)
-  |> result.map_error(tempo_error.TimeOutOfBounds(time_str, _))
+  result.map_error(time, tempo_error.TimeOutOfBounds(time_str, _))
 }
 
 /// Parses a time string in the provided format. Always prefer using
@@ -1014,7 +1005,7 @@ pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 /// // -> time.literal("15:54:40")
 /// ```
 pub fn left_in_day(time: tempo.Time) -> tempo.Time {
-  unit.imprecise_day_microseconds - { time |> tempo.time_to_microseconds }
+  unit.day_microseconds - { time |> tempo.time_to_microseconds }
   |> tempo.time_from_microseconds
 }
 

@@ -158,7 +158,7 @@ pub fn from_string(
           _,
         )),
       )
-      tempo.naive_datetime(date, tempo.time(0, 0, 0, 0))
+      tempo.naive_datetime(date, tempo.time_start_of_day)
     }
     _ ->
       Error(tempo_error.NaiveDateTimeInvalidFormat(
@@ -449,7 +449,7 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 /// ```
 pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
   tempo.naive_datetime_get_date(datetime)
-  |> tempo.naive_datetime(tempo.time(0, 0, 0, 0))
+  |> tempo.naive_datetime(tempo.time_start_of_day)
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and

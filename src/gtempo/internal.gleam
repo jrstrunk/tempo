@@ -26,7 +26,7 @@ pub const imprecise_month_microseconds = 2_592_000_000_000
 
 pub const imprecise_week_microseconds = 604_800_000_000
 
-pub const imprecise_day_microseconds = 86_400_000_000
+pub const day_microseconds = 86_400_000_000
 
 pub const hour_microseconds = 3_600_000_000
 
@@ -42,7 +42,7 @@ pub fn format(microseconds: Int) {
       format_as_many(microseconds, [Year, Week, Day, Hour, Minute], decimals: 0)
     n if n >= imprecise_week_microseconds ->
       format_as_many(microseconds, [Week, Day, Hour, Minute], decimals: 0)
-    n if n >= imprecise_day_microseconds ->
+    n if n >= day_microseconds ->
       format_as_many(microseconds, [Day, Hour, Minute], decimals: 0)
     n if n >= hour_microseconds ->
       format_as_many(microseconds, [Hour, Minute, Second], decimals: 2)
@@ -155,7 +155,7 @@ pub fn in_microseconds(unit) {
     Year -> imprecise_year_microseconds
     Month -> imprecise_month_microseconds
     Week -> imprecise_week_microseconds
-    Day -> imprecise_day_microseconds
+    Day -> day_microseconds
     CalculatedYear(_, microseconds: microseconds) -> microseconds
     CalculatedMonth(_, microseconds: microseconds) -> microseconds
     Hour -> hour_microseconds
@@ -214,7 +214,7 @@ pub fn imprecise_weeks(weeks: Int) -> Int {
 }
 
 pub fn imprecise_days(days: Int) -> Int {
-  days * imprecise_day_microseconds
+  days * day_microseconds
 }
 
 pub fn hours(hours: Int) -> Int {
@@ -262,11 +262,11 @@ pub fn as_weeks_imprecise_fractional(microseconds: Int) -> Float {
 }
 
 pub fn as_days_imprecise(microseconds: Int) -> Int {
-  microseconds / imprecise_day_microseconds
+  microseconds / day_microseconds
 }
 
 pub fn as_days_fractional(microseconds: Int) -> Float {
-  int.to_float(microseconds) /. int.to_float(imprecise_day_microseconds)
+  int.to_float(microseconds) /. int.to_float(day_microseconds)
 }
 
 pub fn as_hours(microseconds: Int) -> Int {

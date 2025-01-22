@@ -166,9 +166,9 @@ pub fn as_days(period: tempo.Period) -> Int {
   // of the day, then 1 needs to be added to the days count.
   + case
     start_time
-    |> time.is_equal(to: tempo.time(0, 0, 0, 0))
+    |> time.is_equal(to: tempo.time_start_of_day)
     && end_time
-    |> time.is_equal(to: tempo.time(24, 0, 0, 0))
+    |> time.is_equal(to: tempo.time_end_of_day)
   {
     True -> 1
     False -> 0
@@ -205,13 +205,13 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
         |> time.to_duration
         |> duration.as_microseconds,
       )
-      /. int.to_float(unit.imprecise_day_microseconds)
+      /. int.to_float(unit.day_microseconds)
       +. int.to_float(
         end_time
         |> time.to_duration
         |> duration.as_microseconds,
       )
-      /. int.to_float(unit.imprecise_day_microseconds)
+      /. int.to_float(unit.day_microseconds)
 
     // The time between the start and end times divided by the total number 
     // of seconds in the end day.
@@ -219,14 +219,14 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
       // The as_days functions alread accounted for the time between the
       // start and end dates when the end is at the last instant of the day,
       // so we do not need to account for it here as well.
-      case time.is_equal(end_time, to: tempo.time(24, 0, 0, 0)) {
+      case time.is_equal(end_time, to: tempo.time_end_of_day) {
         True -> 0.0
         False ->
           int.to_float(
             time.difference(from: start_time, to: end_time)
             |> duration.as_microseconds,
           )
-          /. int.to_float(unit.imprecise_day_microseconds)
+          /. int.to_float(unit.day_microseconds)
       }
   }
 }
@@ -264,7 +264,7 @@ pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
   let start =
     tempo.naive_datetime(
       tempo.date_from_calendar_date(tempo.CalendarDate(my.year, my.month, 1)),
-      tempo.time(0, 0, 0, 0),
+      tempo.time_start_of_day,
     )
 
   let end =
@@ -274,7 +274,7 @@ pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
         my.month,
         month.days(of: my.month, in: my.year),
       )),
-      tempo.time(24, 0, 0, 0),
+      tempo.time_end_of_day,
     )
 
   from_naive_datetimes(start, end)
