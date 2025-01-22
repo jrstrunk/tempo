@@ -308,3 +308,29 @@ pub fn as_microseconds(microseconds: Int) -> Int {
 pub fn as_microseconds_fractional(microseconds: Int) -> Float {
   int.to_float(microseconds)
 }
+
+/// This is the implementation of int.floor_divide but unwrapped with the knowledge
+/// that the divisor is never zero
+pub fn floor_div(dividend: Int, divisor: Int) -> Int {
+  case
+    { { dividend > 0 && divisor < 0 } || { dividend < 0 && divisor > 0 } }
+    && dividend % divisor != 0
+  {
+    True -> dividend / divisor - 1
+    False -> dividend / divisor
+  }
+}
+
+pub fn div_with_remainder(a: Int, b: Int) -> #(Int, Int) {
+  #(floor_div(a, b), modulo_unwrap(a, b))
+}
+
+/// This is the implementation of int.modulo but unwrapped with the knowledge that the
+/// the divisor is never zero in our calculations
+pub fn modulo_unwrap(dividend: Int, divisor: Int) -> Int {
+  let remainder = dividend % divisor
+  case { remainder > 0 && divisor < 0 } || { remainder < 0 && divisor > 0 } {
+    True -> remainder + divisor
+    False -> remainder
+  }
+}

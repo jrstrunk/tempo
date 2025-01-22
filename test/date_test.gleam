@@ -446,6 +446,12 @@ pub fn to_weekday_jan_not_leap_year_test() {
   |> should.equal(date.Wed)
 }
 
+pub fn to_weekday_number_jan_not_leap_year_test() {
+  date.literal("2023-01-04")
+  |> date.to_day_of_week_number
+  |> should.equal(3)
+}
+
 pub fn to_weekday_jan_leap_year_test() {
   date.literal("2024-01-09")
   |> date.to_day_of_week
@@ -605,4 +611,43 @@ pub fn date_difference_negative_year_test() {
   date.literal("2024-06-23")
   |> date.difference(from: date.literal("2025-06-23"))
   |> should.equal(-365)
+}
+
+pub fn date_round_trip_test() {
+  date.literal("1996-07-04")
+  |> date.to_string()
+  |> should.equal("1996-07-04")
+}
+
+pub fn date_old_round_trip_test() {
+  date.literal("1576-07-04")
+  |> date.to_string()
+  |> should.equal("1576-07-04")
+}
+
+pub fn date_old_add_test() {
+  date.literal("1776-07-04")
+  |> date.add(days: 1)
+  |> date.to_string()
+  |> should.equal("1776-07-05")
+}
+
+pub fn rata_die_post_unix_epoch_test() {
+  date.literal("2024-06-13")
+  |> date.to_rata_die
+  |> should.equal(739_050)
+
+  date.from_rata_die(739_050)
+  |> date.to_string()
+  |> should.equal("2024-06-13")
+}
+
+pub fn rata_die_pre_unix_epoch_test() {
+  date.literal("1762-06-13")
+  |> date.to_rata_die
+  |> should.equal(643_356)
+
+  date.from_rata_die(643_356)
+  |> date.to_string()
+  |> should.equal("1762-06-13")
 }
