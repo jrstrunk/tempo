@@ -4,7 +4,7 @@ version = "6.2.0"
 # Fill out these fields if you intend to generate HTML documentation or publish
 # your project to the Hex package manager.
 
-description = "A lightweight and Gleamy datetime library!"
+description = "A human-friendly, mockable datetime library!"
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "jrstrunk", repo = "tempo" }
 links = [{ title = "Website", href = "https://gleam.run" }]
