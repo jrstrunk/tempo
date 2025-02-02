@@ -1,6 +1,6 @@
 # Tempo
 
-A lightweight and Gleamy datetime library!
+A human-friendly, mockable datetime library!
 
 Only run a task past a certain time of day, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more! Over 400 unit tests, contributions welcome!
 
@@ -45,31 +45,6 @@ pub fn main() {
 }
 ```
 
-#### Time Zone Conversion
-
-Time zone conversion is only supported with an external package like `gtz` to provide timezone information.
-
-```gleam
-import gtz
-import tempo/datetime
-
-pub fn main() {
-  let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
-
-  datetime.from_unix_seconds(1_729_257_776)
-  |> datetime.to_timezone(local_tz)
-  |> datetime.to_string
-  // -> "2024-10-18T14:22:56.000+01:00"
-
-  let assert Ok(tz) = gtz.timezone("America/New_York")
-
-  datetime.literal("2024-01-03T05:30:02.334Z")
-  |> datetime.to_timezone(tz)
-  |> datetime.to_string
-  // -> "2024-01-03T00:30:02.334-05:00"
-}
-```
-
 #### Handling Current System Time
 
 To aviod common pitfalls, the current system time is only returned as a `Instant` type. It is a monotonic type that represents a unique point in time on the host system and is the most complete representation of system time. It can be converted to all other time types if needed, but it should be used as in when possible.
@@ -107,6 +82,77 @@ pub fn main() {
     False -> io.println("We are on time!")
   }
   // -> We are late by 54 minutes
+}
+```
+
+#### Mocking Current System Time
+
+The system time can be frozen at a specific time or set to a specific time and allowed to progress further from there with an optional speedup factor. Setting the time with a speedup factor allows for quick testing of code that would usually run at a slower cadence.
+
+```gleam
+import gleam/erlang/process
+import tempo
+import tempo/mock
+
+pub fn main() {
+  // Set the current system time to a specific time and stop it from progressing
+  mock.freeze_time(datetime.literal("2024-06-21T13:42:11.314Z"))
+
+  process.sleep(10_000)
+
+  tempo.format_utc(tempo.ISO8601Seconds)
+  // -> "2024-06-21T13:42:11Z"
+
+  mock.unfreeze_time()
+
+  tempo.format_utc(tempo.ISO8601Seconds)
+  // -> "2025-02-02T08:42:11Z"
+}
+```
+
+```gleam
+import gleam/erlang/process
+import tempo
+import tempo/mock
+
+pub fn main() {
+  // Set the current system time to a specific time, allowing it to
+  // continue to progress at x2 the speed of real time.
+  mock.set_time(datetime.literal("2024-06-21T00:00:00.00Z"). speedup: 2.0)
+
+  // Sleep for 10 real seconds, but this library will report that 20 seconds
+  // have passed.
+  process.sleep(10_000)
+
+  tempo.format_utc(tempo.ISO8601Seconds)
+  // -> "2024-06-21T00:20:00Z"
+
+  mock.unset_time()
+}
+```
+
+#### Time Zone Conversion
+
+Time zone conversion is only supported with an external package like `gtz` to provide timezone information.
+
+```gleam
+import gtz
+import tempo/datetime
+
+pub fn main() {
+  let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
+
+  datetime.from_unix_seconds(1_729_257_776)
+  |> datetime.to_timezone(local_tz)
+  |> datetime.to_string
+  // -> "2024-10-18T14:22:56.000+01:00"
+
+  let assert Ok(tz) = gtz.timezone("America/New_York")
+
+  datetime.literal("2024-01-03T05:30:02.334Z")
+  |> datetime.to_timezone(tz)
+  |> datetime.to_string
+  // -> "2024-01-03T00:30:02.334-05:00"
 }
 ```
 

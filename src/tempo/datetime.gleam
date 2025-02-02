@@ -35,6 +35,8 @@
 
 import gleam/bool
 import gleam/dynamic
+import gleam/dynamic/decode
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
@@ -413,10 +415,7 @@ pub fn from_unix_micro(unix_ts: Int) -> tempo.DateTime {
 /// // -> 1_718_629_314_334_734
 /// ```
 pub fn to_unix_micro(datetime: tempo.DateTime) -> Int {
-  let utc_dt = datetime |> apply_offset
-
-  date.to_unix_micro(utc_dt |> tempo.naive_datetime_get_date)
-  + { tempo.time_to_microseconds(utc_dt |> tempo.naive_datetime_get_time) }
+  tempo.datetime_to_unix_micro(datetime)
 }
 
 /// Checks if a dynamic value is a valid datetime string, and returns the

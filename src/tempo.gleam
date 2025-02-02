@@ -971,6 +971,13 @@ pub fn datetime_to_string(datetime: DateTime) -> String {
   }
 }
 
+@internal
+pub fn datetime_to_unix_micro(datetime: DateTime) -> Int {
+  let utc_dt = datetime |> datetime_apply_offset
+
+  date_to_unix_micro(utc_dt.date) + { time_to_microseconds(utc_dt.time) }
+}
+
 @deprecated("Use `datetime.to_string` instead")
 @internal
 pub fn datetime_serialize(datetime: DateTime) -> String {
@@ -3655,3 +3662,23 @@ pub fn offset_local_minutes() -> Int
 @external(erlang, "tempo_ffi", "current_year")
 @external(javascript, "./tempo_ffi.mjs", "current_year")
 fn current_year() -> Int
+
+@external(erlang, "tempo_ffi", "freeze_time")
+@external(javascript, "./tempo_ffi.mjs", "freeze_time")
+@internal
+pub fn freeze_time_ffi(microseconds: Int) -> Nil
+
+@external(erlang, "tempo_ffi", "unfreeze_time")
+@external(javascript, "./tempo_ffi.mjs", "unfreeze_time")
+@internal
+pub fn unfreeze_time_ffi() -> Nil
+
+@external(erlang, "tempo_ffi", "set_reference_time")
+@external(javascript, "./tempo_ffi.mjs", "set_reference_time")
+@internal
+pub fn set_reference_time_ffi(microseconds: Int, speedup: Float) -> Nil
+
+@external(erlang, "tempo_ffi", "unset_reference_time")
+@external(javascript, "./tempo_ffi.mjs", "unset_reference_time")
+@internal
+pub fn unset_reference_time_ffi() -> Nil
