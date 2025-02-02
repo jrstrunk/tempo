@@ -34,6 +34,7 @@
 //// ```
 
 import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -486,9 +487,18 @@ pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
 pub fn from_dynamic_string(
   dynamic_string: dynamic.Dynamic,
 ) -> Result(tempo.Date, List(dynamic.DecodeError)) {
-  use dt: String <- result.try(dynamic.string(dynamic_string))
+  use date: String <- result.try(
+    // Uses the decode.string function but maintains the dynamic.DecodeError
+    // return type to maintain API compatibility.
+    decode.run(dynamic_string, decode.string)
+    |> result.map_error(fn(errs) {
+      list.map(errs, fn(err) {
+        dynamic.DecodeError(err.expected, err.found, err.path)
+      })
+    }),
+  )
 
-  case from_string(dt) {
+  case from_string(date) {
     Ok(date) -> Ok(date)
     Error(tempo_error) ->
       Error([
