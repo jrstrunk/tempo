@@ -444,9 +444,18 @@ pub fn to_unix_micro(datetime: tempo.DateTime) -> Int {
 pub fn from_dynamic_string(
   dynamic_string: dynamic.Dynamic,
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
-  use dt: String <- result.try(dynamic.string(dynamic_string))
+  use datetime: String <- result.try(
+    // Uses the decode.string function but maintains the dynamic.DecodeError
+    // return type to maintain API compatibility.
+    decode.run(dynamic_string, decode.string)
+    |> result.map_error(fn(errs) {
+      list.map(errs, fn(err) {
+        dynamic.DecodeError(err.expected, err.found, err.path)
+      })
+    }),
+  )
 
-  case from_string(dt) {
+  case from_string(datetime) {
     Ok(datetime) -> Ok(datetime)
     Error(tempo_error) ->
       Error([
@@ -465,7 +474,7 @@ pub fn from_dynamic_string(
 }
 
 /// Checks if a dynamic value is a valid unix timestamp in seconds, and 
-/// returns the datetime if it is.
+/// returns the datetime representation if it is.
 /// 
 /// ## Examples
 /// 
@@ -489,9 +498,18 @@ pub fn from_dynamic_string(
 pub fn from_dynamic_unix_utc(
   dynamic_ts: dynamic.Dynamic,
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
-  use dt: Int <- result.map(dynamic.int(dynamic_ts))
+  use unix_seconds: Int <- result.map(
+    // Uses the decode.int function but maintains the dynamic.DecodeError
+    // return type to maintain API compatibility.
+    decode.run(dynamic_ts, decode.int)
+    |> result.map_error(fn(errs) {
+      list.map(errs, fn(err) {
+        dynamic.DecodeError(err.expected, err.found, err.path)
+      })
+    }),
+  )
 
-  from_unix_seconds(dt)
+  from_unix_seconds(unix_seconds)
 }
 
 /// Checks if a dynamic value is a valid unix timestamp in milliseconds, and 
@@ -501,13 +519,13 @@ pub fn from_dynamic_unix_utc(
 /// 
 /// ```gleam
 /// dynamic.from(1_718_629_314_334)
-/// |> datetime.from_dynamic_unix_utc
+/// |> datetime.from_dynamic_unix_milli_utc
 /// // -> Ok(datetime.literal("2024-06-17T13:01:54.334Z"))
 /// ```
 /// 
 /// ```gleam
 /// dynamic.from("hello")
-/// |> datetime.from_dynamic_unix_utc
+/// |> datetime.from_dynamic_unix_milli_utc
 /// // -> Error([
 /// //   dynamic.DecodeError(
 /// //     expected: "Int",
@@ -519,9 +537,18 @@ pub fn from_dynamic_unix_utc(
 pub fn from_dynamic_unix_milli_utc(
   dynamic_ts: dynamic.Dynamic,
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
-  use dt: Int <- result.map(dynamic.int(dynamic_ts))
+  use unix_milli: Int <- result.map(
+    // Uses the decode.int function but maintains the dynamic.DecodeError
+    // return type to maintain API compatibility.
+    decode.run(dynamic_ts, decode.int)
+    |> result.map_error(fn(errs) {
+      list.map(errs, fn(err) {
+        dynamic.DecodeError(err.expected, err.found, err.path)
+      })
+    }),
+  )
 
-  from_unix_milli(dt)
+  from_unix_milli(unix_milli)
 }
 
 /// Checks if a dynamic value is a valid unix timestamp in microseconds, and 
@@ -531,13 +558,13 @@ pub fn from_dynamic_unix_milli_utc(
 /// 
 /// ```gleam
 /// dynamic.from(1_718_629_314_334_734)
-/// |> datetime.from_dynamic_unix_utc
+/// |> datetime.from_dynamic_unix_micro_utc
 /// // -> Ok(datetime.literal("2024-06-17T13:01:54.334734Z"))
 /// ```
 /// 
 /// ```gleam
 /// dynamic.from("hello")
-/// |> datetime.from_dynamic_unix_utc
+/// |> datetime.from_dynamic_unix_micro_utc
 /// // -> Error([
 /// //   dynamic.DecodeError(
 /// //     expected: "Int",
@@ -549,9 +576,18 @@ pub fn from_dynamic_unix_milli_utc(
 pub fn from_dynamic_unix_micro_utc(
   dynamic_ts: dynamic.Dynamic,
 ) -> Result(tempo.DateTime, List(dynamic.DecodeError)) {
-  use dt: Int <- result.map(dynamic.int(dynamic_ts))
+  use unix_micro: Int <- result.map(
+    // Uses the decode.int function but maintains the dynamic.DecodeError
+    // return type to maintain API compatibility.
+    decode.run(dynamic_ts, decode.int)
+    |> result.map_error(fn(errs) {
+      list.map(errs, fn(err) {
+        dynamic.DecodeError(err.expected, err.found, err.path)
+      })
+    }),
+  )
 
-  from_unix_micro(dt)
+  from_unix_micro(unix_micro)
 }
 
 /// Gets the date of a datetime.
