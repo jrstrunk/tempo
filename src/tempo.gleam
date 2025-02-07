@@ -4,7 +4,6 @@
 
 import gleam/bool
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
@@ -14,13 +13,6 @@ import gleam/string
 import gleam/string_tree
 import gtempo/internal as unit
 import tempo/error as tempo_error
-
-pub fn main() {
-  time_from_microseconds(-3_000_000)
-  |> time_to_string
-  |> io.debug
-  // |> should.equal("23:59:57.000000")
-}
 
 // This is a big file. The contents are generally ordered (and searchable) by:
 // - Tempo now functions
@@ -781,6 +773,12 @@ pub fn local_days_until(end end: Date) -> Int {
     diff if diff > 0 -> diff
     _ -> 0
   }
+}
+
+/// Sleeps the current process for the provided duration. If the duration is
+/// less than a millisecond, the process will not sleep at all.
+pub fn sleep(for duration: Duration) {
+  sleep_ffi(duration.microseconds / 1000)
 }
 
 // -------------------------------------------------------------------------- //
@@ -3734,3 +3732,23 @@ pub fn set_reference_time_ffi(microseconds: Int, speedup: Float) -> Nil
 @external(javascript, "./tempo_ffi.mjs", "unset_reference_time")
 @internal
 pub fn unset_reference_time_ffi() -> Nil
+
+@external(erlang, "tempo_ffi", "sleep")
+@external(javascript, "./tempo_ffi.mjs", "sleep")
+@internal
+pub fn sleep_ffi(milliseconds milliseconds: Int) -> Nil
+
+@external(erlang, "tempo_ffi", "set_sleep_warp")
+@external(javascript, "./tempo_ffi.mjs", "set_sleep_warp")
+@internal
+pub fn set_sleep_warp_ffi(do_warp: Bool) -> Nil
+
+@external(erlang, "tempo_ffi", "add_warp_time")
+@external(javascript, "./tempo_ffi.mjs", "add_warp_time")
+@internal
+pub fn add_warp_time_ffi(microseconds: Int) -> Nil
+
+@external(erlang, "tempo_ffi", "reset_warp_time")
+@external(javascript, "./tempo_ffi.mjs", "reset_warp_time")
+@internal
+pub fn reset_warp_time_ffi() -> Nil
