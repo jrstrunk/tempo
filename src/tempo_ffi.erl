@@ -9,63 +9,60 @@
     freeze_time/1,
     unfreeze_time/0,
     set_reference_time/2,
-    unset_reference_time/0
+    unset_reference_time/0,
+    sleep/1,
+    set_sleep_warp/1,
+    add_warp_time/1,
+    reset_warp_time/0
 ]).
 
--define(TIME_TABLE, tempo_mock_time).
-
-% Initialize ETS table in module init
--on_load(init/0).
+-define(MOCK_TIME_TABLE, tempo_mock_time).
 
 % Make sure table exists before any operation
-ensure_table() ->
-    case ets:info(?TIME_TABLE) of
+init_mock_table() ->
+    case ets:info(?MOCK_TIME_TABLE) of
         undefined ->
-            ets:new(?TIME_TABLE, [set, public, named_table]);
+            ets:new(?MOCK_TIME_TABLE, [set, public, named_table]);
         _ ->
             ok
     end.
 
-init() ->
-    ets:new(?TIME_TABLE, [set, public, named_table]),
-    ok.
-
 now() ->
-    ensure_table(),
-    case ets:lookup(?TIME_TABLE, mock_time) of
-        [{mock_time, Value}] ->
+    init_mock_table(),
+    case ets:lookup(?MOCK_TIME_TABLE, frozen_time) of
+        [{frozen_time, Value}] ->
             Value;
         [] ->
-            case ets:lookup(?TIME_TABLE, reference_time_delta) of
-                [{reference_time_delta, {ReferenceTime, RealStart, _, SpeedupFactor}}] ->
-                    RealElapsed = erlang:system_time(microsecond) - RealStart,
+            case ets:lookup(?MOCK_TIME_TABLE, set_time) of
+                [{set_time, {ReferenceTime, RealStart, _, SpeedupFactor}}] ->
+                    RealElapsed = get_warped_now() - RealStart,
                     SpedUpElapsed = round(RealElapsed * SpeedupFactor),
                     ReferenceTime + SpedUpElapsed;
                 [] ->
-                    erlang:system_time(microsecond)
+                    get_warped_now()
             end
     end.
 
 freeze_time(Value) when is_integer(Value) ->
-    ensure_table(),
-    ets:insert(?TIME_TABLE, {mock_time, Value}),
+    init_mock_table(),
+    ets:insert(?MOCK_TIME_TABLE, {frozen_time, Value}),
     nil.
 
 unfreeze_time() ->
-    ensure_table(),
-    catch ets:delete(?TIME_TABLE, mock_time),
+    init_mock_table(),
+    catch ets:delete(?MOCK_TIME_TABLE, frozen_time),
     nil.
 
 set_reference_time(Value, SpeedupFactor) ->
-    ensure_table(),
+    init_mock_table(),
     ets:insert(
-        ?TIME_TABLE,
+        ?MOCK_TIME_TABLE,
         {
-            reference_time_delta,
+            set_time,
             {
                 Value,
-                erlang:system_time(microsecond),
-                erlang:monotonic_time(microsecond),
+                get_warped_now(),
+                get_warped_now_monotonic(),
                 SpeedupFactor
             }
         }
@@ -73,18 +70,71 @@ set_reference_time(Value, SpeedupFactor) ->
     nil.
 
 unset_reference_time() ->
-    ensure_table(),
-    catch ets:delete(?TIME_TABLE, reference_time_delta),
+    init_mock_table(),
+    catch ets:delete(?MOCK_TIME_TABLE, set_time),
     nil.
 
+sleep(Millseconds) ->
+    init_mock_table(),
+    case ets:lookup(?MOCK_TIME_TABLE, do_sleep_warp) of
+        [{do_sleep_warp, true}] ->
+            add_warp_time(Millseconds * 1000);
+        [] ->
+            timer:sleep(Millseconds)
+    end,
+    nil.
+
+set_sleep_warp(DoWarp) ->
+    init_mock_table(),
+    case DoWarp of
+        true ->
+            ets:insert(?MOCK_TIME_TABLE, {do_sleep_warp, DoWarp});
+        false ->
+            ets:delete(?MOCK_TIME_TABLE, do_sleep_warp)
+    end,
+    nil.
+
+reset_warp_time() ->
+    init_mock_table(),
+    catch ets:delete(?MOCK_TIME_TABLE, warp_time),
+    nil.
+
+add_warp_time(WarpMicro) ->
+    init_mock_table(),
+    case ets:lookup(?MOCK_TIME_TABLE, warp_time) of
+        [{warp_time, WarpTime}] ->
+            ets:insert(?MOCK_TIME_TABLE, {warp_time, WarpTime + WarpMicro}),
+            nil;
+        [] ->
+            ets:insert(?MOCK_TIME_TABLE, {warp_time, WarpMicro}),
+            nil
+    end,
+    nil.
+
+get_warp_time() ->
+    init_mock_table(),
+    case ets:lookup(?MOCK_TIME_TABLE, warp_time) of
+        [{warp_time, WarpTime}] ->
+            WarpTime;
+        [] ->
+            0
+    end.
+
+get_warped_now() ->
+    erlang:system_time(microsecond) + get_warp_time().
+
+get_warped_now_monotonic() ->
+    erlang:monotonic_time(microsecond) + get_warp_time().
+
 now_monotonic() ->
-    case ets:lookup(?TIME_TABLE, reference_time_delta) of
-        [{reference_time_delta, {ReferenceTime, _, RealMonotonicStart, SpeedupFactor}}] ->
-            RealElapsed = erlang:monotonic_time(microsecond) - RealMonotonicStart,
+    init_mock_table(),
+    case ets:lookup(?MOCK_TIME_TABLE, set_time) of
+        [{set_time, {ReferenceTime, _, RealMonotonicStart, SpeedupFactor}}] ->
+            RealElapsed = get_warped_now_monotonic() - RealMonotonicStart,
             SpedUpElapsed = round(RealElapsed * SpeedupFactor),
             ReferenceTime + SpedUpElapsed;
         [] ->
-            erlang:monotonic_time(microsecond)
+            get_warped_now_monotonic()
     end.
 
 now_unique() -> erlang:unique_integer([positive, monotonic]).

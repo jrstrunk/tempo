@@ -1,3 +1,4 @@
+import gleam/io
 import gleeunit/should
 import tempo
 import tempo/date
@@ -5,6 +6,16 @@ import tempo/datetime
 import tempo/duration
 import tempo/instant
 import tempo/mock
+
+pub fn main() {
+  mock.set_time(datetime.literal("2024-06-21T00:10:00.000Z"))
+
+  tempo.format_local(tempo.ISO8601Milli) |> io.debug
+  tempo.sleep(duration.seconds(10))
+  tempo.format_local(tempo.ISO8601Milli) |> io.debug
+
+  mock.unset_time()
+}
 
 pub fn freeze_time_test() {
   let target = datetime.literal("2024-06-21T13:42:11.314Z")
@@ -24,7 +35,7 @@ pub fn freeze_time_test() {
 }
 
 pub fn set_reference_time_bounds_test() {
-  mock.set_time(datetime.literal("2024-06-21T00:10:00Z"), 1.0)
+  mock.set_time(datetime.literal("2024-06-21T00:10:00Z"))
 
   date.current_utc()
   |> date.to_string
@@ -50,12 +61,23 @@ pub fn set_reference_time_bounds_test() {
   |> should.not_equal("2024-06-21")
 }
 
-pub fn monotonic_speedup_test() {
-  let real = instant.now() |> instant.since |> duration.as_microseconds
+pub fn sleep_warp_test() {
+  mock.enable_sleep_warp()
+  let timer = instant.now()
 
-  mock.set_time(datetime.literal("2024-06-21T00:10:00Z"), 1000.0)
+  tempo.sleep(duration.seconds(10))
 
-  let spedup = instant.now() |> instant.since |> duration.as_microseconds
+  let mock_elapsed = instant.since(timer) |> duration.as_milliseconds
 
-  let assert True = spedup > real
+  mock.reset_warp_time()
+  let real_elapsed = instant.since(timer) |> duration.as_milliseconds
+
+  { real_elapsed < mock_elapsed }
+  |> should.be_true
+
+  { real_elapsed < 1000 }
+  |> should.be_true
+
+  { mock_elapsed >= 10_000 }
+  |> should.be_true
 }
