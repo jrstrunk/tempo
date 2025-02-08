@@ -1,6 +1,6 @@
 # Tempo
 
-A human-friendly, mockable datetime library!
+A datetime-centric, mockable time library for Gleam!
 
 Only run a task past a certain time of day, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more! Over 400 unit tests, contributions welcome!
 
@@ -18,6 +18,12 @@ Supports timezones only through the `gtz` package. Add it with:
 
 ```sh
 gleam add gtz@1
+```
+
+Supports the core gleam time package via conversion functions. Add it with:
+
+```sh
+gleam add gleam_time@1
 ```
 
 [![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gtempo)

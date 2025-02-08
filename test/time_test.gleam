@@ -754,3 +754,11 @@ pub fn end_of_day_plus_one_second_test() {
   |> time.to_string
   |> should.equal("00:00:01.000000")
 }
+
+pub fn time_calendar_round_trip_test() {
+  let ref = time.literal("13:42:11")
+
+  time.to_calendar_time_of_day(ref)
+  |> time.from_calendar_time_of_day
+  |> should.equal(Ok(ref))
+}
