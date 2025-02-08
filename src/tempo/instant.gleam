@@ -59,10 +59,13 @@
 //// ```
 
 import gleam/order
+import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
 import tempo
+import tempo/date
 import tempo/datetime
+import tempo/time
 
 /// The current instant on the host system.
 pub fn now() {
@@ -134,6 +137,7 @@ pub fn as_unix_milli(instant: tempo.Instant) -> Int {
   tempo.instant_as_unix_milli(instant)
 }
 
+/// Converts an instant to a core gleam time timestamp type.
 pub fn as_timestamp(instant: tempo.Instant) -> timestamp.Timestamp {
   let seconds = tempo.instant_as_unix_micro(instant) / 1_000_000
   let nanoseconds = { tempo.instant_as_unix_micro(instant) % 1_000_000 } * 1000
@@ -167,6 +171,32 @@ pub fn as_local_date(instant: tempo.Instant) -> tempo.Date {
   tempo.instant_as_local_date(instant)
 }
 
+/// Converts an instant to a local calendar date value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.now()
+/// |> instant.as_local_calendar_date
+/// // -> calendar.Date(2025, calendar.February, 8)
+/// ```
+pub fn as_local_calendar_date(instant: tempo.Instant) -> calendar.Date {
+  tempo.instant_as_local_date(instant) |> date.to_calendar_date
+}
+
+/// Converts an instant to a UTC calendar date value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.now()
+/// |> instant.as_utc_calendar_date
+/// // -> calendar.Date(2025, calendar.February, 8)
+/// ```
+pub fn as_utc_calendar_date(instant: tempo.Instant) -> calendar.Date {
+  tempo.instant_as_utc_date(instant) |> date.to_calendar_date
+}
+
 /// Converts an instant to a UTC time value.
 /// 
 /// ## Example
@@ -191,6 +221,34 @@ pub fn as_utc_time(instant: tempo.Instant) -> tempo.Time {
 /// ```
 pub fn as_local_time(instant: tempo.Instant) -> tempo.Time {
   tempo.instant_as_local_time(instant)
+}
+
+/// Converts an instant to a local calendar time of day value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.now()
+/// |> instant.as_local_calendar_time_of_day
+/// // -> calendar.TimeOfDay(12, 32, 34, 0)
+/// ```
+pub fn as_local_calendar_time_of_day(
+  instant: tempo.Instant,
+) -> calendar.TimeOfDay {
+  tempo.instant_as_local_time(instant) |> time.to_calendar_time_of_day
+}
+
+/// Converts an instant to a UTC calendar time of day value.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// tempo.now()
+/// |> instant.as_utc_calendar_time_of_day
+/// // -> calendar.TimeOfDay(12, 32, 34, 0)
+/// ```
+pub fn as_utc_calendar_time_of_day(instant: tempo.Instant) -> calendar.TimeOfDay {
+  tempo.instant_as_utc_time(instant) |> time.to_calendar_time_of_day
 }
 
 /// Formats an instant as a UTC datetime value.
