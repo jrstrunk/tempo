@@ -89,12 +89,19 @@ export function set_sleep_warp(do_warp) {
   doSleepWarp = do_warp;
 }
 
-const sleep_promise = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Sadly a promise based sleep would not work in all circumstances so a busy
+// wait is used instead.
+const sleep_busy = (ms) => {
+  const start = Date.now();
+  while (Date.now() - start <= ms) {
+    // Busy wait
+  }
+};
 
-export async function sleep(milliseconds) {
+export function sleep(milliseconds) {
   if (doSleepWarp) {
     add_warp_time(milliseconds * 1000);
   } else {
-    await sleep_promise(sleep_time);
+    sleep_busy(milliseconds);
   }
 }
