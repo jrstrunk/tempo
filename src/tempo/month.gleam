@@ -1,6 +1,7 @@
 //// Functions to use with the `Month` type in Tempo.
 
 import gleam/result
+import gleam/time/calendar
 import tempo
 
 /// An ordered list of all months in the year.
@@ -143,4 +144,40 @@ pub fn from_int(month: Int) -> Result(tempo.Month, Nil) {
 /// ```
 pub fn days(of month: tempo.Month, in year: Int) -> Int {
   tempo.month_days_of(month, in: year)
+}
+
+/// Converts a tempo month to a month type in the core gleam time package.
+pub fn to_calendar_month(month: tempo.Month) -> calendar.Month {
+  case month {
+    tempo.Jan -> calendar.January
+    tempo.Feb -> calendar.February
+    tempo.Mar -> calendar.March
+    tempo.Apr -> calendar.April
+    tempo.May -> calendar.May
+    tempo.Jun -> calendar.June
+    tempo.Jul -> calendar.July
+    tempo.Aug -> calendar.August
+    tempo.Sep -> calendar.September
+    tempo.Oct -> calendar.October
+    tempo.Nov -> calendar.November
+    tempo.Dec -> calendar.December
+  }
+}
+
+/// Converts a core gleam time month to a tempo month.
+pub fn from_calendar_month(month: calendar.Month) -> tempo.Month {
+  case month {
+    calendar.January -> tempo.Jan
+    calendar.February -> tempo.Feb
+    calendar.March -> tempo.Mar
+    calendar.April -> tempo.Apr
+    calendar.May -> tempo.May
+    calendar.June -> tempo.Jun
+    calendar.July -> tempo.Jul
+    calendar.August -> tempo.Aug
+    calendar.September -> tempo.Sep
+    calendar.October -> tempo.Oct
+    calendar.November -> tempo.Nov
+    calendar.December -> tempo.Dec
+  }
 }

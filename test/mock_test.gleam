@@ -141,7 +141,6 @@ pub fn sleep_warp_disable_test() {
 
   let real_elapsed = instant.since(timer) |> duration.as_milliseconds
 
-  io.debug(real_elapsed)
   { real_elapsed >= 10 }
   |> should.be_true
 }

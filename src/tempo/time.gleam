@@ -31,6 +31,7 @@ import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/string_tree
+import gleam/time/calendar
 import gtempo/internal as unit
 import tempo
 import tempo/date
@@ -130,7 +131,7 @@ pub fn new_milli(
 /// 
 /// ```gleam
 /// time.new_micro(13, 42, 11, 200_000)
-/// // -> Ok(time.literal("13:42:11.200000"))
+/// // -> Ok(time.litteral("13:42:11.200000"))
 /// ```
 /// 
 /// ```gleam
@@ -614,6 +615,20 @@ pub fn to_tuple(time: tempo.Time) -> #(Int, Int, Int) {
     time |> tempo.time_get_minute,
     time |> tempo.time_get_second,
   )
+}
+
+/// Converts a tempo time to a time of day type in the core gleam time package.
+pub fn to_calendar_time_of_day(time: tempo.Time) -> calendar.TimeOfDay {
+  let #(hour, minute, second, microsecond) = to_tuple_microsecond(time)
+  calendar.TimeOfDay(hour, minute, second, microsecond * 1000)
+}
+
+/// Converts a core gleam time time of day to a tempo time.
+pub fn from_calendar_time_of_day(
+  time: calendar.TimeOfDay,
+) -> Result(tempo.Time, tempo_error.TimeOutOfBoundsError) {
+  let calendar.TimeOfDay(hour, minute, second, nanosecond) = time
+  from_tuple_microsecond(#(hour, minute, second, nanosecond / 1000))
 }
 
 /// Converts a tuple of hours, minutes, and seconds to a time value. Useful 

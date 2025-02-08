@@ -40,6 +40,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import gleam/time/calendar
 import tempo
 import tempo/date
 import tempo/error as tempo_error
@@ -599,7 +600,20 @@ pub fn from_dynamic_unix_micro_utc(
 /// // -> date.literal("2024-06-21")
 /// ```
 pub fn get_date(datetime: tempo.DateTime) -> tempo.Date {
-  datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date
+  datetime.date
+}
+
+/// Gets the core gleam time package calendar date of a datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T13:42:11.195Z")
+/// |> datetime.get_calendar_date
+/// // -> calendar.Date(2024, calendar.June, 21)
+/// ```
+pub fn get_calendar_date(datetime: tempo.DateTime) -> calendar.Date {
+  datetime.date |> date.to_calendar_date
 }
 
 /// Gets the time of a datetime.
@@ -612,7 +626,20 @@ pub fn get_date(datetime: tempo.DateTime) -> tempo.Date {
 /// // -> time.literal("13:42:11.195")
 /// ```
 pub fn get_time(datetime: tempo.DateTime) -> tempo.Time {
-  datetime |> tempo.datetime_get_naive |> tempo.naive_datetime_get_time
+  datetime.time
+}
+
+/// Gets the core gleam time package calendar time of day of a datetime.
+/// 
+/// ## Examples
+/// 
+/// ```gleam
+/// datetime.literal("2024-06-21T13:42:11.195Z")
+/// |> datetime.get_calendar_time_of_day
+/// // -> calendar.TimeOfDay(13, 42, 11, 195_000_000)
+/// ```
+pub fn get_calendar_time_of_day(datetime: tempo.DateTime) -> calendar.TimeOfDay {
+  datetime.time |> time.to_calendar_time_of_day
 }
 
 /// Gets the offset of a datetime.

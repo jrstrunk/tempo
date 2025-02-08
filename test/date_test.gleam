@@ -651,3 +651,11 @@ pub fn rata_die_pre_unix_epoch_test() {
   |> date.to_string()
   |> should.equal("1762-06-13")
 }
+
+pub fn calendar_round_trip_test() {
+  let ref = date.literal("2024-06-21")
+
+  date.to_calendar_date(ref)
+  |> date.from_calendar_date
+  |> should.equal(Ok(ref))
+}

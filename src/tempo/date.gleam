@@ -42,6 +42,7 @@ import gleam/order
 import gleam/regexp
 import gleam/result
 import gleam/string
+import gleam/time/calendar
 import tempo
 import tempo/error as tempo_error
 import tempo/month
@@ -458,6 +459,20 @@ pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
     month.to_int(date |> tempo.date_get_month),
     date |> tempo.date_get_day,
   )
+}
+
+/// Converts a tempo date to a date type in the core gleam time package.
+pub fn to_calendar_date(date: tempo.Date) -> calendar.Date {
+  let tempo.CalendarDate(year, month, day) = tempo.date_to_calendar_date(date)
+  calendar.Date(year, month.to_calendar_month(month), day)
+}
+
+/// Converts a core gleam time date to a tempo date.
+pub fn from_calendar_date(
+  date: calendar.Date,
+) -> Result(tempo.Date, tempo_error.DateOutOfBoundsError) {
+  let calendar.Date(year, month, day) = date
+  from_tuple(#(year, month.from_calendar_month(month) |> month.to_int, day))
 }
 
 /// Checks if a dynamic value is a valid date string, and returns the
