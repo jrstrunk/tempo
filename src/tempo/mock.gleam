@@ -1,4 +1,4 @@
-//// Provides function to mock out the system time as seen by the tempo 
+//// Provides function to mock the system time as seen by the tempo 
 //// package for testing purposes.
 //// 
 //// There are four main ways to mock time for testing in this package:
@@ -36,7 +36,7 @@
 //// that may get the system time multiple times, but executes different 
 //// logic depending on the date or time of day.
 //// 
-//// An example of this will be complex, so the implementation is left out.
+//// An example of this would be complex, so the implementation is left out.
 //// 
 //// ```gleam
 //// import app
@@ -56,9 +56,10 @@
 //// }
 //// ```
 //// 
-//// ## Changing sleeps to time warps
+//// ## Warping system time instead of sleeping
 //// By changing sleep operations to time warps, you can instantly test any 
-//// function with sleeps in it. Sleeps will warp frozen time when enabled.
+//// function with sleeps in it. Sleeps will warp frozen time when this is 
+//// enabled.
 //// 
 //// ```gleam
 //// import app
@@ -87,8 +88,7 @@
 //// ```
 //// 
 //// ## Manually warping system time
-//// By Manually warping the system time by a specific duration you can either
-//// instantly test any function that has busy waits in it or you can instantly
+//// By manually warping the system time by a specific duration you can instantly
 //// run logic after exact durations. You can also warp time when it is frozen
 //// to manually progress it.
 //// 
