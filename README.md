@@ -93,47 +93,31 @@ pub fn main() {
 
 #### Mocking Current System Time
 
-The system time can be frozen at a specific time or set to a specific time and allowed to progress further from there with an optional speedup factor. Setting the time with a speedup factor allows for quick testing of code that would usually run at a slower cadence.
+The system time can mocked and controlled in precise ways. Look in the `tempo/mock` module for more detailed information!
 
 ```gleam
-import gleam/erlang/process
 import tempo
 import tempo/mock
+import gleam/time/duration
 
 pub fn main() {
   // Set the current system time to a specific time and stop it from progressing
   mock.freeze_time(datetime.literal("2024-06-21T13:42:11.314Z"))
+  mock.enable_sleep_warp()
 
-  process.sleep(10_000)
+  // Processes instantly, but appears to the program that it slept for 10 seconds
+  tempo.sleep(for: duration.seconds(10))
 
   tempo.format_utc(tempo.ISO8601Seconds)
   // -> "2024-06-21T13:42:11Z"
 
   mock.unfreeze_time()
+  mock.disable_sleep_warp()
+  mock.reset_warp_time()
 
   tempo.format_utc(tempo.ISO8601Seconds)
   // -> "2025-02-02T08:42:11Z"
-}
-```
 
-```gleam
-import gleam/erlang/process
-import tempo
-import tempo/mock
-
-pub fn main() {
-  // Set the current system time to a specific time, allowing it to
-  // continue to progress at x2 the speed of real time.
-  mock.set_time(datetime.literal("2024-06-21T00:00:00.00Z"). speedup: 2.0)
-
-  // Sleep for 10 real seconds, but this library will report that 20 seconds
-  // have passed.
-  process.sleep(10_000)
-
-  tempo.format_utc(tempo.ISO8601Seconds)
-  // -> "2024-06-21T00:20:00Z"
-
-  mock.unset_time()
 }
 ```
 
