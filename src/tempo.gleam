@@ -17,7 +17,7 @@ import tempo/error as tempo_error
 // This is a big file. The contents are generally ordered (and searchable) by:
 // - Tempo now functions
 // - Instant logic (functions starting with `_instant`)
-// - DateTime logic (funcctions starting with `datetime_`)
+// - DateTime logic (functions starting with `datetime_`)
 // - NaiveDateTime logic (functions starting with `naive_datetime_`)
 // - Offset logic (functions starting with `offset_`)
 // - Date logic (functions starting with `date_`)
@@ -35,7 +35,7 @@ import tempo/error as tempo_error
 // These functions were written to be released in the tempo module itself to
 // avoid the need to make a call to `now()` and then pass it to a second
 // function, but it ended up being too clunky and verbose. Instead, the instant
-// module is the sole entrypoint into the system time
+// module is the sole entry point into the system time
 
 /// The current instant on the host system.
 @internal
@@ -442,7 +442,7 @@ pub fn is_local_time_earlier_or_equal(to time: Time) -> Bool {
   time_is_earlier_or_equal(now() |> instant_as_local_time, to: time)
 }
 
-/// Checks if the current UTC system time is equal to the provided time.
+/// Checks if the current UTC system time equals the provided time.
 /// 
 /// ## Example
 /// 
@@ -455,7 +455,7 @@ pub fn is_utc_time_equal(to time: Time) -> Bool {
   time_is_equal(now() |> instant_as_utc_time, to: time)
 }
 
-/// Checks if the current local system time is equal to the provided time.
+/// Checks if the current local system time equals the provided time.
 /// 
 /// ## Example
 /// 
@@ -559,7 +559,7 @@ pub fn since(start start: DateTime) -> Duration {
 }
 
 /// Gets the time until the provided datetime relative to the current system
-/// time. A duration of 0 will be returned if the datetime in the past.
+/// time. A duration of 0 will be returned if the datetime is in the past.
 /// 
 /// ## Example
 /// 
@@ -646,7 +646,7 @@ pub fn local_time_since(start start: Time) -> Duration {
 }
 
 /// Gets the time until the provided time relative to the current UTC system time.
-/// A duration of 0 will be returned if the time in the past.
+/// A duration of 0 will be returned if the time is in the past.
 /// 
 /// ## Example
 /// 
@@ -664,7 +664,7 @@ pub fn utc_time_until(end end: Time) -> Duration {
 }
 
 /// Gets the time until the provided time relative to the current local system 
-/// time. A duration of 0 will be returned if the time in the past.
+/// time. A duration of 0 will be returned if the time is in the past.
 /// 
 /// ## Example
 /// 
@@ -785,8 +785,8 @@ pub fn sleep(for duration: Duration) {
 //                             Instant Logic                                  //
 // -------------------------------------------------------------------------- //
 
-/// A monotonic type that reperesents a unique point in time on the host system. 
-/// It can be converted to all other date time types, but cannot be serialized
+/// A monotonic type that represents a unique point in time on the host system. 
+/// It can be converted to all other date time types but cannot be serialized
 /// itself. An instant constructed on one host has no meaningful purpose on
 /// another host.
 pub opaque type Instant {
@@ -1063,8 +1063,8 @@ pub fn datetime_apply_offset(datetime: DateTime) -> NaiveDateTime {
     |> datetime_drop_offset
     |> naive_datetime_add(offset_to_duration(datetime.offset))
 
-  // Applying an offset does not change the abosolute time value, so we need
-  // to preserve the monotonic and unique values.zzzz
+  // Applying an offset does not change the absolute time value, so we need
+  // to preserve the monotonic and unique values.
   NaiveDateTime(date: applied.date, time: applied.time)
 }
 
@@ -1140,7 +1140,7 @@ pub fn datetime_subtract(
 //                         Naive DateTime Logic                               //
 // -------------------------------------------------------------------------- //
 
-/// A datetime value that does not have a timezone or offset associated with it. 
+/// A datetime value with no timezone or offset associated with it. 
 /// It cannot be compared to datetimes with a timezone offset accurately, but
 /// can be compared to dates, times, and other naive datetimes.
 pub type NaiveDateTime {
@@ -1703,7 +1703,7 @@ pub fn date_from_tuple(
 
 fn date_calendar_from_unix_days(unix_days) {
   case unix_days >= 0 {
-    // This calculation is faster, but only works for dates after the unix epoch
+    // This calculation is faster but only works for dates after the unix epoch
     True -> {
       let z = unix_days + 719_468
       let era =

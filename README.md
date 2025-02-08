@@ -2,9 +2,9 @@
 
 A datetime-centric, mockable time library for Gleam!
 
-Only run a task past a certain time of day, calculate the difference beteen times and dates, time long running tasks, parse and format datetimes, and more! Over 400 unit tests, contributions welcome!
+Only run a task past a certain time of day, calculate the difference between times and dates, time long running tasks, parse and format datetimes, and more! Over 400 unit tests, contributions welcome!
 
-Written in almost pure Gleam, Tempo tries to optimize for the same thing the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time related bugs as possible!
+Written in almost pure Gleam, Tempo tries to optimize for the same things the Gleam language does: explicitness over terseness and simplicity over convenience. My hope is to make Tempo feel like the Gleam language and to make it as difficult to write time-related bugs as possible!
 
 Supports both the Erlang and JavaScript targets.
 
@@ -53,9 +53,9 @@ pub fn main() {
 
 #### Handling Current System Time
 
-To aviod common pitfalls, the current system time is only returned as a `Instant` type. It is a monotonic type that represents a unique point in time on the host system and is the most complete representation of system time. It can be converted to all other time types if needed, but it should be used as in when possible.
+To avoid common pitfalls, the current system time is only returned as an `Instant` type. This monotonic type represents a unique point in time on the host system and is the most complete representation of system time. It can be converted to all other time types if needed, but it should be used as-is when possible.
 
-The current system time can also be dealt with by using the `tempo` module functions like below.
+The current system time can also be dealt with by using the `tempo` module functions, as shown below.
 
 ```gleam
 import gleam/io
@@ -210,11 +210,11 @@ This package purposefully **ignores leap seconds** and **will not convert betwee
 
 Both time zones and leap seconds require maintaining a manually updated database of location offsets and leap seconds. This burdens any application that uses them to keep their dependencies up to date and burdens the package by either invalidating all previous versions when an update needs to be made or providing hot timezone data updates.
 
-If at all possible, try to design your application so that time zones do not have to be converted between. Client machines should have information about their time zone offset that can be polled and used for current time time zone conversions. This package will allow you to convert between local time and UTC time on the same date as the system date natively.
+If possible, try to design your application so that time zones do not have to be converted between. Client machines should have information about their time zone offset that can be polled and used for current time-zone conversions. This package will allow you to convert between local time and UTC time natively on the same date as the system date.
 
-Since this package ignores leap seconds, historical leap seconds are ignored when doing comparisons and durations. Please keep this in mind when designing your applications. Leap seconds can still be parsed from ISO 8601 strings and will be compared correctly to other times, but will not be preserved when converting to any other time representation (including changing the offset).
+Since this package ignores leap seconds, historical leap seconds are ignored when comparing and calculating durations. Please keep this in mind when designing your applications. Leap seconds can still be parsed from ISO 8601 strings and will be compared correctly to other times but will not be preserved when converting to any other time representation (including changing the offset).
 
-When getting the system time, leap second accounting depends on the host's time implementation.
+Leap second accounting depends on the host's time implementation when getting the system time.
 
 To account for leap seconds with this package, use a separate leap seconds provider package to compare dates (this leap second provider is fictional):
 

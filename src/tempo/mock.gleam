@@ -1,11 +1,11 @@
-//// Provides function to mock out the system time as seen by the tempo 
+//// Provides functions to mock the system time as seen by the tempo 
 //// package for testing purposes.
 //// 
 //// There are four main ways to mock time for testing in this package:
 //// 
 //// ## Freezing the system time
 //// By freezing the system time to a specific time so that calls to the current
-//// system time will a return known value, you can reliably test code that 
+//// system time will return a known value, you can reliably test code that 
 //// gets the current system time once. Frozen time can also be warped, allowing
 //// for fine-grained control over the system time. More on that below.
 //// 
@@ -33,10 +33,10 @@
 //// ## Setting the current system time to a reference time
 //// By setting the current system time to a specific reference time and   
 //// letting it progress forward from there, you can reliably test code
-//// that may get the system time multiple times, but executes different 
+//// that may get the system time multiple times but executes different 
 //// logic depending on the date or time of day.
 //// 
-//// An example of this will be complex, so the implementation is left out.
+//// An example of this would be complex, so the implementation is left out.
 //// 
 //// ```gleam
 //// import app
@@ -56,9 +56,10 @@
 //// }
 //// ```
 //// 
-//// ## Changing sleeps to time warps
+//// ## Warping system time instead of sleeping
 //// By changing sleep operations to time warps, you can instantly test any 
-//// function with sleeps in it. Sleeps will warp frozen time when enabled.
+//// function with sleeps in it. Sleeps will warp frozen time when this is 
+//// enabled.
 //// 
 //// ```gleam
 //// import app
@@ -87,8 +88,7 @@
 //// ```
 //// 
 //// ## Manually warping system time
-//// By Manually warping the system time by a specific duration you can either
-//// instantly test any function that has busy waits in it or you can instantly
+//// By manually warping the system time by a specific duration, you can instantly
 //// run logic after exact durations. You can also warp time when it is frozen
 //// to manually progress it.
 //// 
@@ -228,7 +228,7 @@ pub fn unset_time() {
 /// ```gleam
 /// mock.enable_sleep_warp()
 /// tempo.sleep(duration.seconds(10))
-/// // -> This will warp percieved system time to 10 seconds in the future 
+/// // -> This will warp perceived system time to 10 seconds in the future 
 /// // instead of waiting for 10 real seconds.
 /// ```
 pub fn enable_sleep_warp() {
@@ -250,8 +250,7 @@ pub fn disable_sleep_warp() {
 }
 
 /// Warps the current system time (as seen by this package) by the provided
-/// duration. This is useful for instantly testing code that has busy 
-/// loops that wait for some amount of time in it.
+/// duration. This is useful for instantly testing code after a precise duration.
 pub fn warp_time(by duration: tempo.Duration) {
   duration.as_microseconds(duration) |> tempo.add_warp_time_ffi
 }
