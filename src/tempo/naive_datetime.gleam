@@ -20,6 +20,7 @@ import gleam/order
 import gleam/regexp
 import gleam/result
 import gleam/string
+import gleam/time/duration
 import tempo
 import tempo/date
 import tempo/error as tempo_error
@@ -636,7 +637,7 @@ pub fn is_later_or_equal(
 pub fn difference(
   from a: tempo.NaiveDateTime,
   to b: tempo.NaiveDateTime,
-) -> tempo.Duration {
+) -> duration.Duration {
   tempo.naive_datetime_difference(from: a, to: b)
 }
 
@@ -681,7 +682,7 @@ pub fn as_period(
 /// ```
 pub fn add(
   datetime: tempo.NaiveDateTime,
-  duration duration_to_add: tempo.Duration,
+  duration duration_to_add: duration.Duration,
 ) -> tempo.NaiveDateTime {
   tempo.naive_datetime_add(datetime, duration_to_add)
 }
@@ -697,7 +698,7 @@ pub fn add(
 /// ```
 pub fn subtract(
   datetime: tempo.NaiveDateTime,
-  duration duration_to_subtract: tempo.Duration,
+  duration duration_to_subtract: duration.Duration,
 ) -> tempo.NaiveDateTime {
   tempo.naive_datetime_subtract(datetime, duration_to_subtract)
 }

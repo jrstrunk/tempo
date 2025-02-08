@@ -41,6 +41,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/time/calendar
+import gleam/time/duration
 import gleam/time/timestamp
 import tempo
 import tempo/date
@@ -1153,7 +1154,7 @@ pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 pub fn difference(
   from a: tempo.DateTime,
   to b: tempo.DateTime,
-) -> tempo.Duration {
+) -> duration.Duration {
   naive_datetime.difference(
     from: tempo.datetime_apply_offset(a),
     to: tempo.datetime_apply_offset(b),
@@ -1202,7 +1203,7 @@ pub fn as_period(
 /// ```
 pub fn add(
   datetime: tempo.DateTime,
-  duration duration_to_add: tempo.Duration,
+  duration duration_to_add: duration.Duration,
 ) -> tempo.DateTime {
   tempo.datetime_add(datetime, duration_to_add)
 }
@@ -1218,7 +1219,7 @@ pub fn add(
 /// ```
 pub fn subtract(
   datetime: tempo.DateTime,
-  duration duration_to_subtract: tempo.Duration,
+  duration duration_to_subtract: duration.Duration,
 ) -> tempo.DateTime {
   tempo.datetime_subtract(datetime, duration: duration_to_subtract)
 }

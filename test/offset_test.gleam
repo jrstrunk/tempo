@@ -121,7 +121,7 @@ pub fn from_hour_posative_string_test() {
 
 pub fn to_duration_test() {
   tempo.offset_to_duration(tempo.offset(0))
-  |> should.equal(tempo.duration(0))
+  |> should.equal(tempo.duration_microseconds(0))
 
   tempo.offset_to_duration(tempo.offset(5))
   |> should.equal(duration.minutes(-5))

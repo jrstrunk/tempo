@@ -30,10 +30,11 @@
 
 import gleam/int
 import gleam/time/calendar
+import gleam/time/duration
 import gtempo/internal as unit
 import tempo
 import tempo/date
-import tempo/duration
+import tempo/duration as tempo_duration
 import tempo/month
 import tempo/time
 
@@ -136,7 +137,7 @@ pub type Unit {
 /// ```
 pub fn as_seconds(period: tempo.Period) -> Int {
   as_duration(period)
-  |> duration.as_seconds
+  |> tempo_duration.as_seconds
 }
 
 /// Returns the number of days in the period.
@@ -204,13 +205,13 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
         start_time
         |> time.left_in_day
         |> time.to_duration
-        |> duration.as_microseconds,
+        |> tempo_duration.as_microseconds,
       )
       /. int.to_float(unit.day_microseconds)
       +. int.to_float(
         end_time
         |> time.to_duration
-        |> duration.as_microseconds,
+        |> tempo_duration.as_microseconds,
       )
       /. int.to_float(unit.day_microseconds)
 
@@ -225,7 +226,7 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
         False ->
           int.to_float(
             time.difference(from: start_time, to: end_time)
-            |> duration.as_microseconds,
+            |> tempo_duration.as_microseconds,
           )
           /. int.to_float(unit.day_microseconds)
       }
@@ -246,7 +247,7 @@ pub fn as_days_fractional(period: tempo.Period) -> Float {
 /// |> duration.as_weeks
 /// // -> 1
 /// ```
-pub fn as_duration(period: tempo.Period) -> tempo.Duration {
+pub fn as_duration(period: tempo.Period) -> duration.Duration {
   tempo.period_as_duration(period)
 }
 

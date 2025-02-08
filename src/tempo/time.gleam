@@ -32,10 +32,11 @@ import gleam/result
 import gleam/string
 import gleam/string_tree
 import gleam/time/calendar
+import gleam/time/duration
 import gtempo/internal as unit
 import tempo
 import tempo/date
-import tempo/duration
+import tempo/duration as tempo_duration
 import tempo/error as tempo_error
 
 /// The first second of the day.
@@ -699,7 +700,7 @@ pub fn from_tuple_microsecond(
 /// |> duration.as_milliseconds
 /// // -> 186_000
 /// ```
-pub fn to_duration(time: tempo.Time) -> tempo.Duration {
+pub fn to_duration(time: tempo.Time) -> duration.Duration {
   tempo.time_to_duration(time)
 }
 
@@ -737,7 +738,7 @@ pub fn to_duration(time: tempo.Time) -> tempo.Duration {
 /// |> time.to_string
 /// // -> "23:59:57.000000"
 /// ```
-pub fn from_duration(duration: tempo.Duration) -> tempo.Time {
+pub fn from_duration(duration: duration.Duration) -> tempo.Time {
   duration |> tempo.duration_get_microseconds |> tempo.time_from_microseconds
 }
 
@@ -952,7 +953,7 @@ pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
 /// |> duration.as_minutes
 /// // -> -25
 /// ```
-pub fn difference(from a: tempo.Time, to b: tempo.Time) -> tempo.Duration {
+pub fn difference(from a: tempo.Time, to b: tempo.Time) -> duration.Duration {
   tempo.time_difference(from: a, to: b)
 }
 
@@ -973,10 +974,10 @@ pub fn difference(from a: tempo.Time, to b: tempo.Time) -> tempo.Duration {
 /// |> duration.as_minutes
 /// // -> 25
 /// ```
-pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
+pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> duration.Duration {
   case tempo.time_to_microseconds(a) - tempo.time_to_microseconds(b) {
-    diff if diff < 0 -> -diff |> tempo.duration
-    diff -> diff |> tempo.duration
+    diff if diff < 0 -> -diff |> tempo.duration_microseconds
+    diff -> diff |> tempo.duration_microseconds
   }
 }
 
@@ -989,7 +990,7 @@ pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> tempo.Duration {
 /// |> time.add(duration.mintues(36))
 /// // -> time.literal("09:18:53")
 /// ```
-pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
+pub fn add(a: tempo.Time, duration b: duration.Duration) -> tempo.Time {
   tempo.time_add(a, duration: b)
 }
 
@@ -1002,7 +1003,7 @@ pub fn add(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
 /// |> time.subtract(duration.hours(2))
 /// // -> time.literal("11:42:02")
 /// ```
-pub fn subtract(a: tempo.Time, duration b: tempo.Duration) -> tempo.Time {
+pub fn subtract(a: tempo.Time, duration b: duration.Duration) -> tempo.Time {
   tempo.time_subtract(a, duration: b)
 }
 
@@ -1042,11 +1043,11 @@ pub fn left_in_day(time: tempo.Time) -> tempo.Time {
 /// |> duration.as_milliseconds
 /// // -> 0
 /// ```
-pub fn until(time: tempo.Time, until: tempo.Time) -> tempo.Duration {
-  let dur = time |> difference(from: until) |> duration.inverse
+pub fn until(time: tempo.Time, until: tempo.Time) -> duration.Duration {
+  let dur = time |> difference(from: until) |> tempo_duration.inverse
 
-  case dur |> duration.is_negative {
-    True -> duration.microseconds(0)
+  case dur |> tempo_duration.is_negative {
+    True -> tempo_duration.microseconds(0)
     False -> dur
   }
 }
@@ -1069,11 +1070,14 @@ pub fn until(time: tempo.Time, until: tempo.Time) -> tempo.Duration {
 /// |> duration.as_milliseconds
 /// // -> 0
 /// ```
-pub fn since(time time: tempo.Time, since since: tempo.Time) -> tempo.Duration {
+pub fn since(
+  time time: tempo.Time,
+  since since: tempo.Time,
+) -> duration.Duration {
   let dur = time |> difference(from: since)
 
-  case dur |> duration.is_negative {
-    True -> duration.microseconds(0)
+  case dur |> tempo_duration.is_negative {
+    True -> tempo_duration.microseconds(0)
     False -> dur
   }
 }

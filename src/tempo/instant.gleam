@@ -59,6 +59,7 @@
 //// ```
 
 import gleam/order
+import gleam/time/duration
 import gleam/time/timestamp
 import tempo
 import tempo/datetime
@@ -77,7 +78,7 @@ pub fn now() {
 /// // Do long task ...
 /// instant.since(monotonic_timer)
 /// // -> duration.minutes(42)
-pub fn since(start start: tempo.Instant) -> tempo.Duration {
+pub fn since(start start: tempo.Instant) -> duration.Duration {
   tempo.instant_since(start)
 }
 
@@ -235,7 +236,10 @@ pub fn format_local(
 /// instant.difference(from: start, to: end)
 /// // -> duration.microseconds(1)
 /// ```
-pub fn difference(from a: tempo.Instant, to b: tempo.Instant) -> tempo.Duration {
+pub fn difference(
+  from a: tempo.Instant,
+  to b: tempo.Instant,
+) -> duration.Duration {
   tempo.instant_difference(from: a, to: b)
 }
 

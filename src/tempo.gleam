@@ -12,6 +12,7 @@ import gleam/result
 import gleam/string
 import gleam/string_tree
 import gleam/time/calendar
+import gleam/time/duration
 import gtempo/internal as unit
 import tempo/error as tempo_error
 
@@ -64,8 +65,8 @@ pub fn now() -> Instant {
 ///   tempo.now_adjusted(by: duration.minutes(-30))
 /// )
 @internal
-pub fn now_adjusted(by duration: Duration) -> DateTime {
-  let new_ts = now().timestamp_utc_us + duration.microseconds
+pub fn now_adjusted(by duration: duration.Duration) -> DateTime {
+  let new_ts = now().timestamp_utc_us + duration_get_microseconds(duration)
 
   DateTime(
     date_from_unix_micro(new_ts),
@@ -111,7 +112,7 @@ pub fn format_local(in format: DateTimeFormat) -> String {
 /// tempo.since(monotonic_timer)
 /// // -> duration.minutes(42)
 @internal
-pub fn instant_since(start start: Instant) -> Duration {
+pub fn instant_since(start start: Instant) -> duration.Duration {
   now() |> instant_difference(from: start) |> duration_absolute
 }
 
@@ -127,8 +128,9 @@ pub fn instant_since(start start: Instant) -> Duration {
 /// // -> "42 minutes"
 @internal
 pub fn instant_since_formatted(start start: Instant) -> String {
-  let dur = instant_since(start:)
-  unit.format(dur.microseconds)
+  instant_since(start:)
+  |> duration_get_microseconds
+  |> unit.format
 }
 
 /// Compares the current system time to the provided datetime value.
@@ -531,7 +533,7 @@ pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
-pub fn difference(from start: DateTime) -> Duration {
+pub fn difference(from start: DateTime) -> duration.Duration {
   now() |> instant_as_utc_datetime |> datetime_difference(from: start)
 }
 
@@ -552,11 +554,8 @@ pub fn difference(from start: DateTime) -> Duration {
 /// |> duration.format
 /// // -> "none"
 /// ```
-pub fn since(start start: DateTime) -> Duration {
-  case difference(start) {
-    Duration(diff) if diff > 0 -> Duration(diff)
-    _ -> Duration(0)
-  }
+pub fn since(start start: DateTime) -> duration.Duration {
+  difference(start) |> duration_clamp_to_zero
 }
 
 /// Gets the time until the provided datetime relative to the current system
@@ -575,11 +574,11 @@ pub fn since(start start: DateTime) -> Duration {
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
-pub fn until(end end: DateTime) -> Duration {
-  case now() |> instant_as_utc_datetime |> datetime_difference(to: end) {
-    Duration(diff) if diff > 0 -> Duration(diff)
-    _ -> Duration(0)
-  }
+pub fn until(end end: DateTime) -> duration.Duration {
+  now()
+  |> instant_as_utc_datetime
+  |> datetime_difference(to: end)
+  |> duration_clamp_to_zero
 }
 
 /// Gets the difference between the current UTC system time and the provided time.
@@ -591,7 +590,7 @@ pub fn until(end end: DateTime) -> Duration {
 /// |> duration.format
 /// // -> "42 minutes"
 @internal
-pub fn utc_time_difference_from(from start: Time) -> Duration {
+pub fn utc_time_difference_from(from start: Time) -> duration.Duration {
   now() |> instant_as_utc_time |> time_difference(from: start)
 }
 
@@ -606,7 +605,7 @@ pub fn utc_time_difference_from(from start: Time) -> Duration {
 /// // -> "4 hours and 42 minutes"
 /// ```
 @internal
-pub fn local_time_difference_from(from start: Time) -> Duration {
+pub fn local_time_difference_from(from start: Time) -> duration.Duration {
   now() |> instant_as_utc_time |> time_difference(from: start)
 }
 
@@ -621,11 +620,9 @@ pub fn local_time_difference_from(from start: Time) -> Duration {
 /// // -> "42 minutes"
 /// ```
 @internal
-pub fn utc_time_since(start start: Time) -> Duration {
-  case utc_time_difference_from(from: start) {
-    Duration(diff) if diff > 0 -> Duration(diff)
-    _ -> Duration(0)
-  }
+pub fn utc_time_since(start start: Time) -> duration.Duration {
+  utc_time_difference_from(from: start)
+  |> duration_clamp_to_zero
 }
 
 /// Gets the time since the provided time relative to the current local system 
@@ -639,11 +636,9 @@ pub fn utc_time_since(start start: Time) -> Duration {
 /// // -> "4 hours and 42 minutes"
 /// ```
 @internal
-pub fn local_time_since(start start: Time) -> Duration {
-  case local_time_difference_from(from: start) {
-    Duration(diff) if diff > 0 -> Duration(diff)
-    _ -> Duration(0)
-  }
+pub fn local_time_since(start start: Time) -> duration.Duration {
+  local_time_difference_from(from: start)
+  |> duration_clamp_to_zero
 }
 
 /// Gets the time until the provided time relative to the current UTC system time.
@@ -657,11 +652,11 @@ pub fn local_time_since(start start: Time) -> Duration {
 /// // -> "none"
 /// ```
 @internal
-pub fn utc_time_until(end end: Time) -> Duration {
-  case now() |> instant_as_utc_time |> time_difference(to: end) {
-    Duration(diff) if diff > 0 -> Duration(diff)
-    _ -> Duration(0)
-  }
+pub fn utc_time_until(end end: Time) -> duration.Duration {
+  now()
+  |> instant_as_utc_time
+  |> time_difference(to: end)
+  |> duration_clamp_to_zero
 }
 
 /// Gets the time until the provided time relative to the current local system 
@@ -675,11 +670,11 @@ pub fn utc_time_until(end end: Time) -> Duration {
 /// // -> "4 hours and 42 minutes"
 /// ```
 @internal
-pub fn local_time_until(end end: Time) -> Duration {
-  case now() |> instant_as_local_time |> time_difference(to: end) {
-    Duration(diff) if diff > 0 -> Duration(diff)
-    _ -> Duration(0)
-  }
+pub fn local_time_until(end end: Time) -> duration.Duration {
+  now()
+  |> instant_as_local_time
+  |> time_difference(to: end)
+  |> duration_clamp_to_zero
 }
 
 /// Gets the difference between the current UTC system date and the provided date.
@@ -778,8 +773,9 @@ pub fn local_days_until(end end: Date) -> Int {
 
 /// Sleeps the current process for the provided duration. If the duration is
 /// less than a millisecond, the process will not sleep at all.
-pub fn sleep(for duration: Duration) {
-  sleep_ffi(duration.microseconds / 1000)
+pub fn sleep(for duration: duration.Duration) {
+  { duration_get_microseconds(duration) / 1000 }
+  |> sleep_ffi
 }
 
 // -------------------------------------------------------------------------- //
@@ -893,8 +889,8 @@ pub fn instant_is_later_or_equal(a: Instant, to b: Instant) {
 }
 
 @internal
-pub fn instant_difference(from a: Instant, to b: Instant) -> Duration {
-  Duration(b.monotonic_us - a.monotonic_us)
+pub fn instant_difference(from a: Instant, to b: Instant) -> duration.Duration {
+  duration_microseconds(b.monotonic_us - a.monotonic_us)
 }
 
 // -------------------------------------------------------------------------- //
@@ -1050,7 +1046,10 @@ pub fn datetime_is_later(a: DateTime, than b: DateTime) -> Bool {
 }
 
 @internal
-pub fn datetime_difference(from a: DateTime, to b: DateTime) -> Duration {
+pub fn datetime_difference(
+  from a: DateTime,
+  to b: DateTime,
+) -> duration.Duration {
   naive_datetime_difference(
     from: datetime_apply_offset(a),
     to: datetime_apply_offset(b),
@@ -1077,7 +1076,7 @@ pub fn datetime_drop_offset(datetime: DateTime) -> NaiveDateTime {
 @internal
 pub fn datetime_add(
   datetime: DateTime,
-  duration duration_to_add: Duration,
+  duration duration_to_add: duration.Duration,
 ) -> DateTime {
   case datetime {
     DateTime(date:, time:, offset:) -> {
@@ -1109,7 +1108,7 @@ pub fn datetime_add(
 @internal
 pub fn datetime_subtract(
   datetime: DateTime,
-  duration duration_to_subtract: Duration,
+  duration duration_to_subtract: duration.Duration,
 ) -> DateTime {
   case datetime {
     DateTime(date:, time:, offset:) -> {
@@ -1218,7 +1217,7 @@ pub fn naive_datetime_is_later_or_equal(
 pub fn naive_datetime_difference(
   from a: NaiveDateTime,
   to b: NaiveDateTime,
-) -> Duration {
+) -> duration.Duration {
   date_days_apart(from: a.date, to: b.date)
   |> duration_days
   |> duration_increase(by: time_difference(from: a.time, to: b.time))
@@ -1227,17 +1226,20 @@ pub fn naive_datetime_difference(
 @internal
 pub fn naive_datetime_add(
   datetime: NaiveDateTime,
-  duration duration_to_add: Duration,
+  duration duration_to_add: duration.Duration,
 ) -> NaiveDateTime {
   // Positive date overflows are only handled in this function, while negative
   // date overflows are only handled in the subtract function -- so if the 
   // duration is negative, we can just subtract the absolute value of it.
-  use <- bool.lazy_guard(when: duration_to_add.microseconds < 0, return: fn() {
-    datetime |> naive_datetime_subtract(duration_absolute(duration_to_add))
-  })
+  use <- bool.lazy_guard(
+    when: !duration_is_positive(duration_to_add),
+    return: fn() {
+      datetime |> naive_datetime_subtract(duration_absolute(duration_to_add))
+    },
+  )
 
   let days_to_add: Int = duration_as_days(duration_to_add)
-  let time_to_add: Duration =
+  let time_to_add: duration.Duration =
     duration_decrease(duration_to_add, by: duration_days(days_to_add))
 
   let new_time_as_micro =
@@ -1256,7 +1258,9 @@ pub fn naive_datetime_add(
   }
 
   let time_to_add =
-    Duration(new_time_as_micro - time_to_microseconds(datetime.time))
+    duration_microseconds(
+      new_time_as_micro - time_to_microseconds(datetime.time),
+    )
 
   let new_date = datetime.date |> date_add(days: days_to_add)
   let new_time = datetime.time |> time_add(duration: time_to_add)
@@ -1267,20 +1271,20 @@ pub fn naive_datetime_add(
 @internal
 pub fn naive_datetime_subtract(
   datetime: NaiveDateTime,
-  duration duration_to_subtract: Duration,
+  duration duration_to_subtract: duration.Duration,
 ) -> NaiveDateTime {
   // Negative date overflows are only handled in this function, while positive
   // date overflows are only handled in the add function -- so if the 
   // duration is negative, we can just add the absolute value of it.
   use <- bool.lazy_guard(
-    when: duration_to_subtract.microseconds < 0,
+    when: !duration_is_positive(duration_to_subtract),
     return: fn() {
       datetime |> naive_datetime_add(duration_absolute(duration_to_subtract))
     },
   )
 
   let days_to_sub: Int = duration_as_days(duration_to_subtract)
-  let time_to_sub: Duration =
+  let time_to_sub: duration.Duration =
     duration_decrease(duration_to_subtract, by: duration_days(days_to_sub))
 
   let new_time_as_micro =
@@ -1297,7 +1301,9 @@ pub fn naive_datetime_subtract(
   }
 
   let time_to_sub =
-    Duration(time_to_microseconds(datetime.time) - new_time_as_micro)
+    duration_microseconds(
+      time_to_microseconds(datetime.time) - new_time_as_micro,
+    )
 
   // Using the proper subtract functions here to modify the date and time
   // values instead of declaring a new date is important for perserving date 
@@ -1444,8 +1450,8 @@ pub fn validate_offset(offset: Offset) -> Result(Offset, Nil) {
 }
 
 @internal
-pub fn offset_to_duration(offset: Offset) -> Duration {
-  -offset.minutes * 60_000_000 |> Duration
+pub fn offset_to_duration(offset: Offset) -> duration.Duration {
+  -offset.minutes * 60_000_000 |> duration_microseconds
 }
 
 fn offset_replace_format(content: String, offset: Offset) -> String {
@@ -2458,8 +2464,8 @@ pub fn adjust_12_hour_to_24_hour(hour, am am) {
 }
 
 @internal
-pub fn time_difference(from a: Time, to b: Time) -> Duration {
-  time_to_microseconds(b) - time_to_microseconds(a) |> Duration
+pub fn time_difference(from a: Time, to b: Time) -> duration.Duration {
+  time_to_microseconds(b) - time_to_microseconds(a) |> duration_microseconds
 }
 
 @internal
@@ -2514,8 +2520,8 @@ pub fn time_from_unix_micro(unix_ts: Int) -> Time {
 }
 
 @internal
-pub fn time_to_duration(time: Time) -> Duration {
-  time_to_microseconds(time) |> Duration
+pub fn time_to_duration(time: Time) -> duration.Duration {
+  time_to_microseconds(time) |> duration_microseconds
 }
 
 @internal
@@ -2549,20 +2555,22 @@ pub fn time_is_later_or_equal(a: Time, to b: Time) -> Bool {
 }
 
 @internal
-pub fn time_add(a: Time, duration b: Duration) -> Time {
-  case b.microseconds == 0 {
+pub fn time_add(a: Time, duration b: duration.Duration) -> Time {
+  let b_microseconds = duration_get_microseconds(b)
+
+  case b_microseconds == 0 {
     True -> a
     False -> {
       case a {
         EndOfDayLeapSecond(microsecond)
-          if b.microseconds + microsecond < 1_000_000
-        -> EndOfDayLeapSecond(microsecond + b.microseconds)
+          if b_microseconds + microsecond < 1_000_000
+        -> EndOfDayLeapSecond(microsecond + b_microseconds)
         EndOfDayLeapSecond(..) ->
-          time_to_microseconds(a) + { b.microseconds - 1_000_000 }
+          time_to_microseconds(a) + { b_microseconds - 1_000_000 }
           |> time_from_microseconds
           |> time_normalise
         _ ->
-          time_to_microseconds(a) + b.microseconds
+          time_to_microseconds(a) + b_microseconds
           |> time_from_microseconds
           |> time_normalise
       }
@@ -2571,11 +2579,11 @@ pub fn time_add(a: Time, duration b: Duration) -> Time {
 }
 
 @internal
-pub fn time_subtract(a: Time, duration b: Duration) -> Time {
-  case b.microseconds == 0 {
+pub fn time_subtract(a: Time, duration b: duration.Duration) -> Time {
+  case duration_get_microseconds(b) == 0 {
     True -> a
     False ->
-      time_to_microseconds(a) - b.microseconds
+      time_to_microseconds(a) - duration_get_microseconds(b)
       |> time_from_microseconds
       |> time_normalise
   }
@@ -2585,58 +2593,92 @@ pub fn time_subtract(a: Time, duration b: Duration) -> Time {
 //                            Duration Logic                                  //
 // -------------------------------------------------------------------------- //
 
-/// A duration between two times. It represents a range of time values and
-/// can be span more than a day. It can be used to calculate the number of
-/// days, weeks, hours, minutes, or seconds between two times, but cannot
-/// accurately be used to calculate the number of years or months between.
-/// 
-/// It is also used as the basis for specifying how to increase or decrease
-/// a datetime or time value.
-pub opaque type Duration {
-  Duration(microseconds: Int)
+@internal
+pub fn duration_microseconds(microseconds microseconds) {
+  duration.nanoseconds(microseconds * 1000)
 }
 
 @internal
-pub fn duration(microseconds microseconds) {
-  Duration(microseconds)
+pub fn duration_get_microseconds(duration: duration.Duration) -> Int {
+  let #(seconds, nanoseconds) = duration.to_seconds_and_nanoseconds(duration)
+  { seconds * 1_000_000 } + { nanoseconds / 1000 }
 }
 
 @internal
-pub fn duration_get_microseconds(duration: Duration) -> Int {
-  duration.microseconds
+pub fn duration_seconds_and_nanoseconds(seconds: Int, nanoseconds: Int) {
+  duration.seconds(seconds)
+  |> duration.add(duration.nanoseconds(nanoseconds))
 }
 
 @internal
-pub fn duration_days(days: Int) -> Duration {
-  days |> unit.imprecise_days |> duration
+pub fn duration_days(days: Int) -> duration.Duration {
+  days |> unit.imprecise_days |> duration_microseconds
 }
 
 @internal
-pub fn duration_increase(a: Duration, by b: Duration) -> Duration {
-  Duration(a.microseconds + b.microseconds)
+pub fn duration_increase(
+  a: duration.Duration,
+  by b: duration.Duration,
+) -> duration.Duration {
+  duration.add(a, b)
 }
 
 @internal
-pub fn duration_decrease(a: Duration, by b: Duration) -> Duration {
-  Duration(a.microseconds - b.microseconds)
+pub fn duration_decrease(
+  a: duration.Duration,
+  by b: duration.Duration,
+) -> duration.Duration {
+  duration.add(a, duration_inverse(b))
 }
 
 @internal
-pub fn duration_absolute(duration: Duration) -> Duration {
-  case duration.microseconds < 0 {
-    True -> -{ duration.microseconds } |> Duration
-    False -> duration
+pub fn duration_absolute(duration: duration.Duration) -> duration.Duration {
+  let #(seconds, nanoseconds) = duration.to_seconds_and_nanoseconds(duration)
+  case seconds >= 0 && nanoseconds >= 0 {
+    True -> duration
+    False -> {
+      let seconds = case seconds < 0 {
+        True -> -seconds
+        False -> seconds
+      }
+
+      let nanoseconds = case nanoseconds < 0 {
+        True -> -nanoseconds
+        False -> nanoseconds
+      }
+
+      duration_seconds_and_nanoseconds(seconds, nanoseconds)
+    }
   }
 }
 
 @internal
-pub fn duration_as_days(duration: Duration) -> Int {
-  duration.microseconds |> unit.as_days_imprecise
+pub fn duration_inverse(dur: duration.Duration) -> duration.Duration {
+  duration.difference(dur, duration.seconds(0))
 }
 
 @internal
-pub fn duration_as_microseconds(duration: Duration) -> Int {
-  duration.microseconds
+pub fn duration_clamp_to_zero(dur: duration.Duration) -> duration.Duration {
+  case duration_is_positive(dur) {
+    True -> dur
+    False -> duration.seconds(0)
+  }
+}
+
+@internal
+pub fn duration_is_positive(dur: duration.Duration) -> Bool {
+  let #(seconds, nanoseconds) = duration.to_seconds_and_nanoseconds(dur)
+  seconds >= 0 && nanoseconds >= 0
+}
+
+@internal
+pub fn duration_as_days(duration: duration.Duration) -> Int {
+  duration_get_microseconds(duration) |> unit.as_days_imprecise
+}
+
+@internal
+pub fn duration_as_microseconds(duration: duration.Duration) -> Int {
+  duration_get_microseconds(duration)
 }
 
 // -------------------------------------------------------------------------- //
@@ -2686,7 +2728,7 @@ pub fn period_new_date(start start, end end) {
 }
 
 @internal
-pub fn period_as_duration(period: Period) -> Duration {
+pub fn period_as_duration(period: Period) -> duration.Duration {
   let #(start_date, end_date, start_time, end_time) =
     period_get_start_and_end_date_and_time(period)
 

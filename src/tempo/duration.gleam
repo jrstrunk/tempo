@@ -15,9 +15,9 @@
 //// }
 //// ```
 
-import gleam/int
 import gleam/list
 import gleam/order
+import gleam/time/duration
 import gtempo/internal as unit
 import tempo
 
@@ -32,7 +32,7 @@ import tempo
 /// // -> "60.000 minutes"
 /// ```
 pub fn format_as(
-  duration: tempo.Duration,
+  duration: duration.Duration,
   unit unit: Unit,
   decimals decimals: Int,
 ) -> String {
@@ -54,7 +54,7 @@ pub fn format_as(
 /// // -> "1 minute and 40.30 seconds"
 /// ```
 pub fn format_as_many(
-  duration: tempo.Duration,
+  duration: duration.Duration,
   units units: List(Unit),
   decimals decimals,
 ) {
@@ -81,7 +81,7 @@ pub fn format_as_many(
 /// |> duration.format
 /// // -> "1 week, 1 day, 0 hours, and 2 minutes"
 /// ```
-pub fn format(duration: tempo.Duration) {
+pub fn format(duration: duration.Duration) {
   duration |> tempo.duration_get_microseconds |> unit.format
 }
 
@@ -118,7 +118,7 @@ fn as_internal_unit(u: Unit) -> unit.Unit {
 /// |> duration.as_seconds_fractional
 /// // -> 0.0000001
 /// ```
-pub fn new(duration: Int, unit: Unit) -> tempo.Duration {
+pub fn new(duration: Int, unit: Unit) -> duration.Duration {
   case unit {
     YearImprecise -> years_imprecise(duration)
     Week -> weeks(duration)
@@ -141,8 +141,8 @@ pub fn new(duration: Int, unit: Unit) -> tempo.Duration {
 /// |> duration.format
 /// // -> "1 ~year"
 /// ```
-pub fn years_imprecise(years: Int) -> tempo.Duration {
-  years |> unit.imprecise_years |> tempo.duration
+pub fn years_imprecise(years: Int) -> duration.Duration {
+  years |> unit.imprecise_years |> tempo.duration_microseconds
 }
 
 /// Creates a new duration value of the specified number of whole weeks.
@@ -154,8 +154,8 @@ pub fn years_imprecise(years: Int) -> tempo.Duration {
 /// |> duration.format
 /// // -> "3 weeks"
 /// ```
-pub fn weeks(weeks: Int) -> tempo.Duration {
-  weeks |> unit.imprecise_weeks |> tempo.duration
+pub fn weeks(weeks: Int) -> duration.Duration {
+  weeks |> unit.imprecise_weeks |> tempo.duration_microseconds
 }
 
 /// Creates a new duration value of the specified number of whole days.
@@ -167,7 +167,7 @@ pub fn weeks(weeks: Int) -> tempo.Duration {
 /// |> duration.format_as(duration.Hour, decimals: 0)
 /// // -> "36 hours"
 /// ```
-pub fn days(days: Int) -> tempo.Duration {
+pub fn days(days: Int) -> duration.Duration {
   tempo.duration_days(days)
 }
 
@@ -180,8 +180,8 @@ pub fn days(days: Int) -> tempo.Duration {
 /// |> duration.format
 /// // -> "13 hours, 0 minutes, 0.0 seconds"
 /// ```
-pub fn hours(hours: Int) -> tempo.Duration {
-  hours |> unit.hours |> tempo.duration
+pub fn hours(hours: Int) -> duration.Duration {
+  hours |> unit.hours |> tempo.duration_microseconds
 }
 
 /// Creates a new duration value of the specified number of whole minutes.
@@ -193,8 +193,8 @@ pub fn hours(hours: Int) -> tempo.Duration {
 /// |> duration.format
 /// // -> "13 minutes and 0.0 seconds"
 /// ```
-pub fn minutes(minutes: Int) -> tempo.Duration {
-  minutes |> unit.minutes |> tempo.duration
+pub fn minutes(minutes: Int) -> duration.Duration {
+  minutes |> unit.minutes |> tempo.duration_microseconds
 }
 
 /// Creates a new duration value of the specified number of whole seconds.
@@ -207,8 +207,8 @@ pub fn minutes(minutes: Int) -> tempo.Duration {
 /// |> duration.format_as(duration.Second, decimals: 0)
 /// // -> "73 seconds"
 /// ```
-pub fn seconds(seconds: Int) -> tempo.Duration {
-  seconds |> unit.seconds |> tempo.duration
+pub fn seconds(seconds: Int) -> duration.Duration {
+  seconds |> unit.seconds |> tempo.duration_microseconds
 }
 
 /// Creates a new duration value of the specified number of whole milliseconds.
@@ -222,7 +222,7 @@ pub fn seconds(seconds: Int) -> tempo.Duration {
 /// // -> "113 milliseconds"
 /// ```
 pub fn milliseconds(milliseconds: Int) {
-  milliseconds |> unit.milliseconds |> tempo.duration
+  milliseconds |> unit.milliseconds |> tempo.duration_microseconds
 }
 
 /// Creates a new duration value of the specified number of whole microseconds.
@@ -236,7 +236,7 @@ pub fn milliseconds(milliseconds: Int) {
 /// // -> "113 microseconds"
 /// ```
 pub fn microseconds(microseconds: Int) {
-  microseconds |> tempo.duration
+  microseconds |> tempo.duration_microseconds
 }
 
 /// Increases a duration by the specified duration. If a negative value is 
@@ -250,7 +250,10 @@ pub fn microseconds(microseconds: Int) {
 /// |> duration.format_as(duration.Day, decimals: 0)
 /// // -> "7 days"
 /// ```
-pub fn increase(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
+pub fn increase(
+  a: duration.Duration,
+  by b: duration.Duration,
+) -> duration.Duration {
   tempo.duration_increase(a, b)
 }
 
@@ -273,7 +276,10 @@ pub fn increase(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
 /// |> duration.format_as(duration.Day, decimals: 0)
 /// // -> "5 days"
 /// ```
-pub fn decrease(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
+pub fn decrease(
+  a: duration.Duration,
+  by b: duration.Duration,
+) -> duration.Duration {
   tempo.duration_decrease(a, by: b)
 }
 
@@ -286,7 +292,7 @@ pub fn decrease(a: tempo.Duration, by b: tempo.Duration) -> tempo.Duration {
 /// |> duration.as_unit(duration.Second)
 /// // -> 60
 /// ```
-pub fn as_unit(duration: tempo.Duration, unit: Unit) -> Int {
+pub fn as_unit(duration: duration.Duration, unit: Unit) -> Int {
   as_internal_unit(unit)
   |> unit.as_unit(duration |> tempo.duration_get_microseconds, _)
 }
@@ -300,7 +306,7 @@ pub fn as_unit(duration: tempo.Duration, unit: Unit) -> Int {
 /// |> duration.as_unit_fractional(duration.Week)
 /// // -> 1.142857143
 /// ```
-pub fn as_unit_fractional(duration: tempo.Duration, unit: Unit) -> Float {
+pub fn as_unit_fractional(duration: duration.Duration, unit: Unit) -> Float {
   as_internal_unit(unit)
   |> unit.as_unit_fractional(duration |> tempo.duration_get_microseconds, _)
 }
@@ -315,7 +321,7 @@ pub fn as_unit_fractional(duration: tempo.Duration, unit: Unit) -> Float {
 /// |> duration.as_years_imprecise
 /// // -> 1
 /// ```
-pub fn as_years_imprecise(duration: tempo.Duration) -> Int {
+pub fn as_years_imprecise(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_years_imprecise
 }
 
@@ -329,82 +335,82 @@ pub fn as_years_imprecise(duration: tempo.Duration) -> Int {
 /// |> duration.as_years_fractional_imprecise
 /// // -> 1.02739726
 /// ```
-pub fn as_years_fractional_imprecise(duration: tempo.Duration) -> Float {
+pub fn as_years_fractional_imprecise(duration: duration.Duration) -> Float {
   duration
   |> tempo.duration_get_microseconds
   |> unit.as_years_imprecise_fractional
 }
 
 /// Converts a duration to the equivalent number of whole weeks.
-pub fn as_weeks(duration: tempo.Duration) -> Int {
+pub fn as_weeks(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_weeks_imprecise
 }
 
 /// Converts a duration to the equivalent number of fractional weeks.
-pub fn as_weeks_fractional(duration: tempo.Duration) -> Float {
+pub fn as_weeks_fractional(duration: duration.Duration) -> Float {
   duration
   |> tempo.duration_get_microseconds
   |> unit.as_weeks_imprecise_fractional
 }
 
 /// Converts a duration to the equivalent number of whole days.
-pub fn as_days(duration: tempo.Duration) -> Int {
+pub fn as_days(duration: duration.Duration) -> Int {
   tempo.duration_as_days(duration)
 }
 
 /// Converts a duration to the equivalent number of fractional days.
-pub fn as_days_fractional(duration: tempo.Duration) -> Float {
+pub fn as_days_fractional(duration: duration.Duration) -> Float {
   duration |> tempo.duration_get_microseconds |> unit.as_days_fractional
 }
 
 /// Converts a duration to the equivalent number of whole hours.
-pub fn as_hours(duration: tempo.Duration) -> Int {
+pub fn as_hours(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_hours
 }
 
 /// Converts a duration to the equivalent number of fractional hours.
-pub fn as_hours_fractional(duration: tempo.Duration) -> Float {
+pub fn as_hours_fractional(duration: duration.Duration) -> Float {
   duration |> tempo.duration_get_microseconds |> unit.as_hours_fractional
 }
 
 /// Converts a duration to the equivalent number of whole minutes.
-pub fn as_minutes(duration: tempo.Duration) -> Int {
+pub fn as_minutes(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_minutes
 }
 
 /// Converts a duration to the equivalent number of fractional minutes.
-pub fn as_minutes_fractional(duration: tempo.Duration) -> Float {
+pub fn as_minutes_fractional(duration: duration.Duration) -> Float {
   duration |> tempo.duration_get_microseconds |> unit.as_minutes_fractional
 }
 
 /// Converts a duration to the equivalent number of whole seconds.
-pub fn as_seconds(duration: tempo.Duration) -> Int {
+pub fn as_seconds(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_seconds
 }
 
 /// Converts a duration to the equivalent number of fractional seconds.
-pub fn as_seconds_fractional(duration: tempo.Duration) -> Float {
+pub fn as_seconds_fractional(duration: duration.Duration) -> Float {
   duration |> tempo.duration_get_microseconds |> unit.as_seconds_fractional
 }
 
 /// Converts a duration to the equivalent number of whole milliseconds.
-pub fn as_milliseconds(duration: tempo.Duration) -> Int {
+pub fn as_milliseconds(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_milliseconds
 }
 
 /// Converts a duration to the equivalent number of fractional milliseconds.
-pub fn as_milliseconds_fractional(duration: tempo.Duration) -> Float {
+pub fn as_milliseconds_fractional(duration: duration.Duration) -> Float {
   duration |> tempo.duration_get_microseconds |> unit.as_milliseconds_fractional
 }
 
 /// Converts a duration to the equivalent number of whole microseconds.
-pub fn as_microseconds(duration: tempo.Duration) -> Int {
+pub fn as_microseconds(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_microseconds
 }
 
 /// Converts a duration to the equivalent number of fractional microseconds.
 /// Microseconds are the smallest unit of time that are used in this package.
-pub fn as_microseconds_fractional(duration: tempo.Duration) -> Float {
+pub fn as_microseconds_fractional(duration: duration.Duration) -> Float {
   duration |> tempo.duration_get_microseconds |> unit.as_microseconds_fractional
 }
 
@@ -423,11 +429,8 @@ pub fn as_microseconds_fractional(duration: tempo.Duration) -> Float {
 /// |> duration.compare(to: duration.days(2))
 /// // -> order.Lt
 /// ```
-pub fn compare(a: tempo.Duration, to b: tempo.Duration) -> order.Order {
-  int.compare(
-    tempo.duration_get_microseconds(a),
-    tempo.duration_get_microseconds(b),
-  )
+pub fn compare(a: duration.Duration, to b: duration.Duration) -> order.Order {
+  duration.compare(a, b)
 }
 
 /// Checks if a duration is less than another duration.
@@ -445,8 +448,8 @@ pub fn compare(a: tempo.Duration, to b: tempo.Duration) -> order.Order {
 /// |> duration.is_less(than: duration.days(1))
 /// // -> False
 /// ```
-pub fn is_less(a: tempo.Duration, than b: tempo.Duration) -> Bool {
-  compare(a, b) == order.Lt
+pub fn is_less(a: duration.Duration, than b: duration.Duration) -> Bool {
+  duration.compare(a, b) == order.Lt
 }
 
 /// Checks if a duration is less than or equal to another duration.
@@ -464,8 +467,8 @@ pub fn is_less(a: tempo.Duration, than b: tempo.Duration) -> Bool {
 /// |> duration.is_less_or_equal(to: duration.days(1))
 /// // -> True
 /// ```
-pub fn is_less_or_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
-  compare(a, b) == order.Lt || compare(a, b) == order.Eq
+pub fn is_less_or_equal(a: duration.Duration, to b: duration.Duration) -> Bool {
+  duration.compare(a, b) == order.Lt || duration.compare(a, b) == order.Eq
 }
 
 /// Checks if a duration is equal to another duration.
@@ -483,8 +486,8 @@ pub fn is_less_or_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
 /// |> duration.is_equal(to: duration.days(2))
 /// // -> False
 /// ```
-pub fn is_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
-  compare(a, b) == order.Eq
+pub fn is_equal(a: duration.Duration, to b: duration.Duration) -> Bool {
+  duration.compare(a, b) == order.Eq
 }
 
 /// Checks if a duration is greater than another duration.
@@ -502,8 +505,8 @@ pub fn is_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
 /// |> duration.is_greater(than: duration.days(1))
 /// // -> True
 /// ``` 
-pub fn is_greater(a: tempo.Duration, than b: tempo.Duration) -> Bool {
-  compare(a, b) == order.Gt
+pub fn is_greater(a: duration.Duration, than b: duration.Duration) -> Bool {
+  duration.compare(a, b) == order.Gt
 }
 
 /// Checks if a duration is greater than or equal to another duration.
@@ -521,8 +524,11 @@ pub fn is_greater(a: tempo.Duration, than b: tempo.Duration) -> Bool {
 /// |> duration.is_greater_or_equal(to: duration.minutes(1))
 /// // -> True
 /// ```
-pub fn is_greater_or_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
-  compare(a, b) == order.Gt || compare(a, b) == order.Eq
+pub fn is_greater_or_equal(
+  a: duration.Duration,
+  to b: duration.Duration,
+) -> Bool {
+  duration.compare(a, b) == order.Gt || duration.compare(a, b) == order.Eq
 }
 
 /// Returns the absolute value of a duration.
@@ -536,7 +542,7 @@ pub fn is_greater_or_equal(a: tempo.Duration, to b: tempo.Duration) -> Bool {
 /// |> duration.format_as(duration.Day, decimals: 0)
 /// // -> "5 days"
 /// ```
-pub fn absolute(duration: tempo.Duration) -> tempo.Duration {
+pub fn absolute(duration: duration.Duration) -> duration.Duration {
   tempo.duration_absolute(duration)
 }
 
@@ -551,8 +557,8 @@ pub fn absolute(duration: tempo.Duration) -> tempo.Duration {
 /// // -> "-1 days"
 /// ```
 /// 
-pub fn inverse(duration: tempo.Duration) -> tempo.Duration {
-  -{ duration |> tempo.duration_get_microseconds } |> tempo.duration
+pub fn inverse(duration: duration.Duration) -> duration.Duration {
+  tempo.duration_inverse(duration)
 }
 
 /// Checks if a duration is negative.
@@ -575,6 +581,6 @@ pub fn inverse(duration: tempo.Duration) -> tempo.Duration {
 ///   False -> "We are either on time or late!"
 /// }
 /// ```
-pub fn is_negative(duration: tempo.Duration) -> Bool {
-  duration |> tempo.duration_get_microseconds < 0
+pub fn is_negative(duration: duration.Duration) -> Bool {
+  !tempo.duration_is_positive(duration)
 }

@@ -112,8 +112,9 @@
 ////   mock.reset_warp_time()
 //// }
 
+import gleam/time/duration
 import tempo
-import tempo/duration
+import tempo/duration as tempo_duration
 
 /// Freezes the current system time (as seen by this package) to the 
 /// provided datetime. Time will not progress until the 'unfreeze_time' function 
@@ -251,8 +252,8 @@ pub fn disable_sleep_warp() {
 
 /// Warps the current system time (as seen by this package) by the provided
 /// duration. This is useful for instantly testing code after a precise duration.
-pub fn warp_time(by duration: tempo.Duration) {
-  duration.as_microseconds(duration) |> tempo.add_warp_time_ffi
+pub fn warp_time(by duration: duration.Duration) {
+  tempo_duration.as_microseconds(duration) |> tempo.add_warp_time_ffi
 }
 
 /// Resets the warp time (as seen by this package) back to the real system time.
