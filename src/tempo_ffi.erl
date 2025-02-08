@@ -31,7 +31,7 @@ now() ->
     init_mock_table(),
     case ets:lookup(?MOCK_TIME_TABLE, frozen_time) of
         [{frozen_time, Value}] ->
-            Value;
+            Value + get_warp_time();
         [] ->
             case ets:lookup(?MOCK_TIME_TABLE, set_time) of
                 [{set_time, {ReferenceTime, RealStart, _, SpeedupFactor}}] ->
@@ -99,14 +99,14 @@ reset_warp_time() ->
     catch ets:delete(?MOCK_TIME_TABLE, warp_time),
     nil.
 
-add_warp_time(WarpMicro) ->
+add_warp_time(Microseconds) ->
     init_mock_table(),
     case ets:lookup(?MOCK_TIME_TABLE, warp_time) of
         [{warp_time, WarpTime}] ->
-            ets:insert(?MOCK_TIME_TABLE, {warp_time, WarpTime + WarpMicro}),
+            ets:insert(?MOCK_TIME_TABLE, {warp_time, WarpTime + Microseconds}),
             nil;
         [] ->
-            ets:insert(?MOCK_TIME_TABLE, {warp_time, WarpMicro}),
+            ets:insert(?MOCK_TIME_TABLE, {warp_time, Microseconds}),
             nil
     end,
     nil.
@@ -128,13 +128,18 @@ get_warped_now_monotonic() ->
 
 now_monotonic() ->
     init_mock_table(),
-    case ets:lookup(?MOCK_TIME_TABLE, set_time) of
-        [{set_time, {ReferenceTime, _, RealMonotonicStart, SpeedupFactor}}] ->
-            RealElapsed = get_warped_now_monotonic() - RealMonotonicStart,
-            SpedUpElapsed = round(RealElapsed * SpeedupFactor),
-            ReferenceTime + SpedUpElapsed;
+    case ets:lookup(?MOCK_TIME_TABLE, frozen_time) of
+        [{frozen_time, Value}] ->
+            Value + get_warp_time();
         [] ->
-            get_warped_now_monotonic()
+            case ets:lookup(?MOCK_TIME_TABLE, set_time) of
+                [{set_time, {ReferenceTime, _, RealMonotonicStart, SpeedupFactor}}] ->
+                    RealElapsed = get_warped_now_monotonic() - RealMonotonicStart,
+                    SpedUpElapsed = round(RealElapsed * SpeedupFactor),
+                    ReferenceTime + SpedUpElapsed;
+                [] ->
+                    get_warped_now_monotonic()
+            end
     end.
 
 now_unique() -> erlang:unique_integer([positive, monotonic]).
