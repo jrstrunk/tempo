@@ -17,7 +17,7 @@ function warped_now_monotonic() {
 
 export function now() {
   if (freezeTime) {
-    return referenceTime;
+    return referenceTime + warpTime;
   } else if (mockTime) {
     let realElaposed = warped_now() - referenceStart;
     let spedupElapsed = Math.trunc(realElaposed * speedup);
@@ -62,7 +62,9 @@ export function current_year() {
 }
 
 export function now_monotonic() {
-  if (mockTime) {
+  if (freezeTime) {
+    return referenceTime + warpTime;
+  } else if (mockTime) {
     let realElapsed = warped_now_monotonic() - referenceMonotonicStart;
     let spedupElapsed = Math.trunc(realElapsed * speedup);
     return referenceTime + spedupElapsed;
