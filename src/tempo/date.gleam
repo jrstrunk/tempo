@@ -167,7 +167,7 @@ pub fn get_year(date: tempo.Date) -> Int {
 /// |> date.get_month
 /// // -> tempo.Jun
 /// ```
-pub fn get_month(date: tempo.Date) -> tempo.Month {
+pub fn get_month(date: tempo.Date) -> calendar.Month {
   date |> tempo.date_get_month
 }
 
@@ -191,7 +191,7 @@ pub fn get_day(date: tempo.Date) -> Int {
 /// ```gleam
 /// date.literal("2024-06-13")
 /// |> date.get_month_year
-/// // -> tempo.MonthYear(tempo.Jun, 2024)
+/// // -> calendar.MonthYear(tempo.Jun, 2024)
 /// ```
 pub fn get_month_year(date: tempo.Date) -> tempo.MonthYear {
   date |> tempo.date_get_month_year
@@ -461,18 +461,17 @@ pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
   )
 }
 
-/// Converts a tempo date to a date type in the core gleam time package.
+/// Converts a tempo date to a calendar date.
 pub fn to_calendar_date(date: tempo.Date) -> calendar.Date {
-  let tempo.CalendarDate(year, month, day) = tempo.date_to_calendar_date(date)
-  calendar.Date(year, month.to_calendar_month(month), day)
+  tempo.date_to_calendar_date(date)
 }
 
-/// Converts a core gleam time date to a tempo date.
+/// Converts a calendar date to a tempo date.
 pub fn from_calendar_date(
   date: calendar.Date,
 ) -> Result(tempo.Date, tempo_error.DateOutOfBoundsError) {
   let calendar.Date(year, month, day) = date
-  from_tuple(#(year, month.from_calendar_month(month) |> month.to_int, day))
+  from_tuple(#(year, month |> month.to_int, day))
 }
 
 /// Checks if a dynamic value is a valid date string, and returns the
@@ -1029,7 +1028,7 @@ pub fn is_weekend(date: tempo.Date) -> Bool {
 /// ```
 pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
   let calendar_date = tempo.date_to_calendar_date(date)
-  tempo.CalendarDate(calendar_date.year, calendar_date.month, 1)
+  calendar.Date(calendar_date.year, calendar_date.month, 1)
   |> tempo.date_from_calendar_date
 }
 
@@ -1044,7 +1043,7 @@ pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
 /// ```
 pub fn last_of_month(for date: tempo.Date) -> tempo.Date {
   let calendar_date = tempo.date_to_calendar_date(date)
-  tempo.CalendarDate(
+  calendar.Date(
     calendar_date.year,
     calendar_date.month,
     month.days(of: calendar_date.month, in: calendar_date.year),

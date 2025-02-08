@@ -11,6 +11,7 @@ import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/string_tree
+import gleam/time/calendar
 import gtempo/internal as unit
 import tempo/error as tempo_error
 
@@ -1486,11 +1487,6 @@ pub opaque type Date {
 }
 
 @internal
-pub type CalendarDate {
-  CalendarDate(year: Int, month: Month, day: Int)
-}
-
-@internal
 pub fn date(unix_days unix_days) {
   Date(unix_days:)
 }
@@ -1506,7 +1502,7 @@ pub fn date_to_calendar_date(date: Date) {
 }
 
 @internal
-pub fn date_from_calendar_date(calendar_date: CalendarDate) {
+pub fn date_from_calendar_date(calendar_date: calendar.Date) {
   date_calendar_to_unix_days(calendar_date)
 }
 
@@ -1691,7 +1687,7 @@ pub fn date_from_tuple(
   case year >= 1000 && year <= 9999 {
     True ->
       case day >= 1 && day <= month_days_of(month, in: year) {
-        True -> Ok(date_from_calendar_date(CalendarDate(year, month, day)))
+        True -> Ok(date_from_calendar_date(calendar.Date(year, month, day)))
         False ->
           Error(tempo_error.DateDayOutOfBounds(
             month_to_short_string(month) <> " " <> int.to_string(day),
@@ -1731,7 +1727,7 @@ fn date_calendar_from_unix_days(unix_days) {
 
       let assert Ok(month) = month_from_int(m)
 
-      CalendarDate(y, month, d)
+      calendar.Date(y, month, d)
     }
 
     // If the date is before unix time, then we will have to use another
@@ -1741,12 +1737,12 @@ fn date_calendar_from_unix_days(unix_days) {
       let ordinal_year = Date(unix_days) |> date_get_year
       let ordinal_date = rata_die - date_days_before_year(ordinal_year)
 
-      do_calculate_rata_die(ordinal_year, Jan, ordinal_date)
+      do_calculate_rata_die(ordinal_year, calendar.January, ordinal_date)
     }
   }
 }
 
-fn do_calculate_rata_die(year: Int, month: Month, ordinal_day: Int) {
+fn do_calculate_rata_die(year: Int, month: calendar.Month, ordinal_day: Int) {
   let days_in_month = month_days_of(month, in: year)
 
   case month_to_int(month) < 12 && ordinal_day > days_in_month {
@@ -1754,23 +1750,23 @@ fn do_calculate_rata_die(year: Int, month: Month, ordinal_day: Int) {
       do_calculate_rata_die(
         year,
         case month {
-          Jan -> Feb
-          Feb -> Mar
-          Mar -> Apr
-          Apr -> May
-          May -> Jun
-          Jun -> Jul
-          Jul -> Aug
-          Aug -> Sep
-          Sep -> Oct
-          Oct -> Nov
-          _ -> Dec
+          calendar.January -> calendar.February
+          calendar.February -> calendar.March
+          calendar.March -> calendar.April
+          calendar.April -> calendar.May
+          calendar.May -> calendar.June
+          calendar.June -> calendar.July
+          calendar.July -> calendar.August
+          calendar.August -> calendar.September
+          calendar.September -> calendar.October
+          calendar.October -> calendar.November
+          _ -> calendar.December
         },
         ordinal_day - days_in_month,
       )
     }
     False -> {
-      CalendarDate(year:, month:, day: ordinal_day)
+      calendar.Date(year:, month:, day: ordinal_day)
     }
   }
 }
@@ -1781,7 +1777,7 @@ pub fn date_calendar_from_unix_seconds(unix_ts: Int) {
 }
 
 @internal
-pub fn date_calendar_to_unix_days(date: CalendarDate) {
+pub fn date_calendar_to_unix_days(date: calendar.Date) {
   let year_days = date_days_before_year(date.year)
 
   let leap_days = case is_leap_year(date.year) {
@@ -1790,18 +1786,18 @@ pub fn date_calendar_to_unix_days(date: CalendarDate) {
   }
 
   let month_days = case date.month {
-    Jan -> 0
-    Feb -> 31
-    Mar -> 59 + leap_days
-    Apr -> 90 + leap_days
-    May -> 120 + leap_days
-    Jun -> 151 + leap_days
-    Jul -> 181 + leap_days
-    Aug -> 212 + leap_days
-    Sep -> 243 + leap_days
-    Oct -> 273 + leap_days
-    Nov -> 304 + leap_days
-    Dec -> 334 + leap_days
+    calendar.January -> 0
+    calendar.February -> 31
+    calendar.March -> 59 + leap_days
+    calendar.April -> 90 + leap_days
+    calendar.May -> 120 + leap_days
+    calendar.June -> 151 + leap_days
+    calendar.July -> 181 + leap_days
+    calendar.August -> 212 + leap_days
+    calendar.September -> 243 + leap_days
+    calendar.October -> 273 + leap_days
+    calendar.November -> 304 + leap_days
+    calendar.December -> 334 + leap_days
   }
 
   year_days + month_days + date.day |> date_from_rata_die
@@ -1891,59 +1887,40 @@ fn date_days_before_year(year1: Int) -> Int {
 //                              Month Logic                                   //
 // -------------------------------------------------------------------------- //
 
-/// A specific month on the civil calendar. 
-pub type Month {
-  Jan
-  Feb
-  Mar
-  Apr
-  May
-  Jun
-  Jul
-  Aug
-  Sep
-  Oct
-  Nov
-  Dec
-}
-
 @internal
-pub const months = [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
-
-@internal
-pub fn month_from_int(month: Int) -> Result(Month, Nil) {
+pub fn month_from_int(month: Int) -> Result(calendar.Month, Nil) {
   case month {
-    1 -> Ok(Jan)
-    2 -> Ok(Feb)
-    3 -> Ok(Mar)
-    4 -> Ok(Apr)
-    5 -> Ok(May)
-    6 -> Ok(Jun)
-    7 -> Ok(Jul)
-    8 -> Ok(Aug)
-    9 -> Ok(Sep)
-    10 -> Ok(Oct)
-    11 -> Ok(Nov)
-    12 -> Ok(Dec)
+    1 -> Ok(calendar.January)
+    2 -> Ok(calendar.February)
+    3 -> Ok(calendar.March)
+    4 -> Ok(calendar.April)
+    5 -> Ok(calendar.May)
+    6 -> Ok(calendar.June)
+    7 -> Ok(calendar.July)
+    8 -> Ok(calendar.August)
+    9 -> Ok(calendar.September)
+    10 -> Ok(calendar.October)
+    11 -> Ok(calendar.November)
+    12 -> Ok(calendar.December)
     _ -> Error(Nil)
   }
 }
 
 @internal
-pub fn month_from_short_string(month: String) -> Result(Month, Nil) {
+pub fn month_from_short_string(month: String) -> Result(calendar.Month, Nil) {
   case month {
-    "Jan" -> Ok(Jan)
-    "Feb" -> Ok(Feb)
-    "Mar" -> Ok(Mar)
-    "Apr" -> Ok(Apr)
-    "May" -> Ok(May)
-    "Jun" -> Ok(Jun)
-    "Jul" -> Ok(Jul)
-    "Aug" -> Ok(Aug)
-    "Sep" -> Ok(Sep)
-    "Oct" -> Ok(Oct)
-    "Nov" -> Ok(Nov)
-    "Dec" -> Ok(Dec)
+    "Jan" -> Ok(calendar.January)
+    "Feb" -> Ok(calendar.February)
+    "Mar" -> Ok(calendar.March)
+    "Apr" -> Ok(calendar.April)
+    "May" -> Ok(calendar.May)
+    "Jun" -> Ok(calendar.June)
+    "Jul" -> Ok(calendar.July)
+    "Aug" -> Ok(calendar.August)
+    "Sep" -> Ok(calendar.September)
+    "Oct" -> Ok(calendar.October)
+    "Nov" -> Ok(calendar.November)
+    "Dec" -> Ok(calendar.December)
     _ -> Error(Nil)
   }
 }
@@ -1951,78 +1928,78 @@ pub fn month_from_short_string(month: String) -> Result(Month, Nil) {
 @internal
 pub fn month_from_long_string(month: String) {
   case month {
-    "January" -> Ok(Jan)
-    "February" -> Ok(Feb)
-    "March" -> Ok(Mar)
-    "April" -> Ok(Apr)
-    "May" -> Ok(May)
-    "June" -> Ok(Jun)
-    "July" -> Ok(Jul)
-    "August" -> Ok(Aug)
-    "September" -> Ok(Sep)
-    "October" -> Ok(Oct)
-    "November" -> Ok(Nov)
-    "December" -> Ok(Dec)
+    "January" -> Ok(calendar.January)
+    "February" -> Ok(calendar.February)
+    "March" -> Ok(calendar.March)
+    "April" -> Ok(calendar.April)
+    "May" -> Ok(calendar.May)
+    "June" -> Ok(calendar.June)
+    "July" -> Ok(calendar.July)
+    "August" -> Ok(calendar.August)
+    "September" -> Ok(calendar.September)
+    "October" -> Ok(calendar.October)
+    "November" -> Ok(calendar.November)
+    "December" -> Ok(calendar.December)
     _ -> Error(Nil)
   }
 }
 
 @internal
-pub fn month_to_int(month: Month) -> Int {
+pub fn month_to_int(month: calendar.Month) -> Int {
   case month {
-    Jan -> 1
-    Feb -> 2
-    Mar -> 3
-    Apr -> 4
-    May -> 5
-    Jun -> 6
-    Jul -> 7
-    Aug -> 8
-    Sep -> 9
-    Oct -> 10
-    Nov -> 11
-    Dec -> 12
+    calendar.January -> 1
+    calendar.February -> 2
+    calendar.March -> 3
+    calendar.April -> 4
+    calendar.May -> 5
+    calendar.June -> 6
+    calendar.July -> 7
+    calendar.August -> 8
+    calendar.September -> 9
+    calendar.October -> 10
+    calendar.November -> 11
+    calendar.December -> 12
   }
 }
 
 @internal
-pub fn month_to_short_string(month: Month) -> String {
+pub fn month_to_short_string(month: calendar.Month) -> String {
   case month {
-    Jan -> "Jan"
-    Feb -> "Feb"
-    Mar -> "Mar"
-    Apr -> "Apr"
-    May -> "May"
-    Jun -> "Jun"
-    Jul -> "Jul"
-    Aug -> "Aug"
-    Sep -> "Sep"
-    Oct -> "Oct"
-    Nov -> "Nov"
-    Dec -> "Dec"
+    calendar.January -> "Jan"
+    calendar.February -> "Feb"
+    calendar.March -> "Mar"
+    calendar.April -> "Apr"
+    calendar.May -> "May"
+    calendar.June -> "Jun"
+    calendar.July -> "Jul"
+    calendar.August -> "Aug"
+    calendar.September -> "Sep"
+    calendar.October -> "Oct"
+    calendar.November -> "Nov"
+    calendar.December -> "Dec"
   }
 }
 
 @internal
-pub fn month_to_long_string(month: Month) -> String {
+pub fn month_to_long_string(month: calendar.Month) -> String {
   case month {
-    Jan -> "January"
-    Feb -> "February"
-    Mar -> "March"
-    Apr -> "April"
-    May -> "May"
-    Jun -> "June"
-    Jul -> "July"
-    Aug -> "August"
-    Sep -> "September"
-    Oct -> "October"
-    Nov -> "November"
-    Dec -> "December"
+    calendar.January -> "January"
+    calendar.February -> "February"
+    calendar.March -> "March"
+    calendar.April -> "April"
+    calendar.May -> "May"
+    calendar.June -> "June"
+    calendar.July -> "July"
+    calendar.August -> "August"
+    calendar.September -> "September"
+    calendar.October -> "October"
+    calendar.November -> "November"
+    calendar.December -> "December"
   }
 }
 
 @internal
-pub fn month_days_of(month: Month, in year: Int) -> Int {
+pub fn month_days_of(month: calendar.Month, in year: Int) -> Int {
   month_year_days_of(MonthYear(month, year))
 }
 
@@ -2032,7 +2009,7 @@ pub fn month_days_of(month: Month, in year: Int) -> Int {
 
 /// A month in a specific year.
 pub type MonthYear {
-  MonthYear(month: Month, year: Int)
+  MonthYear(month: calendar.Month, year: Int)
 }
 
 @internal
@@ -2043,58 +2020,58 @@ pub fn month_year_to_int(month_year: MonthYear) -> Int {
 @internal
 pub fn month_year_prior(month_year: MonthYear) -> MonthYear {
   case month_year.month {
-    Jan -> MonthYear(Dec, month_year.year - 1)
-    Feb -> MonthYear(Jan, month_year.year)
-    Mar -> MonthYear(Feb, month_year.year)
-    Apr -> MonthYear(Mar, month_year.year)
-    May -> MonthYear(Apr, month_year.year)
-    Jun -> MonthYear(May, month_year.year)
-    Jul -> MonthYear(Jun, month_year.year)
-    Aug -> MonthYear(Jul, month_year.year)
-    Sep -> MonthYear(Aug, month_year.year)
-    Oct -> MonthYear(Sep, month_year.year)
-    Nov -> MonthYear(Oct, month_year.year)
-    Dec -> MonthYear(Nov, month_year.year)
+    calendar.January -> MonthYear(calendar.December, month_year.year - 1)
+    calendar.February -> MonthYear(calendar.January, month_year.year)
+    calendar.March -> MonthYear(calendar.February, month_year.year)
+    calendar.April -> MonthYear(calendar.March, month_year.year)
+    calendar.May -> MonthYear(calendar.April, month_year.year)
+    calendar.June -> MonthYear(calendar.May, month_year.year)
+    calendar.July -> MonthYear(calendar.June, month_year.year)
+    calendar.August -> MonthYear(calendar.July, month_year.year)
+    calendar.September -> MonthYear(calendar.August, month_year.year)
+    calendar.October -> MonthYear(calendar.September, month_year.year)
+    calendar.November -> MonthYear(calendar.October, month_year.year)
+    calendar.December -> MonthYear(calendar.November, month_year.year)
   }
 }
 
 @internal
 pub fn month_year_next(month_year: MonthYear) -> MonthYear {
   case month_year.month {
-    Jan -> MonthYear(Feb, month_year.year)
-    Feb -> MonthYear(Mar, month_year.year)
-    Mar -> MonthYear(Apr, month_year.year)
-    Apr -> MonthYear(May, month_year.year)
-    May -> MonthYear(Jun, month_year.year)
-    Jun -> MonthYear(Jul, month_year.year)
-    Jul -> MonthYear(Aug, month_year.year)
-    Aug -> MonthYear(Sep, month_year.year)
-    Sep -> MonthYear(Oct, month_year.year)
-    Oct -> MonthYear(Nov, month_year.year)
-    Nov -> MonthYear(Dec, month_year.year)
-    Dec -> MonthYear(Jan, month_year.year + 1)
+    calendar.January -> MonthYear(calendar.February, month_year.year)
+    calendar.February -> MonthYear(calendar.March, month_year.year)
+    calendar.March -> MonthYear(calendar.April, month_year.year)
+    calendar.April -> MonthYear(calendar.May, month_year.year)
+    calendar.May -> MonthYear(calendar.June, month_year.year)
+    calendar.June -> MonthYear(calendar.July, month_year.year)
+    calendar.July -> MonthYear(calendar.August, month_year.year)
+    calendar.August -> MonthYear(calendar.September, month_year.year)
+    calendar.September -> MonthYear(calendar.October, month_year.year)
+    calendar.October -> MonthYear(calendar.November, month_year.year)
+    calendar.November -> MonthYear(calendar.December, month_year.year)
+    calendar.December -> MonthYear(calendar.January, month_year.year + 1)
   }
 }
 
 @internal
 pub fn month_year_days_of(my: MonthYear) -> Int {
   case my.month {
-    Jan -> 31
-    Feb ->
+    calendar.January -> 31
+    calendar.February ->
       case is_leap_year(my.year) {
         True -> 29
         False -> 28
       }
-    Mar -> 31
-    Apr -> 30
-    May -> 31
-    Jun -> 30
-    Jul -> 31
-    Aug -> 31
-    Sep -> 30
-    Oct -> 31
-    Nov -> 30
-    Dec -> 31
+    calendar.March -> 31
+    calendar.April -> 30
+    calendar.May -> 31
+    calendar.June -> 30
+    calendar.July -> 31
+    calendar.August -> 31
+    calendar.September -> 30
+    calendar.October -> 31
+    calendar.November -> 30
+    calendar.December -> 31
   }
 }
 
@@ -2814,7 +2791,7 @@ pub fn period_comprising_months(period: Period) -> List(MonthYear) {
 
 fn do_period_comprising_months(mys, my: MonthYear, end_date) {
   case
-    date_from_calendar_date(CalendarDate(my.year, my.month, 1))
+    date_from_calendar_date(calendar.Date(my.year, my.month, 1))
     |> date_is_earlier_or_equal(to: end_date)
   {
     True ->

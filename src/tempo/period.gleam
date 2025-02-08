@@ -29,6 +29,7 @@
 //// ```
 
 import gleam/int
+import gleam/time/calendar
 import gtempo/internal as unit
 import tempo
 import tempo/date
@@ -263,13 +264,13 @@ pub fn as_duration(period: tempo.Period) -> tempo.Duration {
 pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
   let start =
     tempo.naive_datetime(
-      tempo.date_from_calendar_date(tempo.CalendarDate(my.year, my.month, 1)),
+      tempo.date_from_calendar_date(calendar.Date(my.year, my.month, 1)),
       tempo.time_start_of_day,
     )
 
   let end =
     tempo.naive_datetime(
-      tempo.date_from_calendar_date(tempo.CalendarDate(
+      tempo.date_from_calendar_date(calendar.Date(
         my.year,
         my.month,
         month.days(of: my.month, in: my.year),
