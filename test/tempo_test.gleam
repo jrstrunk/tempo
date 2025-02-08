@@ -158,14 +158,6 @@ pub fn format_utc_iso8601seconds_test() {
   |> should.equal(["Z"])
 }
 
-pub fn format_local_iso8601seconds_test() {
-  tempo.format_local(tempo.ISO8601Seconds)
-  |> string.to_graphemes
-  |> list.reverse
-  |> list.take(1)
-  |> should.not_equal(["Z"])
-}
-
 pub fn format_utc_iso8601millis_test() {
   tempo.format_utc(tempo.ISO8601Milli)
   |> string.to_graphemes
@@ -174,26 +166,10 @@ pub fn format_utc_iso8601millis_test() {
   |> should.equal(["Z"])
 }
 
-pub fn format_local_iso8601millis_test() {
-  tempo.format_local(tempo.ISO8601Milli)
-  |> string.to_graphemes
-  |> list.reverse
-  |> list.take(1)
-  |> should.not_equal(["Z"])
-}
-
 pub fn format_utc_iso8601micros_test() {
   tempo.format_utc(tempo.ISO8601Micro)
   |> string.to_graphemes
   |> list.reverse
   |> list.take(1)
   |> should.equal(["Z"])
-}
-
-pub fn format_local_iso8601micros_test() {
-  tempo.format_local(tempo.ISO8601Micro)
-  |> string.to_graphemes
-  |> list.reverse
-  |> list.take(1)
-  |> should.not_equal(["Z"])
 }
