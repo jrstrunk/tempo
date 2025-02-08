@@ -59,6 +59,7 @@
 //// ```
 
 import gleam/order
+import gleam/time/timestamp
 import tempo
 import tempo/datetime
 
@@ -124,12 +125,19 @@ pub fn as_local_datetime(instant: tempo.Instant) -> tempo.DateTime {
 
 @internal
 pub fn as_unix_seconds(instant: tempo.Instant) -> Int {
-  tempo.instant_as_unix_utc(instant)
+  tempo.instant_as_unix_seconds(instant)
 }
 
 @internal
 pub fn as_unix_milli(instant: tempo.Instant) -> Int {
-  tempo.instant_as_unix_milli_utc(instant)
+  tempo.instant_as_unix_milli(instant)
+}
+
+pub fn as_timestamp(instant: tempo.Instant) -> timestamp.Timestamp {
+  let seconds = tempo.instant_as_unix_micro(instant) / 1_000_000
+  let nanoseconds = { tempo.instant_as_unix_micro(instant) % 1_000_000 } * 1000
+
+  timestamp.from_unix_seconds_and_nanoseconds(seconds, nanoseconds)
 }
 
 /// Converts an instant to a UTC date value.

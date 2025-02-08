@@ -1,14 +1,26 @@
 import gleam/dynamic
+import gleam/io
 import gleam/order
+import gleam/time/duration as dur
+import gleam/time/timestamp
 import gleeunit/should
 import tempo
 import tempo/date
 import tempo/datetime
 import tempo/duration
 import tempo/error as tempo_error
+import tempo/instant
 import tempo/naive_datetime
 import tempo/offset
 import tempo/time
+
+pub fn main() {
+  instant.now()
+  |> instant.as_utc_datetime
+  |> datetime.to_timestamp
+  |> timestamp.to_rfc3339(dur.seconds(0))
+  |> io.debug
+}
 
 pub fn from_string_negative_offset_test() {
   datetime.from_string("2024-06-13T13:42:11.354053-04:00")
@@ -672,4 +684,12 @@ pub fn format_http_utc_test() {
   datetime.literal("2025-01-05T13:02:01Z")
   |> datetime.format(tempo.HTTP)
   |> should.equal("Sun, 05 Jan 2025 13:02:01 GMT")
+}
+
+pub fn timestamp_round_trip_test() {
+  let ref = datetime.literal("2024-06-21T13:42:11.195Z")
+
+  datetime.to_timestamp(ref)
+  |> datetime.from_timestamp
+  |> should.equal(ref)
 }

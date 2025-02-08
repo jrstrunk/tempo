@@ -817,13 +817,18 @@ pub fn instant_as_local_datetime(instant: Instant) -> DateTime {
 }
 
 @internal
-pub fn instant_as_unix_utc(instant: Instant) -> Int {
-  instant.offset_local_us / 1_000_000
+pub fn instant_as_unix_seconds(instant: Instant) -> Int {
+  instant.timestamp_utc_us / 1_000_000
 }
 
 @internal
-pub fn instant_as_unix_milli_utc(instant: Instant) -> Int {
-  instant.offset_local_us / 1000
+pub fn instant_as_unix_milli(instant: Instant) -> Int {
+  instant.timestamp_utc_us / 1000
+}
+
+@internal
+pub fn instant_as_unix_micro(instant: Instant) -> Int {
+  instant.timestamp_utc_us
 }
 
 @internal

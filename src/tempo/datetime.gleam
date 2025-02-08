@@ -41,6 +41,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/time/calendar
+import gleam/time/timestamp
 import tempo
 import tempo/date
 import tempo/error as tempo_error
@@ -327,6 +328,23 @@ pub fn format(
     _ -> datetime
   }
   |> tempo.datetime_format(in: format)
+}
+
+/// Converts a core gleam time timestamp type to a datetime.
+pub fn from_timestamp(timestamp: timestamp.Timestamp) -> tempo.DateTime {
+  let #(seconds, nanoseconds) =
+    timestamp.to_unix_seconds_and_nanoseconds(timestamp)
+
+  from_unix_micro({ seconds * 1_000_000 } + { nanoseconds / 1000 })
+}
+
+/// Converts a datetime to a core gleam time timestamp type.
+pub fn to_timestamp(datetime: tempo.DateTime) -> timestamp.Timestamp {
+  let unix_us = to_unix_micro(datetime)
+  let seconds = unix_us / 1_000_000
+  let nanoseconds = { unix_us % 1_000_000 } * 1000
+
+  timestamp.from_unix_seconds_and_nanoseconds(seconds, nanoseconds)
 }
 
 /// Returns the UTC datetime of a unix timestamp.
