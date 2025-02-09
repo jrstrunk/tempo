@@ -194,7 +194,7 @@ pub fn hours(hours: Int) -> duration.Duration {
 /// // -> "13 minutes and 0.0 seconds"
 /// ```
 pub fn minutes(minutes: Int) -> duration.Duration {
-  minutes |> unit.minutes |> tempo.duration_microseconds
+  tempo.duration_minutes(minutes)
 }
 
 /// Creates a new duration value of the specified number of whole seconds.
@@ -375,7 +375,7 @@ pub fn as_hours_fractional(duration: duration.Duration) -> Float {
 
 /// Converts a duration to the equivalent number of whole minutes.
 pub fn as_minutes(duration: duration.Duration) -> Int {
-  duration |> tempo.duration_get_microseconds |> unit.as_minutes
+  tempo.duration_as_mintues(duration)
 }
 
 /// Converts a duration to the equivalent number of fractional minutes.

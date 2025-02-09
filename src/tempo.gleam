@@ -1346,8 +1346,8 @@ pub fn offset_get_minutes(offset: Offset) {
 pub const utc = Offset(0)
 
 @internal
-pub fn new_offset(offset_minutes minutes: Int) -> Result(Offset, Nil) {
-  Offset(minutes) |> validate_offset
+pub fn new_offset(from duration: duration.Duration) -> Result(Offset, Nil) {
+  duration_as_mintues(duration) |> Offset |> validate_offset
 }
 
 @internal
@@ -2615,6 +2615,16 @@ pub fn duration_seconds_and_nanoseconds(seconds: Int, nanoseconds: Int) {
 }
 
 @internal
+pub fn duration_as_mintues(duration: duration.Duration) -> Int {
+  duration_get_microseconds(duration) |> unit.as_minutes
+}
+
+@internal
+pub fn duration_minutes(minutes: Int) -> duration.Duration {
+  minutes |> unit.minutes |> duration_microseconds
+}
+
+@internal
 pub fn duration_days(days: Int) -> duration.Duration {
   days |> unit.imprecise_days |> duration_microseconds
 }
@@ -3176,7 +3186,7 @@ pub fn parse_any(
       [regexp.Match(content, [Some(hours), Some(minutes)]), ..] ->
         case int.parse(hours), int.parse(minutes) {
           Ok(hour), Ok(minute) ->
-            case new_offset(hour * 60 + minute) {
+            case new_offset(duration_minutes(hour * 60 + minute)) {
               Ok(offset) -> #(
                 Some(offset),
                 string.replace(unconsumed, content, ""),

@@ -13,6 +13,7 @@
 //// }
 //// ```
 
+import gleam/time/duration
 import tempo
 import tempo/error as tempo_error
 
@@ -24,17 +25,18 @@ pub fn local() -> tempo.Offset {
   tempo.offset_local_minutes() |> tempo.offset
 }
 
-/// Creates a new offset from a number of minutes.
+/// Creates a new offset from a duration. Offsets are most commonly expressed
+/// as a number of minutes or hours.
 /// 
 /// ## Example
 /// 
 /// ```gleam
-/// offset.new(-65)
+/// offset.new(duration.minutes(-65))
 /// |> result.map(offset.to_string)
 /// // -> Ok("-01:05")
 /// ```
-pub fn new(offset_minutes minutes: Int) -> Result(tempo.Offset, Nil) {
-  tempo.new_offset(minutes)
+pub fn new(from duration: duration.Duration) -> Result(tempo.Offset, Nil) {
+  tempo.new_offset(duration)
 }
 
 /// Creates a new offset from a string literal, but will panic if the string
