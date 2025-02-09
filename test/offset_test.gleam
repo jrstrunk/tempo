@@ -4,19 +4,19 @@ import tempo/duration
 import tempo/offset
 
 pub fn new_offset_test() {
-  offset.new(0)
+  offset.new(duration.minutes(0))
   |> should.equal(Ok(tempo.offset(0)))
 
-  offset.new(-720)
+  offset.new(duration.minutes(-720))
   |> should.equal(Ok(tempo.offset(-720)))
 
-  offset.new(840)
+  offset.new(duration.minutes(840))
   |> should.equal(Ok(tempo.offset(840)))
 
-  offset.new(1000)
+  offset.new(duration.minutes(1000))
   |> should.be_error
 
-  offset.new(-1000)
+  offset.new(duration.minutes(-1000))
   |> should.be_error
 }
 
