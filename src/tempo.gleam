@@ -774,8 +774,12 @@ pub fn local_days_until(end end: Date) -> Int {
 /// Sleeps the current process for the provided duration. If the duration is
 /// less than a millisecond, the process will not sleep at all.
 pub fn sleep(for duration: duration.Duration) {
-  { duration_get_microseconds(duration) / 1000 }
-  |> sleep_ffi
+  let sleep_ms = case duration_get_microseconds(duration) / 1000 {
+    ms if ms > 0 -> ms
+    _ -> 0
+  }
+
+  sleep_ffi(sleep_ms)
 }
 
 // -------------------------------------------------------------------------- //
