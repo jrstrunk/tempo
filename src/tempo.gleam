@@ -3088,8 +3088,10 @@ pub fn parse_any(
 ) -> #(option.Option(Date), option.Option(Time), option.Option(Offset)) {
   let empty_result = #(None, None, None)
 
+  // If there are 10 or more numbers in a row, then this is probably some 
+  // serial number and not a date.
   use serial_re <- result_guard(
-    when_error: regexp.from_string("\\d{9,}"),
+    when_error: regexp.from_string("\\d{10,}"),
     return: empty_result,
   )
 
@@ -3271,6 +3273,17 @@ pub fn parse_any(
                 }
               6, Ok(micro) ->
                 case adj_hour(hour) |> new_time_micro(minute, second, micro) {
+                  Ok(date) -> #(
+                    Some(date),
+                    string.replace(unconsumed, content, ""),
+                  )
+
+                  _ -> #(None, unconsumed)
+                }
+              9, Ok(nano) ->
+                case
+                  adj_hour(hour) |> new_time_micro(minute, second, nano / 1000)
+                {
                   Ok(date) -> #(
                     Some(date),
                     string.replace(unconsumed, content, ""),

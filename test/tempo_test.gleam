@@ -150,6 +150,15 @@ pub fn parse_any_written_short_date_test() {
   ))
 }
 
+pub fn parse_any_nanosecond_test() {
+  tempo.parse_any("2025-02-11T06:00:00.123456789Z")
+  |> should.equal(#(
+    Some(date.literal("2025-02-11")),
+    Some(time.literal("06:00:00.123456")),
+    Some(offset.literal("Z")),
+  ))
+}
+
 pub fn parse_any_offset_condensed_test() {
   tempo.parse_any("2025-02-11T06:00:00-05")
   |> should.equal(#(
