@@ -3200,7 +3200,10 @@ pub fn parse_any(
           _, _ -> #(None, unconsumed)
         }
 
-      [regexp.Match(content, [Some(hours), None]), ..] ->
+      // Erlang regex match
+      [regexp.Match(content, [Some(hours), None]), ..]
+      | // JavaScript regex match
+        [regexp.Match(content, [Some(hours)]), ..] ->
         case int.parse(hours) {
           Ok(hour) ->
             case new_offset(duration_minutes(hour * 60)) {
