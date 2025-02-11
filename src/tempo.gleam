@@ -3117,7 +3117,7 @@ pub fn parse_any(
   )
 
   use offset_re <- result_guard(
-    when_error: regexp.from_string("([-+]\\d{2}):{0,1}(\\d{1,2})?"),
+    when_error: regexp.from_string("([-+]\\d{2}):{0,1}(\\d{0,2})?"),
     return: empty_result,
   )
 
@@ -3196,6 +3196,21 @@ pub fn parse_any(
             }
 
           _, _ -> #(None, unconsumed)
+        }
+
+      [regexp.Match(content, [Some(hours), None]), ..] ->
+        case int.parse(hours) {
+          Ok(hour) ->
+            case new_offset(duration_minutes(hour * 60)) {
+              Ok(offset) -> #(
+                Some(offset),
+                string.replace(unconsumed, content, ""),
+              )
+
+              _ -> #(None, unconsumed)
+            }
+
+          _ -> #(None, unconsumed)
         }
 
       _ -> #(None, unconsumed)

@@ -150,6 +150,15 @@ pub fn parse_any_written_short_date_test() {
   ))
 }
 
+pub fn parse_any_offset_condensed_test() {
+  tempo.parse_any("2025-02-11T06:00:00-05")
+  |> should.equal(#(
+    Some(date.literal("2025-02-11")),
+    Some(time.literal("06:00:00")),
+    Some(offset.literal("-05:00")),
+  ))
+}
+
 pub fn format_utc_iso8601seconds_test() {
   tempo.format_utc(tempo.ISO8601Seconds)
   |> string.to_graphemes
