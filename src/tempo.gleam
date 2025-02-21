@@ -3652,7 +3652,7 @@ pub fn offset_local_micro() -> Int {
 }
 
 @external(erlang, "tempo_ffi", "local_offset")
-@external(javascript, "../tempo_ffi.mjs", "local_offset")
+@external(javascript, "./tempo_ffi.mjs", "local_offset")
 @internal
 pub fn offset_local_minutes() -> Int
 
