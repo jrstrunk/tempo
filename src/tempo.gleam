@@ -2963,7 +2963,7 @@ pub type DateFormat {
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
 /// A (AM/PM), a (am/pm).
 pub type TimeFormat {
-  ISO8601Time
+  ISO8601TimeSeconds
   ISO8601TimeMilli
   ISO8601TimeMicro
   CustomTime(format: String)
@@ -2986,7 +2986,7 @@ pub fn get_datetime_format_str(format: DateTimeFormat) {
     ISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSSzz"
     HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
     DateFormat(ISO8601Date) -> "YYYY-MM-DD"
-    TimeFormat(ISO8601Time) -> "HH:mm:ss"
+    TimeFormat(ISO8601TimeSeconds) -> "HH:mm:ss"
     TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSS"
     TimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSS"
     TimeFormat(CustomTime(format)) -> format
@@ -3007,7 +3007,7 @@ pub fn get_naive_datetime_format_str(format: NaiveDateTimeFormat) {
     CustomNaive(format) -> format
     CustomNaiveLocalised(format, _locale) -> format
     NaiveDateFormat(ISO8601Date) -> "YYYY-MM-DD"
-    NaiveTimeFormat(ISO8601Time) -> "HH:mm:ss"
+    NaiveTimeFormat(ISO8601TimeSeconds) -> "HH:mm:ss"
     NaiveTimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSS"
     NaiveTimeFormat(ISO8601TimeMicro) -> "HH:mm:ss.SSSS"
     NaiveTimeFormat(CustomTime(format)) -> format
@@ -3020,7 +3020,7 @@ pub fn get_naive_datetime_format_str(format: NaiveDateTimeFormat) {
 @internal
 pub fn get_time_format_str(format: TimeFormat) {
   case format {
-    ISO8601Time -> "HH:mm:ss"
+    ISO8601TimeSeconds -> "HH:mm:ss"
     ISO8601TimeMilli -> "HH:mm:ss.SSS"
     ISO8601TimeMicro -> "HH:mm:ss.SSSS"
     CustomTime(format) -> format
