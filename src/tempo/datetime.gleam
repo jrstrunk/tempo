@@ -33,7 +33,6 @@
 //// }
 //// ```
 
-import gleam/bool
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/list
@@ -749,201 +748,115 @@ pub fn to_offset(
   tempo.datetime_to_offset(datetime, offset)
 }
 
-/// The result of an uncertain conversion. Since this package does not track
-/// timezone offsets, it uses the host system's offset to convert to local
-/// time. If the datetime being converted to local time is of a different
-/// day than the current one, the offset value provided by the host may
-/// not be accurate (and could be accurate by up to the amount the offset 
-/// changes throughout the year). To account for this, when converting to 
-/// local time, a precise value is returned when the datetime being converted
-/// is in th current date, while an imprecise value is returned when it is
-/// on any other date. This allows the application logic to handle the 
-/// two cases differently: some applications may only need to convert to 
-/// local time on the current date or may only need generic time 
-/// representations, while other applications may need precise conversions 
-/// for arbitrary dates. More notes on how to plug time zones into this
-/// package to aviod uncertain conversions can be found in the README.
-pub type UncertainConversion(a) {
-  Precise(a)
-  Imprecise(a)
-}
-
-/// Accepts either a precise or imprecise value of an uncertain conversion.
-/// Useful for pipelines.
+/// Converts a datetime to the equivalent local datetime. Prefer to either
+/// design your application to not need this, or add an external timezone
+/// provider to use with the `to_timezone` function.
 /// 
-/// ## Examples
+/// Conversion is based on the host's current offset. We can not be 
+/// sure the current host offset is applicable to the given datetime, and so
+/// an imprecise conversion will be performed. The imprecise conversion can be
+/// inaccurate to the degree the local offset changes throughout the year. 
+/// For example, in North America where Daylight Savings Time is observed with
+/// a one-hour time shift, the imprecise conversion can be off by up to an hour,
+/// depending on the time of year. 
 /// 
-/// ```gleam
-/// datetime.literal("2024-06-21T23:17:00Z")
-/// |> datetime.to_local
-/// |> tempo.accept_imprecision
-/// |> datetime.to_string
-/// // -> "2024-06-21T19:17:00-04:00"
-/// ```
-pub fn accept_imprecision(conv: UncertainConversion(a)) -> a {
-  case conv {
-    Precise(a) -> a
-    Imprecise(a) -> a
-  }
-}
-
-/// Either returns a precise value or an error from an uncertain conversion.
-/// Useful for pipelines. 
-/// 
-/// ## Examples
-/// 
-/// ```gleam
-/// datetime.literal("2024-06-21T23:17:00Z")
-/// |> datetime.to_local
-/// |> tempo.error_on_imprecision
-/// |> result.try(do_important_precise_task)
-/// ```
-pub fn error_on_imprecision(conv: UncertainConversion(a)) -> Result(a, Nil) {
-  case conv {
-    Precise(a) -> Ok(a)
-    Imprecise(_) -> Error(Nil)
-  }
-}
-
-/// Converts a datetime to the equivalent local datetime. The return value
-/// indicates if the conversion was precise or imprecise. Use pattern
-/// matching or the `tempo.accept_imprecision` function to handle the two cases.
-/// 
-/// Conversion is based on the host's current offset. If the date of the
-/// supplied datetime matches the date of the host, then we can apply the
-/// current host's offset to get the local time safely, resulting in a precise
-/// conversion. If the date does not match the host's, then we can not be 
-/// sure the current offset is still applicable, and will perform an 
-/// imprecise conversion. The imprecise conversion can be inaccurate to the
-/// degree the local offset changes throughout the year. For example, in 
-/// North America where Daylight Savings Time is observed with a one-hour
-/// time shift, the imprecise conversion can be off by up to an hour depending
-/// on the time of year.
+/// If the date of the given datetime matches the date of the host, then the
+/// conversion will actually be precise all but during the hour(s) when the
+/// time zone offset is shifting. 
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-21T09:57:11.195Z")
-/// |> datetime.to_local
+/// |> datetime.to_local_imprecise
 /// // -> tempo.Precise(datetime.literal("2024-06-21T05:57:11.195-04:00"))
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("1998-08-23T09:57:11.195Z")
-/// |> datetime.to_local
+/// |> datetime.to_local_imprecise
 /// // -> tempo.Imprecise(datetime.literal("1998-08-23T05:57:11.195-04:00"))
 /// ```
-pub fn to_local(datetime: tempo.DateTime) -> UncertainConversion(tempo.DateTime) {
-  use <- bool.lazy_guard(
-    when: datetime |> tempo.datetime_get_offset == offset.local(),
-    return: fn() { Precise(datetime) },
-  )
-
-  let local_dt = datetime |> to_offset(offset.local())
-
-  case
-    local_dt |> tempo.datetime_get_naive |> tempo.naive_datetime_get_date
-    == date.current_local()
-  {
-    True -> Precise(local_dt)
-    False -> Imprecise(local_dt)
-  }
+pub fn to_local_imprecise(datetime: tempo.DateTime) -> tempo.DateTime {
+  datetime |> to_offset(offset.local())
 }
 
-/// Converts a datetime to the equivalent local time. The return value
-/// indicates if the conversion was precise or imprecise. Use pattern
-/// matching or the `tempo.accept_imprecision` function to handle the two cases.
+/// Converts a datetime to the equivalent local time. Prefer to either
+/// design your application to not need this, or add an external timezone
+/// provider to use with the `to_timezone` function.
 /// 
-/// Conversion is based on the host's current offset. If the date of the
-/// supplied datetime matches the date of the host, then we can apply the
-/// current host's offset to get the local time safely, resulting in a precise
-/// conversion. If the date does not match the host's, then we can not be 
-/// sure the current offset is still applicable, and will perform an 
-/// imprecise conversion. The imprecise conversion can be inaccurate to the
-/// degree the local offset changes throughout the year. For example, in 
-/// North America where Daylight Savings Time is observed with a one-hour
-/// time shift, the imprecise conversion can be off by up to an hour depending
-/// on the time of year.
+/// Conversion is based on the host's current offset. We can not be 
+/// sure the current host offset is applicable to the given datetime, and so
+/// an imprecise conversion will be performed. The imprecise conversion can be
+/// inaccurate to the degree the local offset changes throughout the year. 
+/// For example, in North America where Daylight Savings Time is observed with
+/// a one-hour time shift, the imprecise conversion can be off by up to an hour,
+/// depending on the time of year. 
+/// 
+/// If the date of the given datetime matches the date of the host, then the
+/// conversion will actually be precise all but during the hour(s) when the
+/// time zone offset is shifting. 
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-21T09:57:11.195Z")
-/// |> datetime.to_local_time
-/// // -> tempo.Precise(time.literal("05:57:11.195"))
+/// |> datetime.to_local_time_imprecise
+/// // -> time.literal("05:57:11.195")
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("1998-08-23T09:57:11.195Z")
-/// |> datetime.to_local_time
-/// // -> tempo.Imprecise(time.literal("05:57:11.195"))
+/// |> datetime.to_local_time_imprecise
+/// // -> time.literal("05:57:11.195")
 /// ```
-pub fn to_local_time(
-  datetime: tempo.DateTime,
-) -> UncertainConversion(tempo.Time) {
-  case to_local(datetime) {
-    Precise(datetime) ->
-      datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_time
-      |> Precise
-    Imprecise(datetime) ->
-      datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_time
-      |> Imprecise
-  }
+/// 
+/// Making internal because users can now just call 
+/// `datetime.to_local_imprecise(dt).time`. It was harder in prior versions
+@internal
+pub fn to_local_time_imprecise(datetime: tempo.DateTime) -> tempo.Time {
+  to_local_imprecise(datetime).time
 }
 
-/// Converts a datetime to the equivalent local time. The return value
-/// indicates if the conversion was precise or imprecise. Use pattern
-/// matching or the `tempo.accept_imprecision` function to handle the two cases.
+/// Converts a datetime to the equivalent local time imprecisely. Prefer to either
+/// design your application to not need this, or add an external timezone
+/// provider to use with the `to_timezone` function.
 /// 
-/// Conversion is based on the host's current offset. If the date of the
-/// supplied datetime matches the date of the host, then we can apply the
-/// current host's offset to get the local time safely, resulting in a precise
-/// conversion. If the date does not match the host's, then we can not be 
-/// sure the current offset is still applicable, and will perform an 
-/// imprecise conversion. The imprecise conversion can be inaccurate to the
-/// degree the local offset changes throughout the year. For example, in 
-/// North America where Daylight Savings Time is observed with a one-hour
-/// time shift, the imprecise conversion can be off by up to an hour depending
-/// on the time of year.
+/// Conversion is based on the host's current offset. We can not be 
+/// sure the current host offset is applicable to the given datetime, and so
+/// an imprecise conversion will be performed. The imprecise conversion can be
+/// inaccurate to the degree the local offset changes throughout the year. 
+/// For example, in North America where Daylight Savings Time is observed with
+/// a one-hour time shift, the imprecise conversion can be off by up to an hour,
+/// depending on the time of year. 
+/// 
+/// If the date of the given datetime matches the date of the host, then the
+/// conversion will actually be precise all but during the hour(s) when the
+/// time zone offset is shifting.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// datetime.literal("2024-06-19T01:35:11.195Z")
-/// |> datetime.to_local_date
-/// // -> tempo.Precise(date.literal("2024-06-18"))
+/// |> datetime.to_local_date_imprecise
+/// // -> date.literal("2024-06-18")
 /// ```
 /// 
 /// ```gleam
 /// datetime.literal("1998-08-23T01:57:11.195Z")
-/// |> datetime.to_local_date
-/// // -> tempo.Imprecise(date.literal("1998-08-22"))
+/// |> datetime.to_local_date_imprecise
+/// // -> date.literal("1998-08-22")
 /// ```
-pub fn to_local_date(
-  datetime: tempo.DateTime,
-) -> UncertainConversion(tempo.Date) {
-  case to_local(datetime) {
-    Precise(datetime) ->
-      datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_date
-      |> Precise
-    Imprecise(datetime) ->
-      datetime
-      |> tempo.datetime_get_naive
-      |> tempo.naive_datetime_get_date
-      |> Imprecise
-  }
+/// 
+/// Making internal because users can now just call 
+/// `datetime.to_local_imprecise(dt).date`. It was harder in prior versions
+@internal
+pub fn to_local_date_imprecise(datetime: tempo.DateTime) -> tempo.Date {
+  to_local_imprecise(datetime).date
 }
 
 /// Converts a datetime to the specified timezone. Relies on an external 
-/// package like `gtz` to provide timezone information. Try to prefer using
-/// `to_local` when converting datetimes to local time, as that does not depend
-/// on any external package.
+/// package like `gtz` to provide timezone information.
 /// 
 /// ## Example
 /// 

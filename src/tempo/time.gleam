@@ -538,8 +538,7 @@ pub fn format(time: tempo.Time, in format: tempo.TimeFormat) -> String {
   |> string.join("")
 }
 
-/// Gets the UTC time value of a unix timestamp. If the local time is needed,
-/// use the 'datetime' module's 'to_local_time' function.
+/// Gets the UTC time value of a unix timestamp.
 /// 
 /// ## Example
 /// 
@@ -560,8 +559,7 @@ pub fn from_unix_seconds(unix_ts: Int) -> tempo.Time {
   |> tempo.time_from_microseconds
 }
 
-/// Gets the UTC time value of a unix timestamp in milliseconds. If the local
-/// time is needed, use the 'datetime' module's 'to_local_time' function.
+/// Gets the UTC time value of a unix timestamp in milliseconds.
 /// 
 /// ## Example
 /// 
@@ -581,8 +579,7 @@ pub fn from_unix_milli(unix_ts: Int) -> tempo.Time {
   |> tempo.time_from_microseconds
 }
 
-/// Gets the UTC time value of a unix timestamp in microseconds. If the local
-/// time is needed, use the 'datetime' module's 'to_local_time' function.
+/// Gets the UTC time value of a unix timestamp in microseconds.
 /// 
 /// ## Example
 /// 

@@ -348,12 +348,6 @@ pub fn to_utc_positive_day_boundary_test() {
   |> should.equal("2024-06-15T22:03:00.000000Z")
 }
 
-pub fn to_local_test() {
-  datetime.literal("2024-06-21T03:47:00.000Z")
-  |> datetime.to_local_time
-  // Just should not crash or anything, not really muct to validate
-}
-
 pub fn to_offset_test() {
   datetime.literal("2024-06-21T03:47:00.000-04:00")
   |> datetime.to_offset(offset.literal("-01:00"))

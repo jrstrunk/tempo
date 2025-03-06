@@ -526,8 +526,7 @@ pub fn from_dynamic_string(
   }
 }
 
-/// Returns the date of a unix timestamp. If the local date is 
-/// needed, use the 'datetime' module's 'to_local_date' function.
+/// Returns the date of a unix timestamp.
 /// 
 /// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
 /// 
@@ -567,8 +566,7 @@ pub fn to_unix_seconds(date: tempo.Date) -> Int {
   tempo.date_to_unix_seconds(date)
 }
 
-/// Returns the UTC date of a unix timestamp in milliseconds. If the local 
-/// date is needed, use the 'datetime' module's 'to_local_date' function.
+/// Returns the UTC date of a unix timestamp in milliseconds.
 /// 
 /// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
 /// 
@@ -608,8 +606,7 @@ pub fn to_unix_milli(date: tempo.Date) -> Int {
   to_unix_seconds(date) * 1000
 }
 
-/// Returns the UTC date of a unix timestamp in microseconds. If the local 
-/// date is needed, use the 'datetime' module's 'to_local_date' function.
+/// Returns the UTC date of a unix timestamp in microseconds.
 /// 
 /// From https://howardhinnant.github.io/date_algorithms.html#civil_from_days
 /// 
