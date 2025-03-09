@@ -2911,7 +2911,8 @@ pub type DateTimeFormat {
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
 /// Z (full offset from UTC in the format "+-00:00"), ZZ (full offset from UTC
 /// with no ":"), z (short offset from UTC as "-04" or "Z" if UTC), zz (full 
-/// offset from UTC as "-04:00" or "Z" if UTC), A (AM/PM), a (am/pm).
+/// offset from UTC as "-04:00" or "Z" if UTC), A (AM/PM), a (am/pm), or 
+/// GMT (to parse "GMT" as a 0 offset from UTC).
 pub type NaiveDateTimeFormat {
   NaiveISO8601Seconds
   NaiveISO8601Milli
@@ -2961,7 +2962,7 @@ pub type DateFormat {
 /// Available custom format directives: H (hour), HH (two-digit hour), h (12-hour clock hour),
 /// hh (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
-/// A (AM/PM), a (am/pm).
+/// A (AM/PM), or a (am/pm).
 pub type TimeFormat {
   ISO8601TimeSeconds
   ISO8601TimeMilli
@@ -2984,7 +2985,7 @@ pub fn get_datetime_format_str(format: DateTimeFormat) {
     ISO8601Seconds -> "YYYY-MM-DDTHH:mm:sszz"
     ISO8601Milli -> "YYYY-MM-DDTHH:mm:ss.SSSzz"
     ISO8601Micro -> "YYYY-MM-DDTHH:mm:ss.SSSSzz"
-    HTTP -> "ddd, DD MMM YYYY HH:mm:ss [GMT]"
+    HTTP -> "ddd, DD MMM YYYY HH:mm:ss GMT"
     DateFormat(ISO8601Date) -> "YYYY-MM-DD"
     TimeFormat(ISO8601TimeSeconds) -> "HH:mm:ss"
     TimeFormat(ISO8601TimeMilli) -> "HH:mm:ss.SSS"
@@ -3039,7 +3040,7 @@ pub fn get_date_format_str(format: DateFormat) {
 
 // regex to pull the supported formatting directives from a string
 @internal
-pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z{1,2}|S{3,4}|."
+pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z{1,2}|S{3,4}|GMT|."
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
@@ -3353,7 +3354,7 @@ pub type DatetimePart {
 pub fn consume_format(str: String, in fmt: String) {
   let assert Ok(re) =
     regexp.from_string(
-      "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|z{1,2}|Z{1,2}|S{3,4}|.",
+      "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|z{1,2}|Z{1,2}|S{3,4}|GMT|.",
     )
 
   regexp.scan(re, fmt)
@@ -3624,6 +3625,11 @@ fn consume_part(fmt, from str) {
         string.drop_start(str, 5),
       ))
     }
+    "GMT" ->
+      case str == "GMT" {
+        True -> Ok(#(OffsetStr("Z"), string.drop_start(str, 3)))
+        False -> Error(Nil)
+      }
     passthrough -> {
       let fmt_length = string.length(passthrough)
       let str_slice = string.slice(str, at_index: 0, length: fmt_length)

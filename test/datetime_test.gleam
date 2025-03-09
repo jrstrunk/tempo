@@ -722,3 +722,10 @@ pub fn datetime_format_custom_round_trip_test() {
   |> datetime.parse(in: tempo.Custom("YYYY-MM-DD[T]HH:mm:ss.SSSZ"))
   |> should.equal(Ok(datetime.literal("2025-03-09")))
 }
+
+pub fn datetime_parse_http_malformed_test() {
+  datetime.parse("Thu, 26 Dec 2024 17:32:01 -02:00", in: tempo.HTTP)
+  |> should.equal(
+    Error(tempo_error.DateTimeInvalidFormat("Unable to parse directive GMT")),
+  )
+}
