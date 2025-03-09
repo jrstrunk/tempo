@@ -202,7 +202,8 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
 /// Z (offset from UTC), ZZ (offset from UTC with no ":"),
-/// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
+/// z (short offset from UTC "-04", "Z"), zz (full offset from UTC as "-04:00" 
+/// or "Z" if UTC), A (AM/PM), a (am/pm).
 /// 
 /// ## Example
 /// 

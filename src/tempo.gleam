@@ -3039,7 +3039,7 @@ pub fn get_date_format_str(format: DateFormat) {
 
 // regex to pull the supported formatting directives from a string
 @internal
-pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z{1,2}|SSSSS|SSSS|SSS|."
+pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z{1,2}|S{3,4}|."
 
 /// Tries to parse a given date string without a known format. It will not 
 /// parse two digit years and will assume the month always comes before the 
@@ -3353,7 +3353,7 @@ pub type DatetimePart {
 pub fn consume_format(str: String, in fmt: String) {
   let assert Ok(re) =
     regexp.from_string(
-      "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS{3,5}|.",
+      "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|z{1,2}|Z{1,2}|S{3,4}|.",
     )
 
   regexp.scan(re, fmt)
@@ -3451,6 +3451,50 @@ fn consume_part(fmt, from str) {
     }
     "D" -> consume_one_or_two_digits(str, Day)
     "DD" -> consume_two_digits(str, Day)
+    "d" ->
+      case str {
+        "0" <> rest -> Ok(#(Passthrough, rest))
+        "1" <> rest -> Ok(#(Passthrough, rest))
+        "2" <> rest -> Ok(#(Passthrough, rest))
+        "3" <> rest -> Ok(#(Passthrough, rest))
+        "4" <> rest -> Ok(#(Passthrough, rest))
+        "5" <> rest -> Ok(#(Passthrough, rest))
+        "6" <> rest -> Ok(#(Passthrough, rest))
+        _ -> Error(Nil)
+      }
+    "dd" ->
+      case str {
+        "Su" <> rest -> Ok(#(Passthrough, rest))
+        "Mo" <> rest -> Ok(#(Passthrough, rest))
+        "Tu" <> rest -> Ok(#(Passthrough, rest))
+        "We" <> rest -> Ok(#(Passthrough, rest))
+        "Th" <> rest -> Ok(#(Passthrough, rest))
+        "Fr" <> rest -> Ok(#(Passthrough, rest))
+        "Sa" <> rest -> Ok(#(Passthrough, rest))
+        _ -> Error(Nil)
+      }
+    "ddd" ->
+      case str {
+        "Sun" <> rest -> Ok(#(Passthrough, rest))
+        "Mon" <> rest -> Ok(#(Passthrough, rest))
+        "Tue" <> rest -> Ok(#(Passthrough, rest))
+        "Wed" <> rest -> Ok(#(Passthrough, rest))
+        "Thu" <> rest -> Ok(#(Passthrough, rest))
+        "Fri" <> rest -> Ok(#(Passthrough, rest))
+        "Sat" <> rest -> Ok(#(Passthrough, rest))
+        _ -> Error(Nil)
+      }
+    "dddd" ->
+      case str {
+        "Sunday" <> rest -> Ok(#(Passthrough, rest))
+        "Monday" <> rest -> Ok(#(Passthrough, rest))
+        "Tuesday" <> rest -> Ok(#(Passthrough, rest))
+        "Wednesday" <> rest -> Ok(#(Passthrough, rest))
+        "Thursday" <> rest -> Ok(#(Passthrough, rest))
+        "Friday" <> rest -> Ok(#(Passthrough, rest))
+        "Saturday" <> rest -> Ok(#(Passthrough, rest))
+        _ -> Error(Nil)
+      }
     "H" -> consume_one_or_two_digits(str, Hour)
     "HH" -> consume_two_digits(str, Hour)
     "h" -> consume_one_or_two_digits(str, TwelveHour)
@@ -3556,6 +3600,17 @@ fn consume_part(fmt, from str) {
       )
 
       Error(Nil)
+    }
+    "zz" -> {
+      case str {
+        "Z" -> Ok(#(OffsetStr("Z"), string.drop_start(str, 1)))
+        "z" -> Ok(#(OffsetStr("z"), string.drop_start(str, 1)))
+        _ ->
+          Ok(#(
+            OffsetStr(string.slice(str, at_index: 0, length: 6)),
+            string.drop_start(str, 6),
+          ))
+      }
     }
     "Z" -> {
       Ok(#(

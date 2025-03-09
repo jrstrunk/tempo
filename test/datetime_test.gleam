@@ -687,3 +687,38 @@ pub fn timestamp_round_trip_test() {
   |> datetime.from_timestamp
   |> should.equal(ref)
 }
+
+pub fn datetime_format_round_trip_test() {
+  datetime.literal("2025-03-09T14:53:45Z")
+  |> datetime.format(tempo.ISO8601Seconds)
+  |> datetime.parse(in: tempo.ISO8601Seconds)
+  |> should.equal(Ok(datetime.literal("2025-03-09T14:53:45Z")))
+}
+
+pub fn datetime_milli_format_round_trip_test() {
+  datetime.literal("2025-03-09T14:53:45.534Z")
+  |> datetime.format(tempo.ISO8601Milli)
+  |> datetime.parse(in: tempo.ISO8601Milli)
+  |> should.equal(Ok(datetime.literal("2025-03-09T14:53:45.534Z")))
+}
+
+pub fn datetime_micro_format_round_trip_test() {
+  datetime.literal("2025-03-09T14:53:45.000342Z")
+  |> datetime.format(tempo.ISO8601Micro)
+  |> datetime.parse(in: tempo.ISO8601Micro)
+  |> should.equal(Ok(datetime.literal("2025-03-09T14:53:45.000342Z")))
+}
+
+pub fn datetime_http_format_round_trip_test() {
+  datetime.literal("2025-03-09T14:53:45.000Z")
+  |> datetime.format(tempo.HTTP)
+  |> datetime.parse(in: tempo.HTTP)
+  |> should.equal(Ok(datetime.literal("2025-03-09T14:53:45.000Z")))
+}
+
+pub fn datetime_format_custom_round_trip_test() {
+  datetime.literal("2025-03-09")
+  |> datetime.format(tempo.Custom("YYYY-MM-DD[T]HH:mm:ss.SSSZ"))
+  |> datetime.parse(in: tempo.Custom("YYYY-MM-DD[T]HH:mm:ss.SSSZ"))
+  |> should.equal(Ok(datetime.literal("2025-03-09")))
+}
