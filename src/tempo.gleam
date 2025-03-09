@@ -3367,9 +3367,19 @@ pub fn consume_format(str: String, in fmt: String) {
           regexp.Match(content, []) -> consume_part(content, input)
 
           // If there is a non-empty subpattern, then the escape 
-          // character "[ ... ]" matched, so we should not change anything here.
+          // character "[ ... ]" matched, so we should not change anything here,
+          // but we should verify that the content matches the input.
           regexp.Match(_, [Some(sub)]) ->
-            Ok(#(Passthrough, string.drop_start(input, string.length(sub))))
+            case string.starts_with(input, sub) {
+              True ->
+                Ok(#(Passthrough, string.drop_start(input, string.length(sub))))
+              False ->
+                Error(
+                  "Input does not match expected escape sequence \""
+                  <> sub
+                  <> "\"",
+                )
+            }
 
           // This case is not expected, not really sure what to do with it 
           // so just pass through whatever was found

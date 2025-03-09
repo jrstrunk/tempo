@@ -729,3 +729,15 @@ pub fn datetime_parse_http_malformed_test() {
     Error(tempo_error.DateTimeInvalidFormat("Unable to parse directive GMT")),
   )
 }
+
+pub fn datetime_parse_custom_malformed_test() {
+  datetime.parse(
+    "2025-03-09T14:53:45Z",
+    in: tempo.Custom("YYYY-MM-DDTHH:mm:ssZ[UTC]"),
+  )
+  |> should.equal(
+    Error(tempo_error.DateTimeInvalidFormat(
+      "Input does not match expected escape sequence \"UTC\"",
+    )),
+  )
+}
