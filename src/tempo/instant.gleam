@@ -395,3 +395,13 @@ pub fn is_later(a: tempo.Instant, than b: tempo.Instant) -> Bool {
 pub fn is_later_or_equal(a: tempo.Instant, to b: tempo.Instant) -> Bool {
   tempo.instant_is_later_or_equal(a, to: b)
 }
+
+/// Gets the unique integer value associated with the provided instant.
+/// 
+/// Intant values are each unique to a host. This function exposes an instant's
+/// uniqueness so it can be used for other things. Note that this value is only
+/// unique on the host system and only within the lifetime of the BEAM VM / 
+/// JavaScript context on the host.
+pub fn to_unique_int(instant: tempo.Instant) -> Int {
+  tempo.instant_get_unique(instant)
+}

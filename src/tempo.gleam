@@ -800,6 +800,11 @@ pub opaque type Instant {
 }
 
 @internal
+pub fn instant_get_unique(instant: Instant) -> Int {
+  instant.unique
+}
+
+@internal
 pub fn instant_as_utc_datetime(instant: Instant) -> DateTime {
   DateTime(
     date: instant_as_utc_date(instant),
