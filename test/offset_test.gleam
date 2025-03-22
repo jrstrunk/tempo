@@ -1,22 +1,23 @@
+import gleam/time/calendar
 import gleeunit/should
 import tempo
 import tempo/duration
 import tempo/offset
 
-pub fn new_offset_test() {
-  offset.new(duration.minutes(0))
+pub fn from_duration_offset_test() {
+  offset.from_duration(duration.minutes(0))
   |> should.equal(Ok(tempo.offset(0)))
 
-  offset.new(duration.minutes(-720))
+  offset.from_duration(duration.minutes(-720))
   |> should.equal(Ok(tempo.offset(-720)))
 
-  offset.new(duration.minutes(840))
+  offset.from_duration(duration.minutes(840))
   |> should.equal(Ok(tempo.offset(840)))
 
-  offset.new(duration.minutes(1000))
+  offset.from_duration(duration.minutes(1000))
   |> should.be_error
 
-  offset.new(duration.minutes(-1000))
+  offset.from_duration(duration.minutes(-1000))
   |> should.be_error
 }
 
@@ -124,14 +125,32 @@ pub fn to_duration_test() {
   |> should.equal(tempo.duration_microseconds(0))
 
   tempo.offset_to_duration(tempo.offset(5))
-  |> should.equal(duration.minutes(-5))
+  |> should.equal(duration.minutes(5))
 
   tempo.offset_to_duration(tempo.offset(-720))
-  |> should.equal(duration.minutes(720))
+  |> should.equal(duration.minutes(-720))
 
   tempo.offset_to_duration(tempo.offset(70))
-  |> should.equal(duration.minutes(-70))
+  |> should.equal(duration.minutes(70))
 
   tempo.offset_to_duration(tempo.offset(840))
-  |> should.equal(duration.minutes(-840))
+  |> should.equal(duration.minutes(840))
+}
+
+pub fn to_duration_negative_test() {
+  offset.literal("-04:00")
+  |> offset.to_duration
+  |> should.equal(duration.hours(-4))
+}
+
+pub fn local_parity_test() {
+  calendar.local_offset() |> should.equal(offset.local() |> offset.to_duration)
+}
+
+pub fn offset_round_trip_test() {
+  let ref = offset.literal("-04:00")
+
+  offset.to_duration(ref)
+  |> offset.from_duration
+  |> should.equal(Ok(ref))
 }

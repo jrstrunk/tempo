@@ -950,7 +950,7 @@ pub fn datetime_to_utc(datetime: DateTime) -> DateTime {
 pub fn datetime_to_offset(datetime: DateTime, offset: Offset) -> DateTime {
   datetime
   |> datetime_to_utc
-  |> datetime_subtract(offset_to_duration(offset))
+  |> datetime_add(offset_to_duration(offset))
   |> datetime_drop_offset
   |> naive_datetime_set_offset(offset)
 }
@@ -1070,7 +1070,7 @@ pub fn datetime_apply_offset(datetime: DateTime) -> NaiveDateTime {
   let applied =
     datetime
     |> datetime_drop_offset
-    |> naive_datetime_add(offset_to_duration(datetime.offset))
+    |> naive_datetime_subtract(offset_to_duration(datetime.offset))
 
   // Applying an offset does not change the absolute time value, so we need
   // to preserve the monotonic and unique values.
@@ -1460,7 +1460,7 @@ pub fn validate_offset(offset: Offset) -> Result(Offset, Nil) {
 
 @internal
 pub fn offset_to_duration(offset: Offset) -> duration.Duration {
-  -offset.minutes * 60_000_000 |> duration_microseconds
+  offset.minutes * 60_000_000 |> duration_microseconds
 }
 
 fn offset_replace_format(content: String, offset: Offset) -> String {

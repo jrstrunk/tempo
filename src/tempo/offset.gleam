@@ -20,21 +20,20 @@ import tempo/error as tempo_error
 /// The Tempo representation of the UTC offset.
 pub const utc = tempo.utc
 
-@internal
+/// Returns the local offset of the host.
+///
+/// ## Example
+///
+/// ```gleam
+/// offset.local()
+/// |> offset.to_string
+/// // -> "+05:00"
+/// ```
 pub fn local() -> tempo.Offset {
   tempo.offset_local_minutes() |> tempo.offset
 }
 
-/// Creates a new offset from a duration. Offsets are most commonly expressed
-/// as a number of minutes or hours.
-/// 
-/// ## Example
-/// 
-/// ```gleam
-/// offset.new(duration.minutes(-65))
-/// |> result.map(offset.to_string)
-/// // -> Ok("-01:05")
-/// ```
+@deprecated("Use the more explicitly named `from_duration` function instead")
 pub fn new(from duration: duration.Duration) -> Result(tempo.Offset, Nil) {
   tempo.new_offset(duration)
 }
@@ -94,6 +93,38 @@ pub fn from_string(
   offset: String,
 ) -> Result(tempo.Offset, tempo_error.OffsetParseError) {
   tempo.offset_from_string(offset)
+}
+
+/// Creates a new validated offset from a duration. Offsets are most commonly
+/// expressed as a number of minutes or hours.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// offset.new(duration.minutes(-65))
+/// |> result.map(offset.to_string)
+/// // -> Ok("-01:05")
+/// ```
+/// 
+/// ```gleam
+/// offset.new(duration.hours(36))
+/// // -> Error(Nil)
+/// ```
+pub fn from_duration(duration: duration.Duration) -> Result(tempo.Offset, Nil) {
+  tempo.new_offset(duration)
+}
+
+/// Converts an offset to a duration.
+///
+/// ## Example
+///
+/// ```gleam
+/// offset.literal("-04:00")
+/// |> offset.to_duration
+/// // -> duration.hours(4)
+/// ```
+pub fn to_duration(offset: tempo.Offset) -> duration.Duration {
+  tempo.offset_to_duration(offset)
 }
 
 /// Converts an offset parse error to a human readable error message.
