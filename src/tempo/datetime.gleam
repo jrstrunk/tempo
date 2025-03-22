@@ -111,21 +111,14 @@ pub fn literal(datetime: String) -> tempo.DateTime {
 pub fn from_string(
   datetime: String,
 ) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
-  let split_dt = case string.contains(datetime, "T") {
-    True -> string.split(datetime, "T")
-    False ->
-      case string.contains(datetime, "t") {
-        True -> string.split(datetime, "t")
-        False ->
-          case string.contains(datetime, "_") {
-            True -> string.split(datetime, "_")
-            False -> string.split(datetime, " ")
-          }
-      }
-  }
+  let split_dt =
+    string.split_once(datetime, "T")
+    |> result.try_recover(fn(_) { string.split_once(datetime, "t") })
+    |> result.try_recover(fn(_) { string.split_once(datetime, "_") })
+    |> result.try_recover(fn(_) { string.split_once(datetime, " ") })
 
   case split_dt {
-    [date, time] -> {
+    Ok(#(date, time)) -> {
       use date: tempo.Date <- result.try(
         date.from_string(date)
         |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _)),
@@ -148,13 +141,14 @@ pub fn from_string(
       new(date, time, offset)
     }
 
-    [date] ->
-      date.from_string(date)
-      |> result.map(new(_, tempo.time_start_of_day, tempo.utc))
-      |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _))
-
     _ -> Error(tempo_error.DateTimeInvalidFormat(datetime))
   }
+}
+
+pub fn from_string_fast(datetime: String) {
+  timestamp.parse_rfc3339(datetime)
+  |> result.map(from_timestamp)
+  |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime))
 }
 
 fn split_time_and_offset(time_with_offset: String) {
@@ -162,11 +156,11 @@ fn split_time_and_offset(time_with_offset: String) {
     "Z" -> #(string.drop_end(time_with_offset, 1), "Z") |> Ok
     "z" -> #(string.drop_end(time_with_offset, 1), "Z") |> Ok
     _ ->
-      case string.split(time_with_offset, "-") {
-        [time, offset] -> #(time, "-" <> offset) |> Ok
+      case string.split_once(time_with_offset, "-") {
+        Ok(#(time, offset)) -> #(time, "-" <> offset) |> Ok
         _ ->
-          case string.split(time_with_offset, "+") {
-            [time, offset] -> #(time, "+" <> offset) |> Ok
+          case string.split_once(time_with_offset, "+") {
+            Ok(#(time, offset)) -> #(time, "+" <> offset) |> Ok
             _ -> Error(Nil)
           }
       }

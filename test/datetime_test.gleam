@@ -163,7 +163,7 @@ pub fn to_string_test() {
 }
 
 pub fn date_to_string_test() {
-  datetime.literal("20240613")
+  datetime.literal("20240613T00:00:00Z")
   |> datetime.to_string
   |> should.equal("2024-06-13T00:00:00.000000Z")
 }
@@ -717,10 +717,10 @@ pub fn datetime_http_format_round_trip_test() {
 }
 
 pub fn datetime_format_custom_round_trip_test() {
-  datetime.literal("2025-03-09")
+  datetime.literal("2025-03-09T00:00:00.000Z")
   |> datetime.format(tempo.Custom("YYYY-MM-DD[T]HH:mm:ss.SSSZ"))
   |> datetime.parse(in: tempo.Custom("YYYY-MM-DD[T]HH:mm:ss.SSSZ"))
-  |> should.equal(Ok(datetime.literal("2025-03-09")))
+  |> should.equal(Ok(datetime.literal("2025-03-09T00:00:00.000Z")))
 }
 
 pub fn datetime_parse_http_malformed_test() {
