@@ -49,6 +49,9 @@ import tempo/naive_datetime
 import tempo/offset
 import tempo/time
 
+/// Starting point of unix timestamps
+pub const unix_epoch = tempo.unix_epoch
+
 /// Create a new datetime from a date, time, and offset.
 ///
 /// ## Examples
