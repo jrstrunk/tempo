@@ -480,13 +480,13 @@ pub fn from_calendar_date(
 /// ## Examples
 ///
 /// ```gleam
-/// dynamic.from("2024-06-21")
+/// dynamic.string("2024-06-21")
 /// |> date.from_dynamic_string
 /// // -> Ok(date.literal("2024-06-21"))
 /// ```
 ///
 /// ```gleam
-/// dynamic.from("153")
+/// dynamic.string("153")
 /// |> datetime.from_dynamic_string
 /// // -> Error([
 /// //   decode.DecodeError(

@@ -482,14 +482,14 @@ pub fn to_weekday_test() {
 }
 
 pub fn from_dynamic_string_test() {
-  dynamic.from("2024-06-21")
+  dynamic.string("2024-06-21")
   |> date.from_dynamic_string
   |> should.be_ok
   |> should.equal(date.literal("2024-06-21"))
 }
 
 pub fn from_dynamic_string_int_test() {
-  dynamic.from("153")
+  dynamic.string("153")
   |> date.from_dynamic_string
   |> should.equal(
     Error([decode.DecodeError(expected: "tempo.Date", found: "153", path: [])]),
@@ -497,7 +497,7 @@ pub fn from_dynamic_string_int_test() {
 }
 
 pub fn from_dynamic_string_bad_format_test() {
-  dynamic.from("2024,06,13")
+  dynamic.string("2024,06,13")
   |> date.from_dynamic_string
   |> should.equal(
     Error([
@@ -507,7 +507,7 @@ pub fn from_dynamic_string_bad_format_test() {
 }
 
 pub fn from_dynamic_string_bad_values_test() {
-  dynamic.from("2024-06-35")
+  dynamic.string("2024-06-35")
   |> date.from_dynamic_string
   |> should.equal(
     Error([
