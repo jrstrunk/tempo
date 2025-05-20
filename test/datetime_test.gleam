@@ -1,6 +1,5 @@
 import gleam/dynamic
 import gleam/dynamic/decode
-import gleam/io
 import gleam/order
 import gleam/time/duration as dur
 import gleam/time/timestamp

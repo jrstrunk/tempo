@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -9,8 +8,8 @@ import tempo/offset
 import tempo/time
 
 pub fn main() {
-  date.current_local() |> io.debug
-  date.current_utc() |> io.debug
+  date.current_local() |> echo
+  date.current_utc() |> echo
 }
 
 pub fn parse_any_all_test() {
