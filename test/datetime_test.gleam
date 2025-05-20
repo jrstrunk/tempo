@@ -528,14 +528,14 @@ pub fn apply_positive_offset_test() {
 }
 
 pub fn from_dynamic_string_test() {
-  dynamic.from("2024-06-13T13:42:11.195Z")
+  dynamic.string("2024-06-13T13:42:11.195Z")
   |> datetime.from_dynamic_string
   |> should.be_ok
   |> should.equal(datetime.literal("2024-06-13T13:42:11.195Z"))
 }
 
 pub fn from_dynamic_string_int_test() {
-  dynamic.from("153")
+  dynamic.string("153")
   |> datetime.from_dynamic_string
   |> should.equal(
     Error([
@@ -545,7 +545,7 @@ pub fn from_dynamic_string_int_test() {
 }
 
 pub fn from_dynamic_string_bad_format_test() {
-  dynamic.from("24-06-13,13:42:11.195")
+  dynamic.string("24-06-13,13:42:11.195")
   |> datetime.from_dynamic_string
   |> should.equal(
     Error([
@@ -559,7 +559,7 @@ pub fn from_dynamic_string_bad_format_test() {
 }
 
 pub fn from_dynamic_string_bad_values_test() {
-  dynamic.from("2024-06-21T13:99:11.195Z")
+  dynamic.string("2024-06-21T13:99:11.195Z")
   |> datetime.from_dynamic_string
   |> should.equal(
     Error([
@@ -573,40 +573,40 @@ pub fn from_dynamic_string_bad_values_test() {
 }
 
 pub fn from_dynamic_unix_utc_test() {
-  dynamic.from(1_718_629_314)
+  dynamic.int(1_718_629_314)
   |> datetime.from_dynamic_unix_utc
   |> should.be_ok
   |> should.equal(datetime.literal("2024-06-17T13:01:54Z"))
 }
 
 pub fn from_dynamic_unix_utc_error_test() {
-  dynamic.from("hello")
+  dynamic.string("hello")
   |> datetime.from_dynamic_unix_utc
   |> should.be_error
 }
 
 pub fn from_dynamic_unix_milli_utc_test() {
-  dynamic.from(1_718_629_314_334)
+  dynamic.int(1_718_629_314_334)
   |> datetime.from_dynamic_unix_milli_utc
   |> should.be_ok
   |> should.equal(datetime.literal("2024-06-17T13:01:54.334Z"))
 }
 
 pub fn from_dynamic_unix_milli_utc_error_test() {
-  dynamic.from("hello")
+  dynamic.string("hello")
   |> datetime.from_dynamic_unix_milli_utc
   |> should.be_error
 }
 
 pub fn from_dynamic_unix_micro_utc_test() {
-  dynamic.from(1_718_629_314_334_734)
+  dynamic.int(1_718_629_314_334_734)
   |> datetime.from_dynamic_unix_micro_utc
   |> should.be_ok
   |> should.equal(datetime.literal("2024-06-17T13:01:54.334734Z"))
 }
 
 pub fn from_dynamic_unix_micro_utc_error_test() {
-  dynamic.from("hello")
+  dynamic.string("hello")
   |> datetime.from_dynamic_unix_micro_utc
   |> should.be_error
 }
@@ -651,7 +651,7 @@ pub fn to_string_lossless_equality_test() {
 
   dt
   |> datetime.to_string
-  |> dynamic.from
+  |> dynamic.string
   |> datetime.from_dynamic_string
   |> should.equal(Ok(dt))
 }

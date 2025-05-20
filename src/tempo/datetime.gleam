@@ -438,13 +438,13 @@ pub fn to_unix_micro(datetime: tempo.DateTime) -> Int {
 /// ## Examples
 ///
 /// ```gleam
-/// dynamic.from("2024-06-13T13:42:11.195Z")
+/// dynamic.string("2024-06-13T13:42:11.195Z")
 /// |> datetime.from_dynamic_string
 /// // -> Ok(datetime.literal("2024-06-13T13:42:11.195Z"))
 /// ```
 ///
 /// ```gleam
-/// dynamic.from("24-06-13,13:42:11.195")
+/// dynamic.string("24-06-13,13:42:11.195")
 /// |> datetime.from_dynamic_string
 /// // -> Error([
 /// //   decode.DecodeError(
@@ -492,13 +492,13 @@ pub fn from_dynamic_string(
 /// ## Examples
 ///
 /// ```gleam
-/// dynamic.from(1_718_629_314)
+/// dynamic.int(1_718_629_314)
 /// |> datetime.from_dynamic_unix_utc
 /// // -> Ok(datetime.literal("2024-06-17T13:01:54Z"))
 /// ```
 ///
 /// ```gleam
-/// dynamic.from("hello")
+/// dynamic.string("hello")
 /// |> datetime.from_dynamic_unix_utc
 /// // -> Error([
 /// //   decode.DecodeError(
@@ -531,13 +531,13 @@ pub fn from_dynamic_unix_utc(
 /// ## Examples
 ///
 /// ```gleam
-/// dynamic.from(1_718_629_314_334)
+/// dynamic.int(1_718_629_314_334)
 /// |> datetime.from_dynamic_unix_milli_utc
 /// // -> Ok(datetime.literal("2024-06-17T13:01:54.334Z"))
 /// ```
 ///
 /// ```gleam
-/// dynamic.from("hello")
+/// dynamic.string("hello")
 /// |> datetime.from_dynamic_unix_milli_utc
 /// // -> Error([
 /// //   decode.DecodeError(
@@ -570,13 +570,13 @@ pub fn from_dynamic_unix_milli_utc(
 /// ## Examples
 ///
 /// ```gleam
-/// dynamic.from(1_718_629_314_334_734)
+/// dynamic.int(1_718_629_314_334_734)
 /// |> datetime.from_dynamic_unix_micro_utc
 /// // -> Ok(datetime.literal("2024-06-17T13:01:54.334734Z"))
 /// ```
 ///
 /// ```gleam
-/// dynamic.from("hello")
+/// dynamic.string("hello")
 /// |> datetime.from_dynamic_unix_micro_utc
 /// // -> Error([
 /// //   decode.DecodeError(
