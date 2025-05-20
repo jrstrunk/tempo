@@ -914,7 +914,7 @@ pub type DateTime {
   LocalDateTime(date: Date, time: Time, offset: Offset, tz: TimeZoneProvider)
 }
 
-/// starting point of unix timestamps
+@internal
 pub const unix_epoch = DateTime(Date(0), TimeOfDay(0), utc)
 
 /// A type for external packages to provide so that datetimes can be converted
