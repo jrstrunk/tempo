@@ -13,7 +13,7 @@ links = [{ title = "Website", href = "https://gleam.run" }]
 # https://gleam.run/writing-gleam/gleam-toml/.
 
 [dependencies]
-gleam_stdlib = ">= 0.46.0 and < 1.0.0"
+gleam_stdlib = ">= 0.60.0 and < 1.0.0"
 gleam_regexp = ">= 1.0.0 and < 2.0.0"
 gleam_time = ">= 1.0.0 and < 2.0.0"
 
