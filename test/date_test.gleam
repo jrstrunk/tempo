@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/order
 import gleam/string
 import gleeunit/should
@@ -491,7 +492,7 @@ pub fn from_dynamic_string_int_test() {
   dynamic.from("153")
   |> date.from_dynamic_string
   |> should.equal(
-    Error([dynamic.DecodeError(expected: "tempo.Date", found: "153", path: [])]),
+    Error([decode.DecodeError(expected: "tempo.Date", found: "153", path: [])]),
   )
 }
 
@@ -500,7 +501,7 @@ pub fn from_dynamic_string_bad_format_test() {
   |> date.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(expected: "tempo.Date", found: "2024,06,13", path: []),
+      decode.DecodeError(expected: "tempo.Date", found: "2024,06,13", path: []),
     ]),
   )
 }
@@ -510,7 +511,7 @@ pub fn from_dynamic_string_bad_values_test() {
   |> date.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(expected: "tempo.Date", found: "2024-06-35", path: []),
+      decode.DecodeError(expected: "tempo.Date", found: "2024-06-35", path: []),
     ]),
   )
 }

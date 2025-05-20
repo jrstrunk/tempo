@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/io
 import gleam/order
 import gleam/time/duration as dur
@@ -538,7 +539,7 @@ pub fn from_dynamic_string_int_test() {
   |> datetime.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(expected: "tempo.DateTime", found: "153", path: []),
+      decode.DecodeError(expected: "tempo.DateTime", found: "153", path: []),
     ]),
   )
 }
@@ -548,7 +549,7 @@ pub fn from_dynamic_string_bad_format_test() {
   |> datetime.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(
+      decode.DecodeError(
         expected: "tempo.DateTime",
         found: "24-06-13,13:42:11.195",
         path: [],
@@ -562,7 +563,7 @@ pub fn from_dynamic_string_bad_values_test() {
   |> datetime.from_dynamic_string
   |> should.equal(
     Error([
-      dynamic.DecodeError(
+      decode.DecodeError(
         expected: "tempo.DateTime",
         found: "2024-06-21T13:99:11.195Z",
         path: [],

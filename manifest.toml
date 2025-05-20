@@ -3,13 +3,13 @@
 
 packages = [
   { name = "gleam_regexp", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_regexp", source = "hex", outer_checksum = "7F5E0C0BBEB3C58E57C9CB05FA9002F970C85AD4A63BA1E55CBCB35C15809179" },
-  { name = "gleam_stdlib", version = "0.55.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "32D8F4AE03771516950047813A9E359249BD9FBA5C33463FDB7B953D6F8E896B" },
+  { name = "gleam_stdlib", version = "0.60.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "621D600BB134BC239CB2537630899817B1A42E60A1D46C5E9F3FAE39F88C800B" },
   { name = "gleam_time", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_time", source = "hex", outer_checksum = "7549892CE3CC267EB733E009FDBADBFA860FAD3D05E0F2A44FD03DADBA344365" },
   { name = "gleeunit", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "0E6C83834BA65EDCAAF4FE4FB94AC697D9262D83E6F58A750D63C9F6C8A9D9FF" },
 ]
 
 [requirements]
 gleam_regexp = { version = ">= 1.0.0 and < 2.0.0" }
-gleam_stdlib = { version = ">= 0.46.0 and < 1.0.0" }
+gleam_stdlib = { version = ">= 0.60.0 and < 1.0.0" }
 gleam_time = { version = ">= 1.0.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
