@@ -1369,43 +1369,43 @@ pub fn offset_from_string(
 
     // Parse +-hh:mm format
     _ -> {
-      use #(sign, hour, minute): #(String, String, String) <- result.try(case
-        string.split(offset_str, ":")
-      {
-        [hour, minute] ->
-          case string.length(hour), string.length(minute) {
-            3, 2 ->
-              Ok(#(
-                string.slice(hour, at_index: 0, length: 1),
-                string.slice(hour, at_index: 1, length: 2),
-                minute,
-              ))
-            _, _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
-          }
-        _ ->
-          // Parse +-hhmm format, +-hh format, or +-h format
-          case string.length(offset_str) {
-            5 ->
-              Ok(#(
-                string.slice(offset_str, at_index: 0, length: 1),
-                string.slice(offset_str, at_index: 1, length: 2),
-                string.slice(offset_str, at_index: 3, length: 2),
-              ))
-            3 ->
-              Ok(#(
-                string.slice(offset_str, at_index: 0, length: 1),
-                string.slice(offset_str, at_index: 1, length: 2),
-                "0",
-              ))
-            2 ->
-              Ok(#(
-                string.slice(offset_str, at_index: 0, length: 1),
-                string.slice(offset_str, at_index: 1, length: 1),
-                "0",
-              ))
-            _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
-          }
-      })
+      use #(sign, hour, minute): #(String, String, String) <- result.try(
+        case string.split(offset_str, ":") {
+          [hour, minute] ->
+            case string.length(hour), string.length(minute) {
+              3, 2 ->
+                Ok(#(
+                  string.slice(hour, at_index: 0, length: 1),
+                  string.slice(hour, at_index: 1, length: 2),
+                  minute,
+                ))
+              _, _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
+            }
+          _ ->
+            // Parse +-hhmm format, +-hh format, or +-h format
+            case string.length(offset_str) {
+              5 ->
+                Ok(#(
+                  string.slice(offset_str, at_index: 0, length: 1),
+                  string.slice(offset_str, at_index: 1, length: 2),
+                  string.slice(offset_str, at_index: 3, length: 2),
+                ))
+              3 ->
+                Ok(#(
+                  string.slice(offset_str, at_index: 0, length: 1),
+                  string.slice(offset_str, at_index: 1, length: 2),
+                  "0",
+                ))
+              2 ->
+                Ok(#(
+                  string.slice(offset_str, at_index: 0, length: 1),
+                  string.slice(offset_str, at_index: 1, length: 1),
+                  "0",
+                ))
+              _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
+            }
+        },
+      )
 
       case sign, int.parse(hour), int.parse(minute) {
         _, Ok(0), Ok(0) -> Ok(utc)

@@ -250,7 +250,7 @@ pub fn parse(
 
   use #(parts, _) <- result.try(
     tempo.consume_format(str, in: format_str)
-    |> result.map_error(tempo_error.NaiveDateTimeInvalidFormat(_)),
+    |> result.map_error(tempo_error.NaiveDateTimeInvalidFormat),
   )
 
   use date <- result.try(

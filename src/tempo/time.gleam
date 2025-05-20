@@ -367,44 +367,42 @@ pub fn from_string(
     }),
   )
 
-  use time <- result.try(case
-    int.parse(hour),
-    int.parse(minute),
-    string.split(second, ".")
-  {
-    Ok(hour), Ok(minute), [second, second_fraction] -> {
-      let second_fraction_length = string.length(second_fraction)
-      case second_fraction_length {
-        len if len <= 3 ->
-          case
-            int.parse(second),
-            int.parse(second_fraction |> string.pad_end(3, with: "0"))
-          {
-            Ok(second), Ok(milli) ->
-              Ok(tempo.validate_time(hour, minute, second, milli * 1000))
-            _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-          }
-        len if len <= 6 ->
-          case
-            int.parse(second),
-            int.parse(second_fraction |> string.pad_end(6, with: "0"))
-          {
-            Ok(second), Ok(micro) ->
-              Ok(tempo.validate_time(hour, minute, second, micro))
-            _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-          }
-        _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-      }
-    }
-
-    Ok(hour), Ok(minute), _ ->
-      case int.parse(second) {
-        Ok(second) -> Ok(tempo.validate_time(hour, minute, second, 0))
-        _ -> Error(tempo_error.TimeInvalidFormat(time_str))
+  use time <- result.try(
+    case int.parse(hour), int.parse(minute), string.split(second, ".") {
+      Ok(hour), Ok(minute), [second, second_fraction] -> {
+        let second_fraction_length = string.length(second_fraction)
+        case second_fraction_length {
+          len if len <= 3 ->
+            case
+              int.parse(second),
+              int.parse(second_fraction |> string.pad_end(3, with: "0"))
+            {
+              Ok(second), Ok(milli) ->
+                Ok(tempo.validate_time(hour, minute, second, milli * 1000))
+              _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
+            }
+          len if len <= 6 ->
+            case
+              int.parse(second),
+              int.parse(second_fraction |> string.pad_end(6, with: "0"))
+            {
+              Ok(second), Ok(micro) ->
+                Ok(tempo.validate_time(hour, minute, second, micro))
+              _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
+            }
+          _ -> Error(tempo_error.TimeInvalidFormat(time_str))
+        }
       }
 
-    _, _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-  })
+      Ok(hour), Ok(minute), _ ->
+        case int.parse(second) {
+          Ok(second) -> Ok(tempo.validate_time(hour, minute, second, 0))
+          _ -> Error(tempo_error.TimeInvalidFormat(time_str))
+        }
+
+      _, _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
+    },
+  )
 
   result.map_error(time, tempo_error.TimeOutOfBounds(time_str, _))
 }
@@ -444,7 +442,7 @@ pub fn parse(
 
   use #(parts, _) <- result.try(
     tempo.consume_format(str, in: format_str)
-    |> result.map_error(tempo_error.TimeInvalidFormat(_)),
+    |> result.map_error(tempo_error.TimeInvalidFormat),
   )
 
   tempo.find_time(in: parts)

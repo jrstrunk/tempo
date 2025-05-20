@@ -116,15 +116,15 @@ import gleam/time/duration
 import tempo
 import tempo/duration as tempo_duration
 
-/// Freezes the current system time (as seen by this package) to the 
-/// provided datetime. Time will not progress until the 'unfreeze_time' function 
-/// is called.
+/// Freezes the current system time and local offset (as seen by this package) 
+/// to the provided datetime. Time will not progress until the 'unfreeze_time'
+/// function is called.
 /// 
 /// ## Examples
 /// 
 /// ```gleam
 /// mock.freeze_time(datetime.literal("2024-06-21T00:10:00.000Z"))
-/// tempo.format_utc(tempo.ISO8601Seconds)
+/// tempo.format_local(tempo.ISO8601Seconds)
 /// // -> "2024-06-21T00:10:00Z"
 /// process.sleep(duration.seconds(10))
 /// tempo.format_utc(tempo.ISO8601Seconds)
