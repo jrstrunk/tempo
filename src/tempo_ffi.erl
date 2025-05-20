@@ -6,9 +6,9 @@
     now_unique/0,
     local_offset/0,
     current_year/0,
-    freeze_time/1,
+    freeze_time/2,
     unfreeze_time/0,
-    set_reference_time/2,
+    set_reference_time/3,
     unset_reference_time/0,
     sleep/1,
     set_sleep_warp/1,
@@ -43,17 +43,19 @@ now() ->
             end
     end.
 
-freeze_time(Value) when is_integer(Value) ->
+freeze_time(Value, OffsetMinutes) when is_integer(Value) ->
     init_mock_table(),
     ets:insert(?MOCK_TIME_TABLE, {frozen_time, Value}),
+    ets:insert(?MOCK_TIME_TABLE, {set_offset_minutes, OffsetMinutes}),
     nil.
 
 unfreeze_time() ->
     init_mock_table(),
     catch ets:delete(?MOCK_TIME_TABLE, frozen_time),
+    catch ets:delete(?MOCK_TIME_TABLE, set_offset_minutes),
     nil.
 
-set_reference_time(Value, SpeedupFactor) ->
+set_reference_time(Value, OffsetMinutes, SpeedupFactor) ->
     init_mock_table(),
     ets:insert(
         ?MOCK_TIME_TABLE,
@@ -67,11 +69,13 @@ set_reference_time(Value, SpeedupFactor) ->
             }
         }
     ),
+    ets:insert(?MOCK_TIME_TABLE, {set_offset_minutes, OffsetMinutes}),
     nil.
 
 unset_reference_time() ->
     init_mock_table(),
     catch ets:delete(?MOCK_TIME_TABLE, set_time),
+    catch ets:delete(?MOCK_TIME_TABLE, set_offset_minutes),
     nil.
 
 sleep(Millseconds) ->
@@ -145,11 +149,17 @@ now_monotonic() ->
 now_unique() -> erlang:unique_integer([positive, monotonic]).
 
 local_offset() ->
-    {Date, Time} = calendar:local_time(),
-    [UTC] = calendar:local_time_to_universal_time_dst({Date, Time}),
-    (calendar:datetime_to_gregorian_seconds({Date, Time}) -
-        calendar:datetime_to_gregorian_seconds(UTC)) div
-        60.
+    init_mock_table(),
+    case ets:lookup(?MOCK_TIME_TABLE, set_offset_minutes) of
+        [{set_offset_minutes, OffsetMinutes}] ->
+            OffsetMinutes;
+        [] ->
+            {Date, Time} = calendar:local_time(),
+            [UTC] = calendar:local_time_to_universal_time_dst({Date, Time}),
+            (calendar:datetime_to_gregorian_seconds({Date, Time}) -
+                calendar:datetime_to_gregorian_seconds(UTC)) div
+                60
+    end.
 
 current_year() ->
     {{Year, _, _}, _} = calendar:local_time(),

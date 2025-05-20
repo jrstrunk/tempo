@@ -115,6 +115,7 @@
 import gleam/time/duration
 import tempo
 import tempo/duration as tempo_duration
+import tempo/offset
 
 /// Freezes the current system time and local offset (as seen by this package) 
 /// to the provided datetime. Time will not progress until the 'unfreeze_time'
@@ -132,7 +133,11 @@ import tempo/duration as tempo_duration
 /// ```
 pub fn freeze_time(at datetime: tempo.DateTime) {
   tempo.datetime_to_unix_micro(datetime)
-  |> tempo.freeze_time_ffi
+  |> tempo.freeze_time_ffi(
+    offset_minutes: datetime.offset
+    |> offset.to_duration
+    |> tempo_duration.as_minutes,
+  )
 }
 
 /// Unfreezes the current system time (as seen by this package) back to the
@@ -200,7 +205,12 @@ pub fn set_time_with_speedup(
   speedup speedup: Float,
 ) {
   tempo.datetime_to_unix_micro(datetime)
-  |> tempo.set_reference_time_ffi(speedup)
+  |> tempo.set_reference_time_ffi(
+    offset_minutes: datetime.offset
+      |> offset.to_duration
+      |> tempo_duration.as_minutes,
+    speedup:,
+  )
 }
 
 /// Resets the current system time (as seen by this package) back to the real

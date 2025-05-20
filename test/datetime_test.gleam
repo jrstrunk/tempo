@@ -20,7 +20,7 @@ pub fn main() {
   |> instant.as_utc_datetime
   |> datetime.to_timestamp
   |> timestamp.to_rfc3339(dur.seconds(0))
-  |> io.debug
+  |> echo
 }
 
 pub fn from_string_negative_offset_test() {

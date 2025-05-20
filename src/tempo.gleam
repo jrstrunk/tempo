@@ -3864,7 +3864,10 @@ fn current_year() -> Int
 @external(erlang, "tempo_ffi", "freeze_time")
 @external(javascript, "./tempo_ffi.mjs", "freeze_time")
 @internal
-pub fn freeze_time_ffi(microseconds: Int) -> Nil
+pub fn freeze_time_ffi(
+  microseconds microseconds: Int,
+  offset_minutes offset_minutes: Int,
+) -> Nil
 
 @external(erlang, "tempo_ffi", "unfreeze_time")
 @external(javascript, "./tempo_ffi.mjs", "unfreeze_time")
@@ -3874,7 +3877,11 @@ pub fn unfreeze_time_ffi() -> Nil
 @external(erlang, "tempo_ffi", "set_reference_time")
 @external(javascript, "./tempo_ffi.mjs", "set_reference_time")
 @internal
-pub fn set_reference_time_ffi(microseconds: Int, speedup: Float) -> Nil
+pub fn set_reference_time_ffi(
+  microseconds microseconds: Int,
+  offset_minutes offset_minutes: Int,
+  speedup speedup: Float,
+) -> Nil
 
 @external(erlang, "tempo_ffi", "unset_reference_time")
 @external(javascript, "./tempo_ffi.mjs", "unset_reference_time")
