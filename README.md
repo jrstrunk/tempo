@@ -11,19 +11,19 @@ Supports both the Erlang and JavaScript targets.
 ## Installation
 
 ```sh
-gleam add gtempo@6
+gleam add gtempo
 ```
 
 Supports timezones only through the `gtz` package. Add it with:
 
 ```sh
-gleam add gtz@1
+gleam add gtz
 ```
 
 Supports the core gleam time package via conversion functions. Add it with:
 
 ```sh
-gleam add gleam_time@1
+gleam add gleam_time
 ```
 
 [![Package Version](https://img.shields.io/hexpm/v/tempo)](https://hex.pm/packages/gtempo)
@@ -36,9 +36,11 @@ import tempo
 import tempo/datetime
 
 pub fn main() {
+  // Parses any format of date, time, and/or timezone
   tempo.parse_any("Dec 25, 2024 at 1:00 PM")
   // -> Ok(#(Some(date), Some(time), None))
 
+  // Formats the current local system time
   tempo.format_local(tempo.ISO8601Milli)
   // -> "2024-12-25T06:04:20.534-04:00"
 
