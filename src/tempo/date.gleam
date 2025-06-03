@@ -47,6 +47,9 @@ import tempo
 import tempo/error as tempo_error
 import tempo/month
 
+/// Starting point of unix timestamps
+pub const unix_epoch = tempo.unix_epoch_date
+
 /// A named day of the week.
 pub type DayOfWeek {
   Sun

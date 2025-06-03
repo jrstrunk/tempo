@@ -917,6 +917,9 @@ pub type DateTime {
 @internal
 pub const unix_epoch = DateTime(Date(0), TimeOfDay(0), utc)
 
+@internal
+pub const unix_epoch_date = Date(0)
+
 /// A type for external packages to provide so that datetimes can be converted
 /// between timezones. The package `gtz` was created to provide this and must
 /// be added as a project dependency separately.
