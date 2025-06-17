@@ -185,6 +185,29 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
   tempo.datetime_to_string(datetime)
 }
 
+/// Returns the date, time, and offset parts of a datetime as a tuple of 
+/// `gleam_time` types. This is useful for interop and accessing the underlying
+/// values of a datetime.
+/// 
+/// ## Example
+/// 
+/// ```gleam
+/// let #(
+///   calendar.Date(year:, month:, day:),
+///   calendar.TimeOfDay(hour:, minute:, second:, nanosecond:),
+///   offset,
+/// ) = datetime.to_calendar_parts(my_datetime)    
+/// ```
+pub fn to_calendar_parts(
+  datetime: tempo.DateTime,
+) -> #(calendar.Date, calendar.TimeOfDay, duration.Duration) {
+  #(
+    tempo.date_to_calendar_date(datetime.date),
+    tempo.time_to_calendar_time_of_day(datetime.time),
+    tempo.offset_to_duration(datetime.offset),
+  )
+}
+
 /// Parses a datetime string in the provided format. Always prefer using
 /// this over `parse_any`. All parsed formats must have all parts of a
 /// datetime (date, time, offset). Use the other modules for parsing lesser

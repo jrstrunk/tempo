@@ -1748,7 +1748,7 @@ fn date_calendar_from_unix_days(unix_days) {
 
       let assert Ok(month) = month_from_int(m)
 
-      calendar.Date(y, month, d)
+      calendar.Date(year: y, month: month, day: d)
     }
 
     // If the date is before unix time, then we will have to use another
@@ -2411,6 +2411,16 @@ pub fn time_to_string(time: Time) -> String {
     |> string.pad_start(6, with: "0"),
   )
   |> string_tree.to_string
+}
+
+@internal
+pub fn time_to_calendar_time_of_day(time: Time) -> calendar.TimeOfDay {
+  calendar.TimeOfDay(
+    time_get_hour(time),
+    time_get_minute(time),
+    time_get_second(time),
+    time_get_micro(time) * 1000,
+  )
 }
 
 @internal

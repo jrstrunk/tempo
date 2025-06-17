@@ -615,8 +615,7 @@ pub fn to_tuple(time: tempo.Time) -> #(Int, Int, Int) {
 
 /// Converts a tempo time to a time of day type in the core gleam time package.
 pub fn to_calendar_time_of_day(time: tempo.Time) -> calendar.TimeOfDay {
-  let #(hour, minute, second, microsecond) = to_tuple_microsecond(time)
-  calendar.TimeOfDay(hour, minute, second, microsecond * 1000)
+  tempo.time_to_calendar_time_of_day(time)
 }
 
 /// Converts a core gleam time time of day to a tempo time.
