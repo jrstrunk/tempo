@@ -318,8 +318,8 @@ pub fn describe_parse_error(error: tempo_error.DateTimeParseError) {
 /// ## Examples
 ///
 /// ```gleam
-/// datetime.literal(tempo.Custom("2024-06-21T13:42:11.314-04:00"))
-/// |> datetime.format("ddd @ h:mm A (z)")
+/// datetime.literal("2024-06-21T13:42:11.314-04:00")
+/// |> datetime.format(tempo.Custom("ddd @ h:mm A (z)"))
 /// // -> "Fri @ 1:42 PM (-04)"
 /// ```
 ///
