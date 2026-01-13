@@ -660,3 +660,11 @@ pub fn calendar_round_trip_test() {
   |> date.from_calendar_date
   |> should.equal(Ok(ref))
 }
+
+pub fn date_of_week_prior_epoch_test() {
+  let assert Ok(my_date) = date.parse("1900-01-01", tempo.ISO8601Date)
+  assert date.Mon == date.to_day_of_week(my_date)
+
+  let assert Ok(my_date) = date.parse("1901-01-01", tempo.ISO8601Date)
+  assert date.Tue == date.to_day_of_week(my_date)
+}

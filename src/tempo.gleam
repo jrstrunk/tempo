@@ -1687,7 +1687,10 @@ fn date_to_day_of_week_long(date: Date) -> String {
 
 @internal
 pub fn date_to_day_of_week_number(date: Date) -> Int {
-  { date.unix_days + 4 } % 7
+  case int.modulo(date.unix_days + 4, 7) {
+    Ok(val) -> val
+    Error(Nil) -> panic as "Invalid int modulo operation"
+  }
 }
 
 @internal
