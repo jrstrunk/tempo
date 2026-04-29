@@ -16,6 +16,8 @@
     reset_warp_time/0
 ]).
 
+-compile({no_auto_import,[now/0]}).
+
 -define(MOCK_TIME_TABLE, tempo_mock_time).
 
 % Make sure table exists before any operation
@@ -185,5 +187,10 @@ local_offset() ->
     end.
 
 current_year() ->
-    {{Year, _, _}, _} = calendar:local_time(),
+    MicrosSinceEpoch = now(),
+    SecsSinceEpoch = MicrosSinceEpoch div 1000000,
+    UTC = calendar:gregorian_seconds_to_datetime(
+        SecsSinceEpoch + 62167219200
+    ),
+    {{Year, _, _}, _} = calendar:universal_time_to_local_time(UTC),
     Year.
