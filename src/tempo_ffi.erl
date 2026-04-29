@@ -165,10 +165,23 @@ local_offset() ->
             OffsetMinutes;
         [] ->
             {Date, Time} = calendar:local_time(),
-            [UTC] = calendar:local_time_to_universal_time_dst({Date, Time}),
-            (calendar:datetime_to_gregorian_seconds({Date, Time}) -
-                calendar:datetime_to_gregorian_seconds(UTC)) div
-                60
+            case calendar:local_time_to_universal_time_dst({Date, Time}) of
+                [UTC] ->
+                    (calendar:datetime_to_gregorian_seconds({Date, Time}) -
+                        calendar:datetime_to_gregorian_seconds(UTC)) div 60;
+                [UTC1, _UTC2] ->
+                    (calendar:datetime_to_gregorian_seconds({Date, Time}) -
+                        calendar:datetime_to_gregorian_seconds(UTC1)) div 60;
+                [] ->
+                    %% Local time does not exist (DST spring-forward gap).
+                    %% Shift forward one hour to find a valid time,
+                    %% compute its offset, then subtract 60 minutes.
+                    ShiftedSecs = calendar:datetime_to_gregorian_seconds({Date, Time}) + 3600,
+                    {Date2, Time2} = calendar:gregorian_seconds_to_datetime(ShiftedSecs),
+                    [UTC] = calendar:local_time_to_universal_time_dst({Date2, Time2}),
+                    (calendar:datetime_to_gregorian_seconds({Date2, Time2}) -
+                        calendar:datetime_to_gregorian_seconds(UTC)) div 60 - 60
+            end
     end.
 
 current_year() ->
