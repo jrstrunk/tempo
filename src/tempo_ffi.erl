@@ -22,7 +22,17 @@
 init_mock_table() ->
     case ets:info(?MOCK_TIME_TABLE) of
         undefined ->
-            ets:new(?MOCK_TIME_TABLE, [set, public, named_table]);
+          try
+              ets:new(?MOCK_TIME_TABLE, [set, public, named_table])
+          catch
+              error:badarg ->
+                  % Verify the table now exists (created by another process).
+                  % Re-raise if it doesn't — that means a real error.
+                  case ets:info(?MOCK_TIME_TABLE) of
+                      undefined -> error(badarg);
+                      _ -> ok
+                  end
+          end;
         _ ->
             ok
     end.
