@@ -868,18 +868,38 @@ pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
   tempo.date_subtract(date, days: days)
 }
 
-/// Returns the number of the day of week a date falls on.
+/// Returns the number of the day of week a date falls on, using the US
+/// convention of counting Sunday as `0` through Saturday as `6`.
+/// Will be incorrect for dates before 1752 and dates after 2300.
+///
+/// This does *not* follow the ISO 8601 day-of-week numbering (Monday as `1`
+/// through Sunday as `7`), despite the rest of this package's formats being
+/// ISO 8601 based. Use `to_day_of_week_number_iso` for ISO-compliant
+/// numbering.
+@deprecated("Use `to_day_of_week_number_iso` for ISO 8601 compliant day-of-week numbering, or `to_day_of_week` for a non-ambiguous named value")
+pub fn to_day_of_week_number(date: tempo.Date) -> Int {
+  tempo.date_to_day_of_week_number_us_convention(date)
+}
+
+/// Returns the number of the day of week a date falls on, using the ISO
+/// 8601 convention of counting Monday as `1` through Sunday as `7`.
 /// Will be incorrect for dates before 1752 and dates after 2300.
 ///
 /// ## Examples
 ///
 /// ```gleam
 /// date.literal("2024-06-21")
-/// |> date.to_day_of_week_number
+/// |> date.to_day_of_week_number_iso
 /// // -> 5
 /// ```
-pub fn to_day_of_week_number(date: tempo.Date) -> Int {
-  tempo.date_to_day_of_week_number(date)
+///
+/// ```gleam
+/// date.literal("2024-06-23")
+/// |> date.to_day_of_week_number_iso
+/// // -> 7
+/// ```
+pub fn to_day_of_week_number_iso(date: tempo.Date) -> Int {
+  tempo.date_to_day_of_week_number_iso(date)
 }
 
 /// Returns the day of week a date falls on.
@@ -893,7 +913,7 @@ pub fn to_day_of_week_number(date: tempo.Date) -> Int {
 /// // -> Thur
 /// ```
 pub fn to_day_of_week(date: tempo.Date) -> DayOfWeek {
-  case to_day_of_week_number(date) {
+  case tempo.date_to_day_of_week_number_us_convention(date) {
     0 -> Sun
     1 -> Mon
     2 -> Tue

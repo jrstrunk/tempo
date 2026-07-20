@@ -449,8 +449,32 @@ pub fn to_weekday_jan_not_leap_year_test() {
 
 pub fn to_weekday_number_jan_not_leap_year_test() {
   date.literal("2023-01-04")
-  |> date.to_day_of_week_number
+  |> tempo.date_to_day_of_week_number_iso
   |> should.equal(3)
+}
+
+pub fn to_weekday_number_iso_jan_not_leap_year_test() {
+  date.literal("2023-01-04")
+  |> date.to_day_of_week_number_iso
+  |> should.equal(3)
+}
+
+pub fn to_weekday_number_sunday_test() {
+  date.literal("2024-06-23")
+  |> tempo.date_to_day_of_week_number_iso
+  |> should.equal(7)
+}
+
+pub fn to_weekday_number_iso_sunday_test() {
+  date.literal("2024-06-23")
+  |> date.to_day_of_week_number_iso
+  |> should.equal(7)
+}
+
+pub fn to_weekday_number_iso_monday_test() {
+  date.literal("2024-06-17")
+  |> date.to_day_of_week_number_iso
+  |> should.equal(1)
 }
 
 pub fn to_weekday_jan_leap_year_test() {

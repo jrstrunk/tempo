@@ -1654,7 +1654,7 @@ pub fn date_replace_format(content: String, date: Date) -> String {
       |> string.pad_start(with: "0", to: 2)
     "d" ->
       date
-      |> date_to_day_of_week_number
+      |> date_to_day_of_week_number_iso
       |> int.to_string
     "dd" ->
       date
@@ -1667,36 +1667,44 @@ pub fn date_replace_format(content: String, date: Date) -> String {
 }
 
 fn date_to_day_of_week_short(date: Date) -> String {
-  case date_to_day_of_week_number(date) {
-    0 -> "Sun"
+  case date_to_day_of_week_number_iso(date) {
     1 -> "Mon"
     2 -> "Tue"
     3 -> "Wed"
     4 -> "Thu"
     5 -> "Fri"
     6 -> "Sat"
+    7 -> "Sun"
     _ -> panic as "Invalid day of week found after modulo by 7"
   }
 }
 
 fn date_to_day_of_week_long(date: Date) -> String {
-  case date_to_day_of_week_number(date) {
-    0 -> "Sunday"
+  case date_to_day_of_week_number_iso(date) {
     1 -> "Monday"
     2 -> "Tuesday"
     3 -> "Wednesday"
     4 -> "Thursday"
     5 -> "Friday"
     6 -> "Saturday"
+    7 -> "Sunday"
     _ -> panic as "Invalid day of week found after modulo by 7"
   }
 }
 
 @internal
-pub fn date_to_day_of_week_number(date: Date) -> Int {
+pub fn date_to_day_of_week_number_us_convention(date: Date) -> Int {
   case int.modulo(date.unix_days + 4, 7) {
     Ok(val) -> val
     Error(Nil) -> panic as "Invalid int modulo operation"
+  }
+}
+
+@internal
+pub fn date_to_day_of_week_number_iso(date: Date) -> Int {
+  case date_to_day_of_week_number_us_convention(date) {
+    0 -> 7
+    n -> n
   }
 }
 
