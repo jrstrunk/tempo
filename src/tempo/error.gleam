@@ -153,7 +153,9 @@ pub type DateOutOfBoundsError {
 }
 
 @internal
-pub fn describe_date_out_of_bounds_error(error: DateOutOfBoundsError) -> String {
+pub fn describe_date_out_of_bounds_error(
+  error: DateOutOfBoundsError,
+) -> String {
   case error {
     DateDayOutOfBounds(input) -> "Day out of bounds in date: " <> input
     DateMonthOutOfBounds(input) -> "Month out of bounds in date: " <> input
@@ -189,7 +191,9 @@ pub type TimeOutOfBoundsError {
 }
 
 @internal
-pub fn describe_time_out_of_bounds_error(error: TimeOutOfBoundsError) -> String {
+pub fn describe_time_out_of_bounds_error(
+  error: TimeOutOfBoundsError,
+) -> String {
   case error {
     TimeHourOutOfBounds(input) -> "Hour out of bounds in time: " <> input
     TimeMinuteOutOfBounds(input) -> "Minute out of bounds in time: " <> input

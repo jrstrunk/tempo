@@ -677,7 +677,9 @@ pub fn get_time(datetime: tempo.DateTime) -> tempo.Time {
 /// |> datetime.get_calendar_time_of_day
 /// // -> calendar.TimeOfDay(13, 42, 11, 195_000_000)
 /// ```
-pub fn get_calendar_time_of_day(datetime: tempo.DateTime) -> calendar.TimeOfDay {
+pub fn get_calendar_time_of_day(
+  datetime: tempo.DateTime,
+) -> calendar.TimeOfDay {
   datetime.time |> time.to_calendar_time_of_day
 }
 

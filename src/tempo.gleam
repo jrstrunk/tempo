@@ -1,4 +1,4 @@
-//// The main module of this package. Contains most package types and general 
+//// The main module of this package. Contains most package types and general
 //// purpose functions.
 //// Look in specific modules for more functionality!
 
@@ -53,15 +53,15 @@ pub fn now() -> Instant {
 /// Get the current UTC system time adjusted by the given duration. Useful for
 /// checking if a time is more than some time in the past or future. Though
 /// this uses UTC time, UTC datetimes are directly comparable to local datetimes;
-/// formatting is where the difference really shows itself. If you want to 
+/// formatting is where the difference really shows itself. If you want to
 /// format this value as a local datetime, you can localise it before formatting.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// // Is the given datetime more than 30 mins old?
 /// datetime.literal("2024-12-26T00:00:00Z")
-/// |> datetime.is_earlier(than: 
+/// |> datetime.is_earlier(than:
 ///   tempo.now_adjusted(by: duration.minutes(-30))
 /// )
 @internal
@@ -76,9 +76,9 @@ pub fn now_adjusted(by duration: duration.Duration) -> DateTime {
 }
 
 /// Formats the current UTC system time using the provided format.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.format_utc(tempo.ISO8601Seconds)
 /// // -> "2024-12-26T16:32:34Z"
@@ -88,9 +88,9 @@ pub fn format_utc(in format: DateTimeFormat) -> String {
 }
 
 /// Formats the current local system time using the provided format.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.format_local(tempo.ISO8601Seconds)
 /// // -> "2024-12-26T12:32:34-04:00"
@@ -103,9 +103,9 @@ pub fn format_local(in format: DateTimeFormat) -> String {
 }
 
 /// Gets the duration between the current system time and the provided instant.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// let monotonic_timer = tempo.now()
 /// // Do long task ...
@@ -116,11 +116,11 @@ pub fn instant_since(start start: Instant) -> duration.Duration {
   now() |> instant_difference(from: start) |> duration_absolute
 }
 
-/// Formats the duration between the current system time and the provided 
+/// Formats the duration between the current system time and the provided
 /// instant.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// let monotonic_timer = tempo.now()
 /// // Do long task ...
@@ -145,9 +145,9 @@ pub fn compare(to datetime: DateTime) -> order.Order {
 }
 
 /// Checks if the current system time is earlier than the provided datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_earlier(than: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> False
@@ -156,11 +156,11 @@ pub fn is_earlier(than datetime: DateTime) -> Bool {
   datetime_is_earlier(now() |> instant_as_utc_datetime, than: datetime)
 }
 
-/// Checks if the current system time is earlier or equal to the provided 
+/// Checks if the current system time is earlier or equal to the provided
 /// datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_earlier_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
@@ -170,9 +170,9 @@ pub fn is_earlier_or_equal(to datetime: DateTime) -> Bool {
 }
 
 /// Checks if the current system time is equal to the provided datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> False
@@ -181,9 +181,9 @@ pub fn is_equal(to datetime: DateTime) -> Bool {
 }
 
 /// Checks if the current system time is later than the provided datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_later(than: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
@@ -192,11 +192,11 @@ pub fn is_later(than datetime: DateTime) -> Bool {
   datetime_is_later(now() |> instant_as_utc_datetime, than: datetime)
 }
 
-/// Checks if the current system time is later or equal to the provided 
+/// Checks if the current system time is later or equal to the provided
 /// datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_later_or_equal(to: datetime.literal("2024-12-26T00:00:00Z"))
 /// // -> True
@@ -215,7 +215,7 @@ pub fn is_later_or_equal(to datetime: DateTime) -> Bool {
 ///   order.Eq | order.Lt -> "Less than or equal to"
 ///   order.Gt -> "Greater than"
 /// }
-/// ``` 
+/// ```
 @internal
 pub fn compare_utc_date(date: Date) -> order.Order {
   now() |> instant_as_utc_date |> date_compare(to: date)
@@ -238,9 +238,9 @@ pub fn compare_local_date(date: Date) -> order.Order {
 }
 
 /// Checks if the current UTC system date is earlier than the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_date_earlier(than: date.literal("2024-12-26"))
 /// // -> False
@@ -251,9 +251,9 @@ pub fn is_utc_date_earlier(than date: Date) -> Bool {
 }
 
 /// Checks if the current local system date is earlier than the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_date_earlier(than: date.literal("2024-12-26"))
 /// // -> False
@@ -264,9 +264,9 @@ pub fn is_local_date_earlier(than date: Date) -> Bool {
 }
 
 /// Checks if the current UTC system date is earlier or equal to the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_date_earlier_or_equal(to: date.literal("2024-12-26"))
 /// // -> False
@@ -277,9 +277,9 @@ pub fn is_utc_date_earlier_or_equal(to date: Date) -> Bool {
 }
 
 /// Checks if the current local system date is earlier or equal to the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_date_earlier_or_equal(to: date.literal("2024-12-26"))
 /// // -> False
@@ -290,9 +290,9 @@ pub fn is_local_date_earlier_or_equal(to date: Date) -> Bool {
 }
 
 /// Checks if the current UTC system date is equal to the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_date_equal(to: date.literal("2024-12-26"))
 /// // -> False
@@ -303,9 +303,9 @@ pub fn is_utc_date_equal(to date: Date) -> Bool {
 }
 
 /// Checks if the current local system date is equal to the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_date_equal(to: date.literal("2024-12-26"))
 /// // -> False
@@ -316,9 +316,9 @@ pub fn is_local_date_equal(to date: Date) -> Bool {
 }
 
 /// Checks if the current UTC system date is later than the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_date_later(than: date.literal("2024-12-26"))
 /// // -> True
@@ -329,9 +329,9 @@ pub fn is_utc_date_later(than date: Date) -> Bool {
 }
 
 /// Checks if the current local system date is later than the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_date_later(than: date.literal("2024-12-26"))
 /// // -> True
@@ -342,9 +342,9 @@ pub fn is_local_date_later(than date: Date) -> Bool {
 }
 
 /// Checks if the current UTC system date is later or equal to the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_date_later_or_equal(to: date.literal("2024-12-26"))
 /// // -> True
@@ -355,9 +355,9 @@ pub fn is_utc_date_later_or_equal(to date: Date) -> Bool {
 }
 
 /// Checks if the current local system date is later or equal to the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_date_later_or_equal(to: date.literal("2024-12-26"))
 /// // -> True
@@ -394,9 +394,9 @@ pub fn compare_local_time(to time: Time) -> order.Order {
 }
 
 /// Checks if the current UTC system time is earlier than the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_time_earlier(than: time.literal("13:42:11"))
 /// // -> False
@@ -407,9 +407,9 @@ pub fn is_utc_time_earlier(than time: Time) -> Bool {
 }
 
 /// Checks if the current local system time is earlier than the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_time_earlier(than: time.literal("13:42:11"))
 /// // -> False
@@ -420,9 +420,9 @@ pub fn is_local_time_earlier(than time: Time) -> Bool {
 }
 
 /// Checks if the current UTC system time is earlier or equal to the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_time_earlier_or_equal(to: time.literal("13:42:11"))
 /// // -> False
@@ -433,9 +433,9 @@ pub fn is_utc_time_earlier_or_equal(to time: Time) -> Bool {
 }
 
 /// Checks if the current local system time is earlier or equal to the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_time_earlier_or_equal(to: time.literal("13:42:11"))
 /// // -> False
@@ -446,9 +446,9 @@ pub fn is_local_time_earlier_or_equal(to time: Time) -> Bool {
 }
 
 /// Checks if the current UTC system time equals the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_time_equal(to: time.literal("13:42:11"))
 /// // -> False
@@ -459,9 +459,9 @@ pub fn is_utc_time_equal(to time: Time) -> Bool {
 }
 
 /// Checks if the current local system time equals the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_time_equal(to: time.literal("13:42:11"))
 /// // -> False
@@ -472,9 +472,9 @@ pub fn is_local_time_equal(to time: Time) -> Bool {
 }
 
 /// Checks if the current UTC system time is later than the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_time_later(than: time.literal("13:42:11"))
 /// // -> True
@@ -485,9 +485,9 @@ pub fn is_utc_time_later(than time: Time) -> Bool {
 }
 
 /// Checks if the current local system time is later than the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_time_later(than: time.literal("13:42:11"))
 /// // -> True
@@ -498,9 +498,9 @@ pub fn is_local_time_later(than time: Time) -> Bool {
 }
 
 /// Checks if the current UTC system time is later or equal to the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_utc_time_later_or_equal(to: time.literal("13:42:11"))
 /// // -> True
@@ -511,9 +511,9 @@ pub fn is_utc_time_later_or_equal(to time: Time) -> Bool {
 }
 
 /// Checks if the current local system time is later or equal to the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.is_local_time_later_or_equal(to: time.literal("13:42:11"))
 /// // -> True
@@ -525,9 +525,9 @@ pub fn is_local_time_later_or_equal(to time: Time) -> Bool {
 
 /// Gets the difference between the current system datetime and the provided
 /// datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.difference(from: datetime.literal("2024-10-26T00:00:00Z"))
 /// |> duration.format
@@ -538,17 +538,17 @@ pub fn difference(from start: DateTime) -> duration.Duration {
 }
 
 /// Gets the time since the provided datetime relative to the current system
-/// time. The same as `tempo.difference`, but a duration of 0 will be 
+/// time. The same as `tempo.difference`, but a duration of 0 will be
 /// returned instead if the datetime is in the future.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.since(datetime.literal("2024-10-26T00:00:00Z"))
 /// |> duration.format
 /// // -> "54 days, 13 hours, and 46 minutes"
 /// ```
-/// 
+///
 /// ```gleam
 /// tempo.since(datetime.literal("9099-12-26T00:00:00Z"))
 /// |> duration.format
@@ -560,15 +560,15 @@ pub fn since(start start: DateTime) -> duration.Duration {
 
 /// Gets the time until the provided datetime relative to the current system
 /// time. A duration of 0 will be returned if the datetime is in the past.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.until(datetime.literal("2024-10-26T00:00:00Z"))
 /// |> duration.format
 /// // -> "none"
 /// ```
-/// 
+///
 /// ```gleam
 /// tempo.until(datetime.literal("2025-02-26T00:00:00Z"))
 /// |> duration.format
@@ -582,9 +582,9 @@ pub fn until(end end: DateTime) -> duration.Duration {
 }
 
 /// Gets the difference between the current UTC system time and the provided time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.utc_time_difference_from(time.literal("13:42:11"))
 /// |> duration.format
@@ -594,7 +594,7 @@ pub fn utc_time_difference_from(from start: Time) -> duration.Duration {
   now() |> instant_as_utc_time |> time_difference(from: start)
 }
 
-/// Gets the difference between the current local system time and the provided 
+/// Gets the difference between the current local system time and the provided
 /// time.
 ///
 /// ## Example
@@ -611,9 +611,9 @@ pub fn local_time_difference_from(from start: Time) -> duration.Duration {
 
 /// Gets the time since the provided time relative to the current UTC system time.
 /// A duration of 0 will be returned if the time is in the future.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.utc_time_since(time.literal("13:42:11"))
 /// |> duration.format
@@ -625,11 +625,11 @@ pub fn utc_time_since(start start: Time) -> duration.Duration {
   |> duration_clamp_to_zero
 }
 
-/// Gets the time since the provided time relative to the current local system 
+/// Gets the time since the provided time relative to the current local system
 /// time. A duration of 0 will be returned if the time is in the future.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.local_time_since(time.literal("13:42:11"))
 /// |> duration.format
@@ -643,9 +643,9 @@ pub fn local_time_since(start start: Time) -> duration.Duration {
 
 /// Gets the time until the provided time relative to the current UTC system time.
 /// A duration of 0 will be returned if the time is in the past.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.utc_time_until(time.literal("13:42:11"))
 /// |> duration.format
@@ -659,11 +659,11 @@ pub fn utc_time_until(end end: Time) -> duration.Duration {
   |> duration_clamp_to_zero
 }
 
-/// Gets the time until the provided time relative to the current local system 
+/// Gets the time until the provided time relative to the current local system
 /// time. A duration of 0 will be returned if the time is in the past.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.local_time_until(time.literal("13:42:11"))
 /// |> duration.format
@@ -678,9 +678,9 @@ pub fn local_time_until(end end: Time) -> duration.Duration {
 }
 
 /// Gets the difference between the current UTC system date and the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.utc_date_difference_from(date.literal("2024-10-26"))
 /// // -> 54
@@ -691,9 +691,9 @@ pub fn utc_date_difference_from(from start: Date) -> Int {
 }
 
 /// Gets the difference between the current local system date and the provided date.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.local_date_difference_from(date.literal("2024-10-26"))
 /// // -> 54
@@ -703,11 +703,11 @@ pub fn local_date_difference_from(from start: Date) -> Int {
   now() |> instant_as_local_date |> date_days_apart(from: start)
 }
 
-/// Gets the number of days since the provided date relative to the current UTC 
+/// Gets the number of days since the provided date relative to the current UTC
 /// system date. A value of 0 will be returned if the date is in the future.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.utc_days_since(date.literal("2024-10-26"))
 /// // -> 54
@@ -720,11 +720,11 @@ pub fn utc_days_since(start start: Date) -> Int {
   }
 }
 
-/// Gets the number of days since the provided date relative to the current local 
+/// Gets the number of days since the provided date relative to the current local
 /// system date. A value of 0 will be returned if the date is in the future.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.local_days_since(date.literal("2024-10-26"))
 /// // -> 54
@@ -737,11 +737,11 @@ pub fn local_days_since(start start: Date) -> Int {
   }
 }
 
-/// Gets the number of days until the provided date relative to the current UTC 
+/// Gets the number of days until the provided date relative to the current UTC
 /// system date. A value of 0 will be returned if the date is in the past.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.utc_days_until(date.literal("2024-10-26"))
 /// // -> 0
@@ -754,11 +754,11 @@ pub fn utc_days_until(end end: Date) -> Int {
   }
 }
 
-/// Gets the number of days until the provided date relative to the current local 
+/// Gets the number of days until the provided date relative to the current local
 /// system date. A value of 0 will be returned if the date is in the past.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// tempo.local_days_until(date.literal("2025-10-26"))
 /// // -> 365
@@ -786,7 +786,7 @@ pub fn sleep(for duration: duration.Duration) {
 //                             Instant Logic                                  //
 // -------------------------------------------------------------------------- //
 
-/// A monotonic type that represents a unique point in time on the host system. 
+/// A monotonic type that represents a unique point in time on the host system.
 /// It can be converted to all other date time types but cannot be serialized
 /// itself. An instant constructed on one host has no meaningful purpose on
 /// another host.
@@ -906,8 +906,8 @@ pub fn instant_difference(from a: Instant, to b: Instant) -> duration.Duration {
 //                            DateTime Logic                                  //
 // -------------------------------------------------------------------------- //
 
-/// A datetime value with a timezone offset associated with it. It has the 
-/// most amount of information about a point in time, and can be compared to 
+/// A datetime value with a timezone offset associated with it. It has the
+/// most amount of information about a point in time, and can be compared to
 /// all other types in this package by getting its lesser parts.
 pub type DateTime {
   DateTime(date: Date, time: Time, offset: Offset)
@@ -1000,7 +1000,10 @@ pub fn datetime_to_unix_micro(datetime: DateTime) -> Int {
 }
 
 @internal
-pub fn datetime_format(datetime: DateTime, in format: DateTimeFormat) -> String {
+pub fn datetime_format(
+  datetime: DateTime,
+  in format: DateTimeFormat,
+) -> String {
   let format_str = get_datetime_format_str(format)
 
   let assert Ok(re) = regexp.from_string(format_regex)
@@ -1017,11 +1020,11 @@ pub fn datetime_format(datetime: DateTime, in format: DateTimeFormat) -> String 
         ..acc
       ]
 
-      // If there is a non-empty subpattern, then the escape 
+      // If there is a non-empty subpattern, then the escape
       // character "[ ... ]" matched, so we should not change anything here.
       regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
 
-      // This case is not expected, not really sure what to do with it 
+      // This case is not expected, not really sure what to do with it
       // so just prepend whatever was found
       regexp.Match(content, _) -> [content, ..acc]
     }
@@ -1155,7 +1158,7 @@ pub fn datetime_subtract(
 //                         Naive DateTime Logic                               //
 // -------------------------------------------------------------------------- //
 
-/// A datetime value with no timezone or offset associated with it. 
+/// A datetime value with no timezone or offset associated with it.
 /// It cannot be compared to datetimes with a timezone offset accurately, but
 /// can be compared to dates, times, and other naive datetimes.
 pub type NaiveDateTime {
@@ -1244,7 +1247,7 @@ pub fn naive_datetime_add(
   duration duration_to_add: duration.Duration,
 ) -> NaiveDateTime {
   // Positive date overflows are only handled in this function, while negative
-  // date overflows are only handled in the subtract function -- so if the 
+  // date overflows are only handled in the subtract function -- so if the
   // duration is negative, we can just subtract the absolute value of it.
   use <- bool.lazy_guard(
     when: !duration_is_positive(duration_to_add),
@@ -1263,7 +1266,7 @@ pub fn naive_datetime_add(
     |> duration_increase(by: time_to_add)
     |> duration_as_microseconds
 
-  // If the time to add crossed a day boundary, add an extra day to the 
+  // If the time to add crossed a day boundary, add an extra day to the
   // number of days to add and adjust the time to add.
   let #(new_time_as_micro, days_to_add): #(Int, Int) = case
     new_time_as_micro >= unit.day_microseconds
@@ -1289,7 +1292,7 @@ pub fn naive_datetime_subtract(
   duration duration_to_subtract: duration.Duration,
 ) -> NaiveDateTime {
   // Negative date overflows are only handled in this function, while positive
-  // date overflows are only handled in the add function -- so if the 
+  // date overflows are only handled in the add function -- so if the
   // duration is negative, we can just add the absolute value of it.
   use <- bool.lazy_guard(
     when: !duration_is_positive(duration_to_subtract),
@@ -1308,7 +1311,7 @@ pub fn naive_datetime_subtract(
     |> duration_decrease(by: time_to_sub)
     |> duration_as_microseconds
 
-  // If the time to subtract crossed a day boundary, add an extra day to the 
+  // If the time to subtract crossed a day boundary, add an extra day to the
   // number of days to subtract and adjust the time to subtract.
   let #(new_time_as_micro, days_to_sub) = case new_time_as_micro < 0 {
     True -> #(new_time_as_micro + unit.day_microseconds, days_to_sub + 1)
@@ -1321,7 +1324,7 @@ pub fn naive_datetime_subtract(
     )
 
   // Using the proper subtract functions here to modify the date and time
-  // values instead of declaring a new date is important for perserving date 
+  // values instead of declaring a new date is important for perserving date
   // correctness and time precision.
   let new_date =
     datetime.date
@@ -2169,7 +2172,7 @@ pub fn time(hour hour, minute minute, second second, micro microsecond) {
   }
 }
 
-/// We really only want to normalise on the way out of the time type 
+/// We really only want to normalise on the way out of the time type
 /// representation (like displaying a time) to preserve correct comparibility.
 fn time_normalise(time: Time) {
   case time {
@@ -2724,8 +2727,8 @@ pub fn duration_as_microseconds(duration: duration.Duration) -> Int {
 // -------------------------------------------------------------------------- //
 
 /// A period between two calendar datetimes. It represents a range of
-/// datetimes and can be used to calculate the number of days, weeks, months, 
-/// or years between two dates. It can also be interated over and datetime 
+/// datetimes and can be used to calculate the number of days, weeks, months,
+/// or years between two dates. It can also be interated over and datetime
 /// values can be checked for inclusion in the period.
 pub opaque type Period {
   DateTimePeriod(start: DateTime, end: DateTime)
@@ -2885,20 +2888,20 @@ fn do_period_comprising_months(mys, my: MonthYear, end_date) {
 // -------------------------------------------------------------------------- //
 
 /// Provides common datetime formatting templates.
-/// 
-/// The Custom format takes a format string that implements the same 
-/// formatting directives as the nice Day.js 
+///
+/// The Custom format takes a format string that implements the same
+/// formatting directives as the nice Day.js
 /// library: https://day.js.org/docs/en/display/format, plus condensed offsets.
-/// 
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digint day of the month), d (day of the week), 
-/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
-/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+///
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month),
+/// MM (two-digit month), MMM (short month name), MMMM (full month name),
+/// D (day of the month), DD (two-digint day of the month), d (day of the week),
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week),
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
 /// Z (offset from UTC), ZZ (offset from UTC with no ":"),
 /// z (short offset from UTC "-04", "Z"), A (AM/PM), a (am/pm).
 pub type DateTimeFormat {
@@ -2919,23 +2922,23 @@ pub type DateTimeFormat {
 }
 
 /// Provides common naive datetime formatting templates.
-/// 
-/// The CustomNaive format takes a format string that implements the same 
-/// formatting directives as the nice Day.js 
+///
+/// The CustomNaive format takes a format string that implements the same
+/// formatting directives as the nice Day.js
 /// library: https://day.js.org/docs/en/display/format, plus condensed offsets.
-/// 
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digint day of the month), d (day of the week), 
-/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
-/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+///
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month),
+/// MM (two-digit month), MMM (short month name), MMMM (full month name),
+/// D (day of the month), DD (two-digint day of the month), d (day of the week),
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week),
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
 /// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
 /// Z (full offset from UTC in the format "+-00:00"), ZZ (full offset from UTC
-/// with no ":"), z (short offset from UTC as "-04" or "Z" if UTC), zz (full 
-/// offset from UTC as "-04:00" or "Z" if UTC), A (AM/PM), a (am/pm), or 
+/// with no ":"), z (short offset from UTC as "-04" or "Z" if UTC), zz (full
+/// offset from UTC as "-04:00" or "Z" if UTC), A (AM/PM), a (am/pm), or
 /// GMT (to parse "GMT" as a 0 offset from UTC).
 pub type NaiveDateTimeFormat {
   NaiveISO8601Seconds
@@ -2954,16 +2957,16 @@ pub type NaiveDateTimeFormat {
 }
 
 /// Provides common date formatting templates.
-/// 
-/// The CustomDate format takes a format string that implements the same 
-/// formatting directives as the nice Day.js 
+///
+/// The CustomDate format takes a format string that implements the same
+/// formatting directives as the nice Day.js
 /// library: https://day.js.org/docs/en/display/format.
-/// 
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
+///
+/// Available custom format directives: YY (two-digit year), YYYY (four-digit year), M (month),
+/// MM (two-digit month), MMM (short month name), MMMM (full month name),
+/// D (day of the month), DD (two-digit day of the month), d (day of the week),
 /// dd (min day of the week), ddd (short day of week), and
 /// dddd (full day of the week).
 pub type DateFormat {
@@ -2976,16 +2979,16 @@ pub type DateFormat {
 }
 
 /// Provides common time formatting templates.
-/// 
-/// The CustomTime format takes a format string that implements the same 
-/// formatting directives as the nice Day.js 
+///
+/// The CustomTime format takes a format string that implements the same
+/// formatting directives as the nice Day.js
 /// library: https://day.js.org/docs/en/display/format.
-/// 
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] HH".
-/// 
+///
 /// Available custom format directives: H (hour), HH (two-digit hour), h (12-hour clock hour),
 /// hh (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
 /// A (AM/PM), or a (am/pm).
 pub type TimeFormat {
   ISO8601TimeSeconds
@@ -2999,7 +3002,7 @@ pub type TimeFormat {
 }
 
 // Provide the locale API for now with no logic
-/// A type that provides information on how to format dates and times for a 
+/// A type that provides information on how to format dates and times for a
 /// specific region or language.
 pub type Locale
 
@@ -3066,44 +3069,44 @@ pub fn get_date_format_str(format: DateFormat) {
 @internal
 pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z{1,2}|S{3,4}|GMT|."
 
-/// Tries to parse a given date string without a known format. It will not 
-/// parse two digit years and will assume the month always comes before the 
+/// Tries to parse a given date string without a known format. It will not
+/// parse two digit years and will assume the month always comes before the
 /// day in a date. Always prefer to use a module's specific `parse` function
 /// when possible.
-/// 
-/// Using pattern matching, you can explicitly specify what to with the 
+///
+/// Using pattern matching, you can explicitly specify what to with the
 /// missing values from the input. Many libaries will assume a missing time
 /// value means 00:00:00 or a missing offset means UTC. This design
-/// lets the user decide how fallbacks are handled. 
-/// 
+/// lets the user decide how fallbacks are handled.
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// case tempo.parse_any("06/21/2024 at 01:42:11 PM") {
 ///   #(Some(date), Some(time), Some(offset)) ->
 ///     datetime.new(date, time, offset)
-/// 
+///
 ///   #(Some(date), Some(time), None) ->
 ///     datetime.new(date, time, offset.local())
-/// 
+///
 ///   _ -> datetime.now_local()
 /// }
 /// // -> datetime.literal("2024-06-21T13:42:11-04:00")
 /// ```
-/// 
+///
 /// ```gleam
 /// tempo.parse_any("2024.06.21 11:32 AM -0400")
 /// // -> #(
-/// //  Some(date.literal("2024-06-21")), 
+/// //  Some(date.literal("2024-06-21")),
 /// //  Some(time.literal("11:32:00")),
 /// //  Some(offset.literal("-04:00"))
 /// // )
 /// ```
-/// 
+///
 /// ```gleam
 /// tempo.parse_any("Dec 25, 2024 at 6:00 AM")
 /// // -> #(
-/// //  Some(date.literal("2024-12-25")), 
+/// //  Some(date.literal("2024-12-25")),
 /// //  Some(time.literal("06:00:00")),
 /// //  None
 /// // )
@@ -3113,7 +3116,7 @@ pub fn parse_any(
 ) -> #(option.Option(Date), option.Option(Time), option.Option(Offset)) {
   let empty_result = #(None, None, None)
 
-  // If there are 10 or more numbers in a row, then this is probably some 
+  // If there are 10 or more numbers in a row, then this is probably some
   // serial number and not a date.
   use serial_re <- result_guard(
     when_error: regexp.from_string("\\d{10,}"),
@@ -3390,7 +3393,7 @@ pub fn consume_format(str: String, in fmt: String) {
         let res = case match {
           regexp.Match(content, []) -> consume_part(content, input)
 
-          // If there is a non-empty subpattern, then the escape 
+          // If there is a non-empty subpattern, then the escape
           // character "[ ... ]" matched, so we should not change anything here,
           // but we should verify that the content matches the input.
           regexp.Match(_, [Some(sub)]) ->
@@ -3405,7 +3408,7 @@ pub fn consume_format(str: String, in fmt: String) {
                 )
             }
 
-          // This case is not expected, not really sure what to do with it 
+          // This case is not expected, not really sure what to do with it
           // so just pass through whatever was found
           regexp.Match(content, _) ->
             Ok(#(Passthrough, string.drop_start(input, string.length(content))))

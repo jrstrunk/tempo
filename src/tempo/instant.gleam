@@ -252,7 +252,9 @@ pub fn as_local_calendar_time_of_day(
 /// |> instant.as_utc_calendar_time_of_day
 /// // -> calendar.TimeOfDay(12, 32, 34, 0)
 /// ```
-pub fn as_utc_calendar_time_of_day(instant: tempo.Instant) -> calendar.TimeOfDay {
+pub fn as_utc_calendar_time_of_day(
+  instant: tempo.Instant,
+) -> calendar.TimeOfDay {
   tempo.instant_as_utc_time(instant) |> time.to_calendar_time_of_day
 }
 

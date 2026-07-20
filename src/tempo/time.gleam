@@ -463,7 +463,9 @@ pub fn parse(
 /// time.parse_any("2024.06.21")
 /// // -> Error(tempo.ParseMissingTime)
 /// ```
-pub fn parse_any(str: String) -> Result(tempo.Time, tempo_error.TimeParseError) {
+pub fn parse_any(
+  str: String,
+) -> Result(tempo.Time, tempo_error.TimeParseError) {
   case tempo.parse_any(str) {
     #(_, Some(time), _) -> Ok(time)
     #(_, None, _) ->
@@ -894,7 +896,11 @@ pub type Boundary {
 ///   )
 /// // -> True
 /// ```
-pub fn is_between(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool {
+pub fn is_between(
+  time: tempo.Time,
+  start: Boundary,
+  and end: Boundary,
+) -> Bool {
   case start.inclusive {
     True -> is_later_or_equal(time, to: start.time)
     False -> is_later(time, than: start.time)
@@ -917,7 +923,11 @@ pub fn is_between(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool 
 ///   )
 /// // -> False
 /// ```
-pub fn is_outside(time: tempo.Time, start: Boundary, and end: Boundary) -> Bool {
+pub fn is_outside(
+  time: tempo.Time,
+  start: Boundary,
+  and end: Boundary,
+) -> Bool {
   case start.inclusive {
     True -> is_earlier_or_equal(time, to: start.time)
     False -> is_earlier(time, than: start.time)

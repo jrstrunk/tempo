@@ -79,7 +79,10 @@ pub fn from_datetimes(
 /// |> period.as_days
 /// // -> 7
 /// ```
-pub fn from_dates(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
+pub fn from_dates(
+  start start: tempo.Date,
+  end end: tempo.Date,
+) -> tempo.Period {
   tempo.period_new_naive(
     start: tempo.NaiveDateTime(start, time.start_of_day),
     end: tempo.NaiveDateTime(end, time.end_of_day),
@@ -391,7 +394,10 @@ pub fn contains_naive_datetime(
 /// )
 /// // -> True
 /// ```
-pub fn contains_datetime(period: tempo.Period, datetime: tempo.DateTime) -> Bool {
+pub fn contains_datetime(
+  period: tempo.Period,
+  datetime: tempo.DateTime,
+) -> Bool {
   tempo.period_contains_datetime(period, datetime)
 }
 

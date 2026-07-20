@@ -328,7 +328,9 @@ pub fn parse(
 /// date.parse_any("2024.06.21")
 /// // -> Ok(date.literal("2024-06-21"))
 /// ```
-pub fn parse_any(str: String) -> Result(tempo.Date, tempo_error.DateParseError) {
+pub fn parse_any(
+  str: String,
+) -> Result(tempo.Date, tempo_error.DateParseError) {
   case tempo.parse_any(str) {
     #(Some(date), _, _) -> Ok(date)
     #(None, _, _) ->

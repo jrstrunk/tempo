@@ -92,7 +92,11 @@ pub fn format_as(
   }
 }
 
-pub fn format_as_many(microseconds, units units: List(Unit), decimals decimals) {
+pub fn format_as_many(
+  microseconds,
+  units units: List(Unit),
+  decimals decimals,
+) {
   list.index_fold(units, #(microseconds, ""), fn(accumulator, unit: Unit, i) {
     case list.length(units) == i + 1 {
       // Handle the last unit differently
