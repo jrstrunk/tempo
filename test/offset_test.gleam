@@ -40,6 +40,20 @@ pub fn to_string_test() {
   |> should.equal("+14:00")
 }
 
+pub fn to_string_positive_sub_hour_test() {
+  offset.to_string(tempo.offset(5))
+  |> should.equal("+00:05")
+
+  offset.to_string(tempo.offset(30))
+  |> should.equal("+00:30")
+}
+
+pub fn to_string_positive_sub_hour_round_trip_test() {
+  offset.to_string(tempo.offset(5))
+  |> offset.from_string
+  |> should.equal(Ok(tempo.offset(5)))
+}
+
 pub fn from_string_test() {
   offset.from_string("-00:00")
   |> should.equal(Ok(tempo.offset(0)))

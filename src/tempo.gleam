@@ -1429,9 +1429,11 @@ pub fn offset_from_string(
 
 @internal
 pub fn offset_to_string(offset: Offset) -> String {
-  let #(is_negative, hours) = case offset_get_minutes(offset) / 60 {
-    h if h <= 0 -> #(True, -h)
-    h -> #(False, h)
+  let is_negative = offset_get_minutes(offset) < 0
+
+  let hours = case offset_get_minutes(offset) / 60 {
+    h if h < 0 -> -h
+    h -> h
   }
 
   let mins = case offset_get_minutes(offset) % 60 {
@@ -1442,7 +1444,9 @@ pub fn offset_to_string(offset: Offset) -> String {
   case is_negative, hours, mins {
     _, 0, 0 -> "+00:00"
 
-    _, 0, m -> "-00:" <> int.to_string(m) |> string.pad_start(2, with: "0")
+    True, 0, m -> "-00:" <> int.to_string(m) |> string.pad_start(2, with: "0")
+
+    False, 0, m -> "+00:" <> int.to_string(m) |> string.pad_start(2, with: "0")
 
     True, h, m ->
       "-"
