@@ -962,19 +962,19 @@ pub fn difference(from a: tempo.Time, to b: tempo.Time) -> duration.Duration {
 }
 
 /// Gets the absolute difference between two times as a duration.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("23:42:11.435")
-/// |> time.difference(from: time.literal("23:42:09.743"))
+/// |> time.difference_abs(from: time.literal("23:42:09.743"))
 /// |> duration.as_milliseconds
 /// // -> 1692
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("13:30:11")
-/// |> time.difference(from: time.literal("13:55:13"))
+/// |> time.difference_abs(from: time.literal("13:55:13"))
 /// |> duration.as_minutes
 /// // -> 25
 /// ```

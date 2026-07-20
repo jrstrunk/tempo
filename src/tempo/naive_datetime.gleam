@@ -618,21 +618,21 @@ pub fn is_later_or_equal(
 /// ## Examples
 /// 
 /// ```gleam
-/// naive_datetime.literal("2024-06-16T01:16:12")
+/// naive_datetime.literal("2024-06-12T23:17:00")
 /// |> naive_datetime.difference(
-///   naive_datetime.literal("2024-06-12T23:17:00"),
+///   to: naive_datetime.literal("2024-06-16T01:16:12"),
 /// )
 /// |> duration.as_days
 /// // -> 3
 /// ```
-/// 
+///
 /// ```gleam
-/// naive_datetime.literal("2024-06-16T01:18:12")
+/// naive_datetime.literal("2024-06-12T23:17:00")
 /// |> naive_datetime.difference(
-///   naive_datetime.literal("2024-06-12T23:17:00"),
+///   to: naive_datetime.literal("2024-06-16T01:18:12"),
 /// )
 /// |> duration.format
-/// // -> "3 days, 2 hours, and 1 minute"
+/// // -> "3 days, 2 hours, and 1 minutes"
 /// ```
 pub fn difference(
   from a: tempo.NaiveDateTime,

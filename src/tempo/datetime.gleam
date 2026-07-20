@@ -792,13 +792,13 @@ pub fn to_offset(
 /// ```gleam
 /// datetime.literal("2024-06-21T09:57:11.195Z")
 /// |> datetime.to_local_imprecise
-/// // -> tempo.Precise(datetime.literal("2024-06-21T05:57:11.195-04:00"))
+/// // -> datetime.literal("2024-06-21T05:57:11.195-04:00")
 /// ```
 ///
 /// ```gleam
 /// datetime.literal("1998-08-23T09:57:11.195Z")
 /// |> datetime.to_local_imprecise
-/// // -> tempo.Imprecise(datetime.literal("1998-08-23T05:57:11.195-04:00"))
+/// // -> datetime.literal("1998-08-23T05:57:11.195-04:00")
 /// ```
 pub fn to_local_imprecise(datetime: tempo.DateTime) -> tempo.DateTime {
   datetime |> to_offset(offset.local())
@@ -1073,7 +1073,7 @@ pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// ```gleam
 /// datetime.literal("2024-06-12T23:17:00Z")
 /// |> datetime.difference(
-///   from: datetime.literal("2024-06-16T01:16:12Z"),
+///   to: datetime.literal("2024-06-16T01:16:12Z"),
 /// )
 /// |> duration.as_days
 /// // -> 3
@@ -1082,10 +1082,10 @@ pub fn is_later_or_equal(a: tempo.DateTime, to b: tempo.DateTime) -> Bool {
 /// ```gleam
 /// datetime.literal("2024-06-12T23:17:00Z")
 /// |> datetime.difference(
-///   from: datetime.literal("2024-06-16T01:18:12Z"),
+///   to: datetime.literal("2024-06-16T01:18:12Z"),
 /// )
 /// |> duration.format
-/// // -> "3 days, 2 hours, and 1 minute"
+/// // -> "3 days, 2 hours, and 1 minutes"
 /// ```
 pub fn difference(
   from a: tempo.DateTime,

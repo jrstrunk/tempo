@@ -316,10 +316,10 @@ pub fn difference(
 /// let start = tempo.now()
 /// let end = tempo.now()
 /// 
-/// instant.compare(start, end)
+/// instant.compare(start, to: end)
 /// // -> order.Lt
 /// ```
-pub fn compare(a: tempo.Instant, b: tempo.Instant) -> order.Order {
+pub fn compare(a: tempo.Instant, to b: tempo.Instant) -> order.Order {
   tempo.instant_compare(a, b)
 }
 

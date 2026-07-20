@@ -116,7 +116,7 @@ fn as_internal_unit(u: Unit) -> unit.Unit {
 /// ```gleam
 /// duration.new(100, duration.Millisecond)
 /// |> duration.as_seconds_fractional
-/// // -> 0.0000001
+/// // -> 0.1
 /// ```
 pub fn new(duration: Int, unit: Unit) -> duration.Duration {
   case unit {

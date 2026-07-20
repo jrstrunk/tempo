@@ -291,27 +291,31 @@ pub fn from_month(my: tempo.MonthYear) -> tempo.Period {
 /// ## Examples
 /// 
 /// ```gleam
-/// period.from_month(tempo.Jun, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Jun, 2024))
 /// |> period.contains_date(date.literal("2024-06-30"))
 /// // -> True
 /// ```
-/// 
+///
 /// ```gleam
-/// period.from_month(tempo.Jun, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Jun, 2024))
 /// |> period.contains_date(date.literal("2024-07-22"))
 /// // -> False
 /// ```
-/// 
+///
 /// ```gleam
-/// date.literal("2024-06-13")
-/// |> date.difference(from: date.literal("2024-06-21"))
+/// date.as_period(
+///   start: date.literal("2024-06-13"),
+///   end: date.literal("2024-06-21"),
+/// )
 /// |> period.contains_date(date.literal("2024-06-21"))
 /// // -> True
 /// ```
-/// 
+///
 /// ```gleam
-/// date.literal("2024-06-13")
-/// |> date.difference(from: date.literal("2024-06-21"))
+/// date.as_period(
+///   start: date.literal("2024-06-13"),
+///   end: date.literal("2024-06-21"),
+/// )
 /// |> period.contains_date(date.literal("2024-06-27"))
 /// // -> False
 /// ```
@@ -330,26 +334,28 @@ pub fn contains_date(period: tempo.Period, date: tempo.Date) -> Bool {
 /// ## Examples
 /// 
 /// ```gleam
-/// period.from_month(tempo.Jun, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Jun, 2024))
 /// |> period.contains_naive_datetime(
 ///   naive_datetime.literal("2024-06-30T24:00:00"),
 /// )
 /// // -> True
 /// ```
-/// 
+///
 /// ```gleam
-/// period.from_month(tempo.Jun, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Jun, 2024))
 /// |> period.contains_naive_datetime(
 ///   naive_datetime.literal("2024-07-22T24:00:00"),
 /// )
 /// // -> False
 /// ```
-/// 
+///
 /// ```gleam
-/// date.literal("2024-06-13")
-/// |> date.difference(from: date.literal("2024-06-21"))
+/// date.as_period(
+///   start: date.literal("2024-06-13"),
+///   end: date.literal("2024-06-21"),
+/// )
 /// |> period.contains_naive_datetime(
-///   naive_datetime.literal("2024-06-21T13:50:00"),
+///   naive_datetime.literal("2024-06-27T13:50:00"),
 /// )
 /// // -> False
 /// ```
@@ -377,7 +383,7 @@ pub fn contains_naive_datetime(
 /// ## Examples
 /// 
 /// ```gleam
-/// period.from_month(tempo.Jun, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Jun, 2024))
 /// |> period.contains_datetime(
 ///   datetime.literal("2024-06-30T24:00:00-07:00"),
 /// )
@@ -420,7 +426,7 @@ pub fn contains_datetime(
 /// ```
 /// 
 /// ```gleam
-/// period.from_month(tempo.Feb, 2024)
+/// period.from_month(tempo.MonthYear(tempo.Feb, 2024))
 /// |> period.comprising_dates
 /// // -> [
 /// //   date.literal("2024-02-01"),

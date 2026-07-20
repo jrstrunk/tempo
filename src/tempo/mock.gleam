@@ -158,40 +158,17 @@ pub fn unfreeze_time() {
 }
 
 /// Sets the current system time (as seen by this package) to the provided
-/// datetime, allowing time to progress after with a speedup factor. If the 
-/// speedup is 1.0, then time will progress at the normal rate after being set.
-/// If the speedup is less than 1.0, time will progress slower than normal. If
-/// the speedup is greater than 1.0, time will progress faster than normal. This
-/// can be useful for quickly testing logic that may periodically wait for some
-/// amount of time.
-/// 
+/// datetime, allowing time to progress normally after being set.
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
-/// mock.set_time(datetime.literal("2024-06-21T00:10:00.000Z"), 1.0)
+/// mock.set_time(datetime.literal("2024-06-21T00:00:00.000Z"))
 /// tempo.format_utc(tempo.ISO8601Seconds)
 /// // -> "2024-06-21T00:00:00Z"
 /// process.sleep(duration.seconds(10))
 /// tempo.format_utc(tempo.ISO8601Seconds)
 /// // -> "2024-06-21T00:00:10Z"
-/// ```
-/// 
-/// ```gleam
-/// mock.set_time(datetime.literal("2024-06-21T00:10:00.000Z"), 0.5)
-/// tempo.format_utc(tempo.ISO8601Seconds)
-/// // -> "2024-06-21T00:00:00Z"
-/// process.sleep(duration.seconds(10))
-/// tempo.format_utc(tempo.ISO8601Seconds)
-/// // -> "2024-06-21T00:00:05Z"
-/// ```
-/// 
-/// ```gleam
-/// mock.set_time(datetime.literal("2024-06-21T00:10:00.000Z"), 3.0)
-/// tempo.format_utc(tempo.ISO8601Seconds)
-/// // -> "2024-06-21T00:00:00Z"
-/// process.sleep(duration.seconds(10))
-/// tempo.format_utc(tempo.ISO8601Seconds)
-/// // -> "2024-06-21T00:00:30Z"
 /// ```
 pub fn set_time(to datetime: tempo.DateTime) {
   set_time_with_speedup(datetime, 1.0)

@@ -796,15 +796,13 @@ pub fn is_later_or_equal(a: tempo.Date, to b: tempo.Date) -> Bool {
 /// ## Examples
 ///
 /// ```gleam
-/// date.literal("2024-06-12")
-/// |> date.difference(from: date.literal("2024-06-23"))
+/// date.difference(from: date.literal("2024-06-12"), to: date.literal("2024-06-23"))
 /// // -> 11
 /// ```
 ///
 /// ```gleam
-/// date.literal("2024-06-03")
-/// |> date.difference(from: date.literal("2024-06-11"))
-/// // -> -9
+/// date.difference(from: date.literal("2024-06-03"), to: date.literal("2024-06-11"))
+/// // -> 8
 /// ```
 pub fn difference(from a: tempo.Date, to b: tempo.Date) -> Int {
   tempo.date_days_apart(from: a, to: b)
