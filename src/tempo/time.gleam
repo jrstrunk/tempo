@@ -323,8 +323,8 @@ pub fn to_string(time: tempo.Time) -> String {
 /// ## Example
 /// 
 /// ```gleam
-/// time.from_string("00:00:00.000000300")
-/// // -> Ok(time.literal("00:00:00.000000300"))
+/// time.from_string("00:00:00.000300")
+/// // -> Ok(time.literal("00:00:00.000300"))
 /// ```
 /// 
 /// ```gleam
