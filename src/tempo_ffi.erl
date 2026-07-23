@@ -63,8 +63,16 @@ freeze_time(Value, OffsetMinutes) when is_integer(Value) ->
 
 unfreeze_time() ->
     init_mock_table(),
-    catch ets:delete(?MOCK_TIME_TABLE, frozen_time),
-    catch ets:delete(?MOCK_TIME_TABLE, set_offset_minutes),
+    try
+        ets:delete(?MOCK_TIME_TABLE, frozen_time)
+    catch
+        _:_ -> ok
+    end,
+    try
+        ets:delete(?MOCK_TIME_TABLE, set_offset_minutes)
+    catch
+        _:_ -> ok
+    end,
     nil.
 
 set_reference_time(Value, OffsetMinutes, SpeedupFactor) ->
@@ -86,8 +94,16 @@ set_reference_time(Value, OffsetMinutes, SpeedupFactor) ->
 
 unset_reference_time() ->
     init_mock_table(),
-    catch ets:delete(?MOCK_TIME_TABLE, set_time),
-    catch ets:delete(?MOCK_TIME_TABLE, set_offset_minutes),
+    try
+        ets:delete(?MOCK_TIME_TABLE, set_time)
+    catch
+        _:_ -> ok
+    end,
+    try
+        ets:delete(?MOCK_TIME_TABLE, set_offset_minutes)
+    catch
+        _:_ -> ok
+    end,
     nil.
 
 sleep(Millseconds) ->
@@ -112,7 +128,11 @@ set_sleep_warp(DoWarp) ->
 
 reset_warp_time() ->
     init_mock_table(),
-    catch ets:delete(?MOCK_TIME_TABLE, warp_time),
+    try
+        ets:delete(?MOCK_TIME_TABLE, warp_time)
+    catch
+        _:_ -> ok
+    end,
     nil.
 
 add_warp_time(Microseconds) ->
