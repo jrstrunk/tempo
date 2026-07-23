@@ -148,6 +148,7 @@ pub fn from_string(
   }
 }
 
+@deprecated("This was experimental and not meant to be in the public API. The regular parse functions are just as fast now.")
 pub fn from_string_fast(datetime: String) {
   timestamp.parse_rfc3339(datetime)
   |> result.map(from_timestamp)
@@ -185,18 +186,18 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
   tempo.datetime_to_string(datetime)
 }
 
-/// Returns the date, time, and offset parts of a datetime as a tuple of 
+/// Returns the date, time, and offset parts of a datetime as a tuple of
 /// `gleam_time` types. This is useful for interop and accessing the underlying
 /// values of a datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// let #(
 ///   calendar.Date(year:, month:, day:),
 ///   calendar.TimeOfDay(hour:, minute:, second:, nanosecond:),
 ///   offset,
-/// ) = datetime.to_calendar_parts(my_datetime)    
+/// ) = datetime.to_calendar_parts(my_datetime)
 /// ```
 pub fn to_calendar_parts(
   datetime: tempo.DateTime,
