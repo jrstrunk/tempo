@@ -14,13 +14,12 @@
 ////   // -> "2024-06-21T13:42:11"
 //// }
 
-import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/time/duration
+import osler/parser
 import tempo
 import tempo/date
 import tempo/error as tempo_error
@@ -126,6 +125,54 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
 /// // -> Error(tempo.NaiveDateTimeInvalidFormat)
 /// ```
 pub fn from_string(
+  datetime: String,
+) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
+  case parser.parse(datetime, [parser.IsoNaiveDateTime, parser.EndOfInput]) {
+    Ok(parser.Parts(
+      year: Some(year),
+      month: Some(month),
+      day: Some(day),
+      hour:,
+      minute:,
+      second:,
+      nanosecond:,
+      ..,
+    )) ->
+      case
+        tempo.date_from_tuple(#(year, month, day)),
+        tempo.validate_time(
+          option.unwrap(hour, 0),
+          option.unwrap(minute, 0),
+          option.unwrap(second, 0),
+          option.unwrap(nanosecond, 0) / 1000,
+        )
+      {
+        Ok(date), Ok(time) -> Ok(tempo.naive_datetime(date, time))
+        _, _ -> Error(diagnose_naive_datetime_error(datetime))
+      }
+
+    _ -> Error(diagnose_naive_datetime_error(datetime))
+  }
+}
+
+/// Only ever called once `from_string` has already determined the input is
+/// invalid. This is the pre-`osler` `gleam/string`-splitting
+/// implementation, kept only to compute the exact granular
+/// `NaiveDateTimeParseError` -- it doesn't need to be fast, since errors
+/// are rare, so it just composes `date.from_string`/`time.from_string`
+/// rather than sharing any machinery with the hot path.
+fn diagnose_naive_datetime_error(
+  datetime: String,
+) -> tempo_error.NaiveDateTimeParseError {
+  case from_string_slow(datetime) {
+    Error(cause) -> cause
+    // Shouldn't happen -- from_string only reaches here after this has
+    // already failed once.
+    Ok(_) -> tempo_error.NaiveDateTimeInvalidFormat(datetime)
+  }
+}
+
+fn from_string_slow(
   datetime: String,
 ) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   let split_dt = case string.contains(datetime, "T") {
@@ -248,8 +295,8 @@ pub fn parse(
 ) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   let format_str = tempo.get_naive_datetime_format_str(format)
 
-  use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: format_str)
+  use parts <- result.try(
+    tempo.parse_with_format(str, in: format_str)
     |> result.map_error(tempo_error.NaiveDateTimeInvalidFormat),
   )
 
@@ -356,31 +403,10 @@ pub fn format(
   naive_datetime: tempo.NaiveDateTime,
   in format: tempo.NaiveDateTimeFormat,
 ) -> String {
-  let format_str = tempo.get_naive_datetime_format_str(format)
-
-  let assert Ok(re) = regexp.from_string(tempo.format_regex)
-
-  regexp.scan(re, format_str)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        content
-          |> tempo.date_replace_format(naive_datetime |> get_date)
-          |> tempo.time_replace_format(naive_datetime |> get_time),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape 
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it 
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
-    }
-  })
-  |> string.join("")
+  tempo.render_with_format(
+    tempo.naive_to_parts(get_date(naive_datetime), get_time(naive_datetime)),
+    tempo.get_naive_datetime_format_str(format),
+  )
 }
 
 /// Sets a naive datetime's offset to UTC, leaving the date and time unchanged

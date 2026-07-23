@@ -1,19 +1,19 @@
 //// Functions to use with the `Time` type in Tempo. The time values are wall
 //// time values unless explicitly stated otherwise.
-//// 
+////
 //// ## Examples
-//// 
+////
 //// ```gleam
 //// import tempo/time
-//// 
+////
 //// pub fn is_past_5pm() {
 ////   tempo.is_time_later(than: time.literal("17:00"))
 //// }
 //// ```
-//// 
+////
 //// ```gleam
 //// import tempo/time
-//// 
+////
 //// pub fn get_enthusiastic_time() {
 ////   time.literal("13:42")
 ////   |> time.format(tempo.CustomTime(
@@ -24,31 +24,30 @@
 //// ```
 
 import gleam/int
-import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/string_tree
 import gleam/time/calendar
 import gleam/time/duration
 import gtempo/internal as unit
+import osler/parser
 import tempo
 import tempo/date
 import tempo/duration as tempo_duration
 import tempo/error as tempo_error
 
 /// The first second of the day.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.start_of_day
 /// |> time.to_string
 /// // "00:00:00.000000"
 /// ```
-/// 
+///
 /// ```gleam
 /// tempo.DateTime(date.literal("2024-06-21"), time.start_of_day, offset.utc)
 /// |> datetime.to_string
@@ -57,15 +56,15 @@ import tempo/error as tempo_error
 pub const start_of_day = tempo.time_start_of_day
 
 /// The end of the last second of the day.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.end_of_day
 /// |> time.to_string
 /// // "24:00:00.000000"
 /// ```
-/// 
+///
 /// ```gleam
 /// tempo.DateTime(date.literal("2024-06-21"), time.end_of_day, offset.utc)
 /// |> datetime.to_string
@@ -74,14 +73,14 @@ pub const start_of_day = tempo.time_start_of_day
 pub const end_of_day = tempo.time_end_of_day
 
 /// Creates a new time value with second precision.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.new(13, 42, 11)
 /// // -> Ok(time.literal("13:42:11"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.new(53, 42, 61)
 /// // -> Error(tempo_error.TimeOutOfBounds)
@@ -95,19 +94,19 @@ pub fn new(
 }
 
 /// Creates a new time value with millisecond precision.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.new_milli(13, 42, 11, 20)
 /// // -> Ok(time.literal("13:42:11.020"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.new_milli(13, 42, 11, 200)
 /// // -> Ok(time.literal("13:42:11.200"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.new_milli(13, 42, 11, 7_500)
 /// // -> Error(tempo_error.TimeOutOfBounds)
@@ -122,19 +121,19 @@ pub fn new_milli(
 }
 
 /// Creates a new time value with microsecond precision.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.new_micro(13, 42, 11, 20)
 /// // -> Ok(time.literal("13:42:11.000020"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.new_micro(13, 42, 11, 200_000)
 /// // -> Ok(time.litteral("13:42:11.200000"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.new_micro(13, 42, 11, 7_500_000)
 /// |> result.map_error(time.describe_out_of_bounds_error)
@@ -150,9 +149,9 @@ pub fn new_micro(
 }
 
 /// Converts a time out of bounds error to a human readable error message.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.new(23, 59, 60)
 /// |> snag.map_error(with: time.describe_out_of_bounds_error)
@@ -164,17 +163,17 @@ pub fn describe_out_of_bounds_error(error: tempo_error.TimeOutOfBoundsError) {
 /// Creates a new time value from a string literal, but will panic if
 /// the string is invalid. Accepted formats are
 /// `hh:mm:ss.s`, `hhmmss.s`, `hh:mm:ss`, `hhmmss`, `hh:mm`, or `hhmm`.
-/// 
-/// Useful for declaring time literals that you know are valid within your 
+///
+/// Useful for declaring time literals that you know are valid within your
 /// program.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
-/// case 
-///   time.now_local() 
-///   |> time.is_later(than: time.literal("11:50:00")) 
-/// { 
+/// case
+///   time.now_local()
+///   |> time.is_later(than: time.literal("11:50:00"))
+/// {
 ///   True -> "We are late!"
 ///   False -> "No rush :)"
 /// }
@@ -197,8 +196,8 @@ pub fn literal(time: String) -> tempo.Time {
   }
 }
 
-/// Early on these were part of the public API and used in a lot of tests, 
-/// but since have been removed from the public API. The tests should be 
+/// Early on these were part of the public API and used in a lot of tests,
+/// but since have been removed from the public API. The tests should be
 /// updated and these functions removed.
 @internal
 pub fn test_literal(hour: Int, minute: Int, second: Int) -> tempo.Time {
@@ -230,9 +229,9 @@ pub fn test_literal_micro(
 }
 
 /// Gets the hour value of a time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.get_hour
@@ -243,9 +242,9 @@ pub fn get_hour(time: tempo.Time) -> Int {
 }
 
 /// Gets the minute value of a time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.get_minute
@@ -256,9 +255,9 @@ pub fn get_minute(time: tempo.Time) -> Int {
 }
 
 /// Gets the second value of a time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.get_second
@@ -269,9 +268,9 @@ pub fn get_second(time: tempo.Time) -> Int {
 }
 
 /// Gets the microsecond value of a time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11.123")
 /// |> time.get_microsecond
@@ -281,12 +280,12 @@ pub fn get_microsecond(time: tempo.Time) -> Int {
   time |> tempo.time_get_micro
 }
 
-/// Converts a time value to a string in the format `hh:mm:ss.s` with 
-/// millisecond precision. If a different precision is needed, use the `format` 
+/// Converts a time value to a string in the format `hh:mm:ss.s` with
+/// millisecond precision. If a different precision is needed, use the `format`
 /// function.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.to_string(my_time)
 /// // -> "21:53:03.534"
@@ -317,21 +316,55 @@ pub fn to_string(time: tempo.Time) -> String {
   |> string_tree.to_string
 }
 
-/// Converts a string to a time value. Accepted formats are `hh:mm:ss.s`, 
+/// Converts a string to a time value. Accepted formats are `hh:mm:ss.s`,
 /// `hhmmss.s`, `hh:mm:ss`, `hhmmss`, `hh:mm`, or `hhmm`.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.from_string("00:00:00.000300")
 /// // -> Ok(time.literal("00:00:00.000300"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.from_string("34:54:16")
 /// // -> Error(tempo_error.TimeOutOfBounds)
 /// ```
 pub fn from_string(
+  time_str: String,
+) -> Result(tempo.Time, tempo_error.TimeParseError) {
+  case parser.parse(time_str, [parser.IsoTime, parser.EndOfInput]) {
+    Ok(parser.Parts(
+      hour: Some(hour),
+      minute: Some(minute),
+      second: Some(second),
+      nanosecond: Some(nanosecond),
+      ..,
+    )) ->
+      case tempo.validate_time(hour, minute, second, nanosecond / 1000) {
+        Ok(t) -> Ok(t)
+        Error(_) -> Error(diagnose_time_error(time_str))
+      }
+
+    _ -> Error(diagnose_time_error(time_str))
+  }
+}
+
+/// Only ever called once `from_string` has already determined the input is
+/// invalid. This is the pre-`osler` `gleam/string`-splitting
+/// implementation, kept only to compute the exact granular
+/// `TimeParseError` -- it doesn't need to be fast, since errors are rare,
+/// so it doesn't share any machinery with the hot path at all.
+fn diagnose_time_error(time_str: String) -> tempo_error.TimeParseError {
+  case from_string_slow(time_str) {
+    Error(cause) -> cause
+    // Shouldn't happen -- from_string only reaches here after this has
+    // already failed once.
+    Ok(_) -> tempo_error.TimeInvalidFormat(time_str)
+  }
+}
+
+fn from_string_slow(
   time_str: String,
 ) -> Result(tempo.Time, tempo_error.TimeParseError) {
   use #(hour, minute, second): #(String, String, String) <- result.try(
@@ -409,27 +442,27 @@ pub fn from_string(
 
 /// Parses a time string in the provided format. Always prefer using
 /// this over `parse_any`. All parsed formats must have an hour and a second.
-/// 
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] HH".
-/// 
-/// Available directives: H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+///
+/// Available directives: H (hour), HH (two-digit hour), h (12-hour clock hour), hh
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
 /// A (AM/PM), a (am/pm),
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.parse("2024/06/08, 13:42:11", "YYYY/MM/DD")
 /// // -> Ok(time.literal("13:42:11"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.parse("January 13, 2024", "MMMM DD, YYYY")
 /// |> result.map_error(time.describe_parse_error)
 /// // -> Error("Invlid time format: January 13, 2024")
 /// ```
-/// 
+///
 /// ```gleam
 /// time.parse("Hi! 12 2 am", "[Hi!] h m a")
 /// // -> Ok(time.literal("00:02:00"))
@@ -440,25 +473,25 @@ pub fn parse(
 ) -> Result(tempo.Time, tempo_error.TimeParseError) {
   let format_str = tempo.get_time_format_str(format)
 
-  use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: format_str)
+  use parts <- result.try(
+    tempo.parse_with_format(str, in: format_str)
     |> result.map_error(tempo_error.TimeInvalidFormat),
   )
 
   tempo.find_time(in: parts)
 }
 
-/// Tries to parse a given date string without a known format. It will not 
-/// parse two digit years and will assume the month always comes before the 
+/// Tries to parse a given date string without a known format. It will not
+/// parse two digit years and will assume the month always comes before the
 /// day in a date. Will leave off any time offset values present.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.parse_any("2024.06.21 01:32 PM -04:00")
 /// // -> Ok(time.literal("13:32:00"))
 /// ```
-/// 
+///
 /// ```gleam
 /// time.parse_any("2024.06.21")
 /// // -> Error(tempo.ParseMissingTime)
@@ -474,9 +507,9 @@ pub fn parse_any(
 }
 
 /// Converts a time parse error to a human readable error message.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.parse("13 42 11", "HH:mm:ss")
 /// |> snag.map_error(with: time.describe_parse_error)
@@ -486,67 +519,48 @@ pub fn describe_parse_error(error: tempo_error.TimeParseError) {
 }
 
 /// Formats a time value using the provided format.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.format(tempo.ISO8601TimeMilli)
 /// // -> "13:42:11.000"
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11.314")
 /// |> time.format("h:mm A")
 /// // -> "1:42 PM"
 /// ```
-/// 
-/// ```gleam 
+///
+/// ```gleam
 /// time.literal("09:02:01.014920202")
 /// |> time.format("HH:mm:ss SSS SSSS SSSSS")
 /// // -> "09:02:01 014 014920 014920202"
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("13:02:01")
 /// |> naive_datetime.format("H HH h hh m mm s ss a A [An ant]")
 /// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(time: tempo.Time, in format: tempo.TimeFormat) -> String {
-  let format_str = tempo.get_time_format_str(format)
-
-  let assert Ok(re) = regexp.from_string(tempo.format_regex)
-
-  regexp.scan(re, format_str)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        tempo.time_replace_format(content, time),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape 
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it 
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
-    }
-  })
-  |> string.join("")
+  tempo.render_with_format(
+    tempo.time_to_format_parts(time),
+    tempo.get_time_format_str(format),
+  )
 }
 
 /// Gets the UTC time value of a unix timestamp.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.from_unix_seconds(1_718_829_395)
 /// // -> time.literal("20:36:35")
 /// ```
-/// 
+///
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
 /// Users should probably use the 'datetime' module's 'from_unix_seconds' function
@@ -560,14 +574,14 @@ pub fn from_unix_seconds(unix_ts: Int) -> tempo.Time {
 }
 
 /// Gets the UTC time value of a unix timestamp in milliseconds.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.from_unix_milli(1_718_829_586_791)
 /// // -> time.literal("20:39:46.791")
 /// ```
-/// 
+///
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
 /// Users should probably use the 'datetime' module's 'from_unix_seconds' function
@@ -580,14 +594,14 @@ pub fn from_unix_milli(unix_ts: Int) -> tempo.Time {
 }
 
 /// Gets the UTC time value of a unix timestamp in microseconds.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.from_unix_micro(1_718_829_586_791_832)
 /// // -> time.literal("20:39:46.791832")
 /// ```
-/// 
+///
 /// I am making this internal because it is created but I am not sure if it
 /// should be part of the public API. I think it is too easy to use incorrectly.
 /// Users should probably use the 'datetime' module's 'from_unix_seconds' function
@@ -597,11 +611,11 @@ pub fn from_unix_micro(unix_ts: Int) -> tempo.Time {
   tempo.time_from_unix_micro(unix_ts)
 }
 
-/// Returns a time value as a tuple of hours, minutes, and seconds. Useful 
+/// Returns a time value as a tuple of hours, minutes, and seconds. Useful
 /// for using with another time library.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.to_tuple
@@ -628,11 +642,11 @@ pub fn from_calendar_time_of_day(
   from_tuple_microsecond(#(hour, minute, second, nanosecond / 1000))
 }
 
-/// Converts a tuple of hours, minutes, and seconds to a time value. Useful 
+/// Converts a tuple of hours, minutes, and seconds to a time value. Useful
 /// for using with another time library.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// #(13, 42, 11)
 /// |> time.from_tuple
@@ -644,11 +658,11 @@ pub fn from_tuple(
   new(time.0, time.1, time.2)
 }
 
-/// Returns a time value as a tuple of hours, minutes, seconds, and microseconds. 
+/// Returns a time value as a tuple of hours, minutes, seconds, and microseconds.
 /// Useful for using with another time library.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11.872")
 /// |> time.to_tuple_microsecond
@@ -663,11 +677,11 @@ pub fn to_tuple_microsecond(time: tempo.Time) -> #(Int, Int, Int, Int) {
   )
 }
 
-/// Converts a tuple of hours, minutes, seconds, and microseconds to a time 
+/// Converts a tuple of hours, minutes, seconds, and microseconds to a time
 /// value. Useful for using with another time library.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// #(13, 42, 11, 872000)
 /// |> time.from_tuple_microsecond
@@ -680,9 +694,9 @@ pub fn from_tuple_microsecond(
 }
 
 /// Converts a time to duration, assuming the duration epoch is "00:00:00".
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("00:00:00.000300")
 /// |> time.to_duration
@@ -692,7 +706,7 @@ pub fn from_tuple_microsecond(
 ///
 /// ```gleam
 /// time.literal("00:03:06")
-/// |> time.to_duration 
+/// |> time.to_duration
 /// |> duration.as_milliseconds
 /// // -> 186_000
 /// ```
@@ -700,12 +714,12 @@ pub fn to_duration(time: tempo.Time) -> duration.Duration {
   tempo.time_to_duration(time)
 }
 
-/// Converts a duration to the equivalent time of day, assuming the 
-/// duration epoch is "00:00:00". Durations longer than 24 hours will be 
+/// Converts a duration to the equivalent time of day, assuming the
+/// duration epoch is "00:00:00". Durations longer than 24 hours will be
 /// wrapped to fit within a 24 hour representation.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// duration.seconds(58)
 /// |> time.from_duration
@@ -713,21 +727,21 @@ pub fn to_duration(time: tempo.Time) -> duration.Duration {
 /// |> time.to_string
 /// // -> "00:00:58"
 /// ```
-/// 
+///
 /// ```gleam
 /// duration.minutes(17)
 /// |> time.from_duration
 /// |> time.to_string
 /// // -> "00:17:00.000000000"
 /// ```
-/// 
+///
 /// ```gleam
 /// duration.hours(25)
 /// |> time.from_duration
 /// |> time.to_string
 /// // -> "01:00:00.000000000"
 /// ```
-/// 
+///
 /// ```gleam
 /// duration.microseconds(-3_000_000)
 /// |> time.from_duration
@@ -739,21 +753,21 @@ pub fn from_duration(duration: duration.Duration) -> tempo.Time {
 }
 
 /// Compares two time values.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.compare(to: time.literal("13:42:11"))
 /// // -> order.Eq
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("15:32:01")
 /// |> time.compare(to: time.literal("13:42:11"))
 /// // -> order.Gt
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("13:10:11")
 /// |> time.compare(to: time.literal("13:42:11"))
@@ -840,7 +854,7 @@ pub fn is_equal(a: tempo.Time, to b: tempo.Time) -> Bool {
 /// |> time.is_later(than: time.literal("07:42:11"))
 /// // -> True
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.is_later(than: time.literal("13:42:12"))
@@ -870,7 +884,7 @@ pub fn is_later(a: tempo.Time, than b: tempo.Time) -> Bool {
 /// |> time.is_later_or_equal(to: time.literal("13:42:00.000"))
 /// // -> True
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.is_later_or_equal(to: time.literal("13:42:12"))
@@ -885,13 +899,13 @@ pub type Boundary {
 }
 
 /// Checks if a time is between two boundaries.
-/// 
+///
 /// ## Example
 ///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.is_between(
-///     Boundary(time.literal("05:00:00"), inclusive: True), 
+///     Boundary(time.literal("05:00:00"), inclusive: True),
 ///     and: Boundary(time.literal("15:00:00"), inclusive: False),
 ///   )
 /// // -> True
@@ -912,13 +926,13 @@ pub fn is_between(
 }
 
 /// Checks if a time is outside of two boundaries.
-/// 
+///
 /// ## Example
 ///
 /// ```gleam
 /// time.literal("13:42:11")
 /// |> time.is_outside(
-///     time.Boundary(time.literal("05:00:00"), inclusive: True), 
+///     time.Boundary(time.literal("05:00:00"), inclusive: True),
 ///     and: time.Boundary(time.literal("15:00:00"), inclusive: False),
 ///   )
 /// // -> False
@@ -939,18 +953,18 @@ pub fn is_outside(
 }
 
 /// Gets the difference between two times as a duration. Always prefer using
-/// `duration.start_monotonic` and `duration.stop_monotonic` to record live 
+/// `duration.start_monotonic` and `duration.stop_monotonic` to record live
 /// time passing, as it is more precise.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("23:42:11.435")
 /// |> time.difference(from: time.literal("23:42:09.743"))
 /// |> duration.as_milliseconds
 /// // -> 1692
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("13:30:11")
 /// |> time.difference(from: time.literal("13:55:13"))
@@ -986,9 +1000,9 @@ pub fn difference_abs(a: tempo.Time, from b: tempo.Time) -> duration.Duration {
 }
 
 /// Adds a duration to a time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("08:42:53")
 /// |> time.add(duration.mintues(36))
@@ -999,9 +1013,9 @@ pub fn add(a: tempo.Time, duration b: duration.Duration) -> tempo.Time {
 }
 
 /// Subtracts a duration from a time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("13:42:02")
 /// |> time.subtract(duration.hours(2))
@@ -1029,18 +1043,18 @@ pub fn left_in_day(time: tempo.Time) -> tempo.Time {
   |> tempo.time_from_microseconds
 }
 
-/// Returns a duration representing the time left from the first time 
-/// until a given time. 
-/// 
+/// Returns a duration representing the time left from the first time
+/// until a given time.
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("23:54:00")
 /// |> time.until(time.literal("23:59:04"))
 /// |> duration.as_seconds
 /// // -> 304
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("23:59:03")
 /// |> time.until(time.literal("22:00:00"))
@@ -1056,18 +1070,18 @@ pub fn until(time: tempo.Time, until: tempo.Time) -> duration.Duration {
   }
 }
 
-/// Returns a duration representing the time since the first time to the 
+/// Returns a duration representing the time since the first time to the
 /// given time.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// time.literal("23:54:00")
 /// |> time.since(time.literal("13:30:04"))
 /// |> duration.as_hours
 /// // -> 10
 /// ```
-/// 
+///
 /// ```gleam
 /// time.literal("12:30:54")
 /// |> time.since(time.literal("22:00:00"))

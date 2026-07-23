@@ -101,6 +101,53 @@ pub fn from_time_out_of_bounds_string_test() {
   )
 }
 
+pub fn from_string_lowercase_t_delim_test() {
+  datetime.from_string("2024-06-13t13:42:11-04:00")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11-04:00"))
+}
+
+pub fn from_string_underscore_delim_test() {
+  datetime.from_string("2024-06-13_13:42:11-04:00")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11-04:00"))
+}
+
+pub fn from_string_dot_delim_date_test() {
+  datetime.from_string("2024.06.13T13:42:11Z")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11Z"))
+}
+
+pub fn from_string_mixed_condensed_date_colon_time_test() {
+  datetime.from_string("20240613T13:42:11Z")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11Z"))
+}
+
+pub fn from_string_single_digit_positive_offset_test() {
+  datetime.from_string("2024-06-13T13:42:11+4")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11+04:00"))
+}
+
+pub fn from_string_empty_test() {
+  datetime.from_string("")
+  |> should.equal(Error(tempo_error.DateTimeInvalidFormat("")))
+}
+
+pub fn from_string_garbage_test() {
+  datetime.from_string("garbage")
+  |> should.equal(Error(tempo_error.DateTimeInvalidFormat("garbage")))
+}
+
+pub fn from_string_space_before_offset_rejected_test() {
+  // A space is accepted between date and time, but not between time and
+  // offset.
+  datetime.from_string("2024-06-13T13:42:11 -04:00")
+  |> should.be_error
+}
+
 pub fn parse_isoish_test() {
   datetime.parse(
     "2024/06/08, 13:42:11, -04:00",
@@ -726,7 +773,9 @@ pub fn datetime_format_custom_round_trip_test() {
 pub fn datetime_parse_http_malformed_test() {
   datetime.parse("Thu, 26 Dec 2024 17:32:01 -02:00", in: tempo.HTTP)
   |> should.equal(
-    Error(tempo_error.DateTimeInvalidFormat("Unable to parse directive GMT")),
+    Error(tempo_error.DateTimeInvalidFormat(
+      "Input does not match format \"ddd, DD MMM YYYY HH:mm:ss GMT\"",
+    )),
   )
 }
 
@@ -737,7 +786,7 @@ pub fn datetime_parse_custom_malformed_test() {
   )
   |> should.equal(
     Error(tempo_error.DateTimeInvalidFormat(
-      "Input does not match expected escape sequence \"UTC\"",
+      "Input does not match format \"YYYY-MM-DDTHH:mm:ssZ[UTC]\"",
     )),
   )
 }

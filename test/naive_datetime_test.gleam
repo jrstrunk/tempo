@@ -35,6 +35,17 @@ pub fn from_bad_string_test() {
   |> should.be_error
 }
 
+pub fn from_string_dot_delim_date_test() {
+  naive_datetime.from_string("2024.06.13T13:42:11")
+  |> should.be_ok
+  |> should.equal(naive_datetime.literal("2024-06-13T13:42:11"))
+}
+
+pub fn from_string_empty_test() {
+  naive_datetime.from_string("")
+  |> should.be_error
+}
+
 pub fn to_string_test() {
   naive_datetime.literal("2024-06-13T13:42:11")
   |> naive_datetime.to_string

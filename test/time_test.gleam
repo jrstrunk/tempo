@@ -201,9 +201,13 @@ pub fn from_string_micro_test() {
 }
 
 pub fn from_string_nano_test() {
+  // osler parses to full nanosecond precision (like gleam_time itself
+  // does); gtempo then truncates to its own microsecond precision when
+  // building a `Time`, so a fraction finer than a microsecond rounds down.
   "15:18:50.0000003"
   |> time.from_string
-  |> should.be_error
+  |> should.be_ok
+  |> should.equal(time.literal("15:18:50"))
 }
 
 pub fn from_condensed_string_test() {
@@ -229,11 +233,31 @@ pub fn from_string_invalid_test() {
   |> time.from_string
   |> should.be_error
 
+  // 10 fraction digits is one past nanosecond precision; the 10th is
+  // truncated rather than rejected (same as gleam_time's own parser).
   "15:18:50.0000000000"
   |> time.from_string
-  |> should.be_error
+  |> should.be_ok
 
   "50:18:50.000000000"
+  |> time.from_string
+  |> should.be_error
+}
+
+pub fn from_string_end_of_day_test() {
+  "24:00:00"
+  |> time.from_string
+  |> should.equal(Ok(tempo.time_end_of_day))
+}
+
+pub fn from_string_minute_out_of_bounds_test() {
+  "23:60:00"
+  |> time.from_string
+  |> should.be_error
+}
+
+pub fn from_string_empty_test() {
+  ""
   |> time.from_string
   |> should.be_error
 }

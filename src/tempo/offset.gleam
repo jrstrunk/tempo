@@ -13,7 +13,9 @@
 //// }
 //// ```
 
+import gleam/option
 import gleam/time/duration
+import osler/parser
 import tempo
 import tempo/error as tempo_error
 
@@ -92,7 +94,30 @@ pub fn to_string(offset: tempo.Offset) -> String {
 pub fn from_string(
   offset: String,
 ) -> Result(tempo.Offset, tempo_error.OffsetParseError) {
-  tempo.offset_from_string(offset)
+  case parser.parse(offset, [parser.IsoOffset, parser.EndOfInput]) {
+    Ok(parser.Parts(offset_minutes: option.Some(minutes), ..)) ->
+      case tempo.offset(minutes) |> tempo.validate_offset {
+        Ok(o) -> Ok(o)
+        Error(Nil) -> Error(diagnose_offset_error(offset))
+      }
+
+    _ -> Error(diagnose_offset_error(offset))
+  }
+}
+
+/// Only ever called once `from_string` has already determined the input is
+/// invalid (structurally, or `osler`'s parsed offset is out of tempo's
+/// -12:00..+14:00 policy range). `tempo.offset_from_string` is the original
+/// pre-`osler` `gleam/string`-based implementation, kept only to compute
+/// the exact granular `OffsetParseError` -- it doesn't need to be fast,
+/// since errors are rare.
+fn diagnose_offset_error(offset: String) -> tempo_error.OffsetParseError {
+  case tempo.offset_from_string(offset) {
+    // Shouldn't happen -- from_string only reaches here after this has
+    // already failed once.
+    Ok(_) -> tempo_error.OffsetInvalidFormat(offset)
+    Error(cause) -> cause
+  }
 }
 
 /// Creates a new validated offset from a duration. Offsets are most commonly

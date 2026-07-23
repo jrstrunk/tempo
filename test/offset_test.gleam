@@ -134,6 +134,35 @@ pub fn from_hour_posative_string_test() {
   |> should.equal(Ok(offset.literal("+11:00")))
 }
 
+pub fn from_string_hour_out_of_bounds_test() {
+  offset.from_string("+24:00")
+  |> should.be_error
+
+  offset.from_string("-24:00")
+  |> should.be_error
+
+  offset.from_string("+24:01")
+  |> should.be_error
+}
+
+pub fn from_string_minute_sixty_quirk_test() {
+  // Notable existing quirk: the bounds check allows a 60-minute component
+  // (minute <= 60 rather than < 60), so this parses instead of erroring.
+  offset.from_string("+00:60")
+  |> should.equal(Ok(tempo.offset(60)))
+
+  offset.from_string("+00:61")
+  |> should.be_error
+}
+
+pub fn from_string_empty_test() {
+  offset.from_string("")
+  |> should.be_error
+
+  offset.from_string("+")
+  |> should.be_error
+}
+
 pub fn to_duration_test() {
   tempo.offset_to_duration(tempo.offset(0))
   |> should.equal(tempo.duration_microseconds(0))

@@ -39,10 +39,10 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/time/calendar
+import osler/parser
 import tempo
 import tempo/error as tempo_error
 import tempo/month
@@ -223,7 +223,25 @@ pub fn get_month_year(date: tempo.Date) -> tempo.MonthYear {
 pub fn from_string(
   date: String,
 ) -> Result(tempo.Date, tempo_error.DateParseError) {
-  use parts <- result.try({
+  case parser.parse(date, [parser.IsoDate, parser.EndOfInput]) {
+    Ok(parser.Parts(year: Some(year), month: Some(month), day: Some(day), ..)) ->
+      case tempo.date_from_tuple(#(year, month, day)) {
+        Ok(parsed) -> Ok(parsed)
+        Error(_) -> Error(diagnose_date_error(date))
+      }
+
+    _ -> Error(diagnose_date_error(date))
+  }
+}
+
+/// Only ever called once `from_string` has already determined the input is
+/// invalid (structurally, or `osler` deemed it out of calendar range, or
+/// gtempo's own year-range policy rejected it). This is the pre-`osler`
+/// `gleam/string`-splitting implementation, kept only to compute the exact
+/// granular `DateParseError` -- it doesn't need to be fast, since errors
+/// are rare, so it doesn't share any machinery with the hot path at all.
+fn diagnose_date_error(date: String) -> tempo_error.DateParseError {
+  case
     split_int_tuple(date, "-")
     |> result.try_recover(fn(_) { split_int_tuple(date, on: "/") })
     |> result.try_recover(fn(_) { split_int_tuple(date, on: ".") })
@@ -239,10 +257,17 @@ pub fn from_string(
         _, _, _ -> Error(tempo_error.DateInvalidFormat(date))
       }
     })
-  })
+  {
+    Error(cause) -> cause
 
-  from_tuple(parts)
-  |> result.map_error(tempo_error.DateOutOfBounds(date, _))
+    Ok(parts) ->
+      case tempo.date_from_tuple(parts) {
+        // Shouldn't happen -- from_string only reaches here after this has
+        // already failed once.
+        Ok(_) -> tempo_error.DateInvalidFormat(date)
+        Error(cause) -> tempo_error.DateOutOfBounds(date, cause)
+      }
+  }
 }
 
 fn split_int_tuple(
@@ -305,8 +330,8 @@ pub fn parse(
 ) -> Result(tempo.Date, tempo_error.DateParseError) {
   let format_str = tempo.get_date_format_str(format)
 
-  use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: format_str)
+  use parts <- result.try(
+    tempo.parse_with_format(str, in: format_str)
     |> result.map_error(tempo_error.DateInvalidFormat),
   )
 
@@ -385,29 +410,10 @@ pub fn describe_parse_error(error: tempo_error.DateParseError) -> String {
 /// // -------------------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(date: tempo.Date, in format: tempo.DateFormat) -> String {
-  let format_str = tempo.get_date_format_str(format)
-
-  let assert Ok(re) = regexp.from_string(tempo.format_regex)
-
-  regexp.scan(re, format_str)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        tempo.date_replace_format(content, date),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
-    }
-  })
-  |> string.join("")
+  tempo.render_with_format(
+    tempo.date_to_parts(date),
+    tempo.get_date_format_str(format),
+  )
 }
 
 /// Returns a date value from a tuple of ints if the values represent the

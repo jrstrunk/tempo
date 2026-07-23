@@ -5,6 +5,8 @@ import gleam/string
 import gleeunit/should
 import tempo
 import tempo/date
+import tempo/datetime
+import tempo/mock
 
 pub fn date_current_test() {
   date.current_utc()
@@ -109,6 +111,38 @@ pub fn from_string_bad_date_test() {
   |> should.be_error
 }
 
+pub fn from_string_leap_day_non_leap_year_test() {
+  date.from_string("2023.2.29")
+  |> should.be_error
+}
+
+pub fn from_string_leap_day_leap_year_test() {
+  date.from_string("2000-02-29")
+  |> should.be_ok
+  |> should.equal(date.literal("2000-02-29"))
+}
+
+pub fn from_string_year_lower_bound_test() {
+  date.from_string("1000-01-01")
+  |> should.be_ok
+
+  date.from_string("0999-01-01")
+  |> should.be_error
+}
+
+pub fn from_string_year_upper_bound_test() {
+  date.from_string("9999-12-31")
+  |> should.be_ok
+
+  date.from_string("10000-01-01")
+  |> should.be_error
+}
+
+pub fn from_string_empty_test() {
+  date.from_string("")
+  |> should.be_error
+}
+
 pub fn to_string_test() {
   date.literal("2024-10-13")
   |> date.to_string
@@ -123,6 +157,20 @@ pub fn format_test() {
   date.literal("2024-06-13")
   |> date.format(tempo.CustomDate("MMMM 'YY"))
   |> should.equal("June '24")
+}
+
+pub fn parse_two_digit_year_test() {
+  // `YY` parsing pivots the century against the current year, so freeze it.
+  mock.freeze_time(datetime.literal("2026-01-01T00:00:00Z"))
+
+  let in_bounds = date.parse("24-06-13", tempo.CustomDate("YY-MM-DD"))
+  // > current two-digit year (26) -> previous century
+  let prev_century = date.parse("30-06-13", tempo.CustomDate("YY-MM-DD"))
+
+  mock.unfreeze_time()
+
+  should.equal(in_bounds, Ok(date.literal("2024-06-13")))
+  should.equal(prev_century, Ok(date.literal("1930-06-13")))
 }
 
 pub fn to_tuple_test() {

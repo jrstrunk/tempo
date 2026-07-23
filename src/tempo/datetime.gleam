@@ -42,6 +42,7 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
+import osler/parser
 import tempo
 import tempo/date
 import tempo/error as tempo_error
@@ -105,6 +106,21 @@ pub fn literal(datetime: String) -> tempo.DateTime {
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`,
 /// `YYYY MM DD`, `YYYY M D`, or `YYYYMMDD`.
 ///
+/// Parses via `osler/parser`'s raw-int `parse_datetime`, then validates
+/// and constructs gtempo's own `Date`/`Time`/`Offset` directly -- this
+/// never touches `gleam_time`'s `Timestamp` at all (unlike
+/// `osler.parse_datetime`, which collapses into an absolute instant, and
+/// as a result can't distinguish ISO 8601's two special time values,
+/// `24:00:00` end-of-day and `23:59:60` leap second, from the equivalent
+/// ordinary instant the next day). Going through raw ints and gtempo's own
+/// validators instead sidesteps that entirely, and is also what keeps this
+/// as fast on the JavaScript target as `osler/parser`'s bare parsing itself
+/// -- routing through `osler`'s `gleam_time`-calendar-type validation
+/// (`calendar.Date`/`calendar.TimeOfDay` construction plus their own
+/// validation, only to immediately convert back out to gtempo's types)
+/// would cost measurably more there for no benefit, since gtempo always
+/// had its own complete validation logic to begin with.
+///
 /// ## Examples
 ///
 /// ```gleam
@@ -112,6 +128,65 @@ pub fn literal(datetime: String) -> tempo.DateTime {
 /// // -> datetime.literal("2024-06-13T23:04:00.009Z")
 /// ```
 pub fn from_string(
+  datetime: String,
+) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
+  case
+    parser.parse(datetime, [
+      parser.IsoDate,
+      parser.DateTimeSeparator,
+      parser.IsoTime,
+      parser.IsoOffset,
+      parser.EndOfInput,
+    ])
+  {
+    Ok(parser.Parts(
+      year: Some(year),
+      month: Some(month),
+      day: Some(day),
+      hour: Some(hour),
+      minute: Some(minute),
+      second: Some(second),
+      nanosecond: Some(nanosecond),
+      offset_minutes: Some(offset_minutes),
+      ..,
+    )) ->
+      case
+        tempo.date_from_tuple(#(year, month, day)),
+        tempo.validate_time(hour, minute, second, nanosecond / 1000),
+        tempo.offset(offset_minutes) |> tempo.validate_offset
+      {
+        Ok(date), Ok(time), Ok(offset) -> Ok(new(date, time, offset))
+        _, _, _ -> Error(diagnose_datetime_error(datetime))
+      }
+
+    _ -> Error(diagnose_datetime_error(datetime))
+  }
+}
+
+pub fn from_string_fast(datetime: String) {
+  timestamp.parse_rfc3339(datetime)
+  |> result.map(from_timestamp)
+  |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime))
+}
+
+/// Only ever called once `from_string` has already determined the input is
+/// invalid (structurally, `osler` deemed a field out of calendar range, or
+/// gtempo's own year-range/offset-range policy rejected it). This is the
+/// pre-`osler` `gleam/string`-splitting implementation, kept only to
+/// compute the exact granular `DateTimeParseError` -- it doesn't need to
+/// be fast, since errors are rare, so it just composes
+/// `date.from_string`/`time.from_string`/`offset.from_string` rather than
+/// sharing any machinery with the hot path.
+fn diagnose_datetime_error(datetime: String) -> tempo_error.DateTimeParseError {
+  case from_string_slow(datetime) {
+    Error(cause) -> cause
+    // Shouldn't happen -- from_string only reaches here after this has
+    // already failed once.
+    Ok(_) -> tempo_error.DateTimeInvalidFormat(datetime)
+  }
+}
+
+fn from_string_slow(
   datetime: String,
 ) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   let split_dt =
@@ -148,12 +223,6 @@ pub fn from_string(
   }
 }
 
-pub fn from_string_fast(datetime: String) {
-  timestamp.parse_rfc3339(datetime)
-  |> result.map(from_timestamp)
-  |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime))
-}
-
 fn split_time_and_offset(time_with_offset: String) {
   case string.slice(time_with_offset, at_index: -1, length: 1) {
     "Z" -> #(string.drop_end(time_with_offset, 1), "Z") |> Ok
@@ -185,18 +254,18 @@ pub fn to_string(datetime: tempo.DateTime) -> String {
   tempo.datetime_to_string(datetime)
 }
 
-/// Returns the date, time, and offset parts of a datetime as a tuple of 
+/// Returns the date, time, and offset parts of a datetime as a tuple of
 /// `gleam_time` types. This is useful for interop and accessing the underlying
 /// values of a datetime.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// let #(
 ///   calendar.Date(year:, month:, day:),
 ///   calendar.TimeOfDay(hour:, minute:, second:, nanosecond:),
 ///   offset,
-/// ) = datetime.to_calendar_parts(my_datetime)    
+/// ) = datetime.to_calendar_parts(my_datetime)
 /// ```
 pub fn to_calendar_parts(
   datetime: tempo.DateTime,
@@ -247,8 +316,8 @@ pub fn parse(
 ) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   let format_str = tempo.get_datetime_format_str(format)
 
-  use #(parts, _) <- result.try(
-    tempo.consume_format(str, in: format_str)
+  use parts <- result.try(
+    tempo.parse_with_format(str, in: format_str)
     |> result.map_error(tempo_error.DateTimeInvalidFormat),
   )
 
