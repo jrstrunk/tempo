@@ -14,13 +14,14 @@
 ////   // -> "2024-06-21T13:42:11"
 //// }
 
+import gleam/bit_array
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/time/duration
+import gtempo/internal
 import tempo
 import tempo/date
 import tempo/error as tempo_error
@@ -128,43 +129,70 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
 pub fn from_string(
   datetime: String,
 ) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
-  let split_dt = case string.contains(datetime, "T") {
-    True -> string.split(datetime, "T")
-    False -> string.split(datetime, " ")
+  let input = bit_array.from_string(datetime)
+
+  let date_error = fn(error) {
+    tempo_error.NaiveDateTimeDateParseError(
+      "Unable to parse date in input: " <> datetime,
+      error,
+    )
   }
 
-  case split_dt {
-    [date, time] -> {
-      use date: tempo.Date <- result.try(
-        date.from_string(date)
-        |> result.map_error(tempo_error.NaiveDateTimeDateParseError(
-          "Unable to parse date in input: " <> datetime,
-          _,
-        )),
+  // The date is taken off the front of the input, so the delimiter between it
+  // and the time is whatever is left over once the date has been read.
+  use #(date_parts, after_date) <- result.try(
+    internal.take_date_parts(input)
+    |> result.map_error(fn(_) {
+      date_error(tempo_error.DateInvalidFormat(datetime))
+    }),
+  )
+
+  use date: tempo.Date <- result.try(
+    date.from_tuple(date_parts)
+    |> result.map_error(fn(error) {
+      date_error(tempo_error.DateOutOfBounds(
+        internal.taken_string(from: input, to: after_date),
+        error,
+      ))
+    }),
+  )
+
+  case after_date {
+    // A date on its own is the start of that day.
+    <<>> -> Ok(tempo.naive_datetime(date, tempo.time_start_of_day))
+    _ -> {
+      use before_time <- result.try(
+        internal.accept_datetime_delimiter(after_date)
+        |> result.map_error(fn(_) {
+          tempo_error.NaiveDateTimeInvalidFormat(
+            "Unable to determine date and time delimiter in input: " <> datetime,
+          )
+        }),
       )
+
       use time: tempo.Time <- result.map(
-        time.from_string(time)
+        parse_time(before_time)
         |> result.map_error(tempo_error.NaiveDateTimeTimeParseError(
           "Unable to parse time in input: " <> datetime,
           _,
         )),
       )
+
       tempo.naive_datetime(date, time)
     }
-    [date] -> {
-      use date: tempo.Date <- result.map(
-        date.from_string(date)
-        |> result.map_error(tempo_error.NaiveDateTimeDateParseError(
-          "Unable to parse date in input: " <> datetime,
-          _,
-        )),
-      )
-      tempo.naive_datetime(date, tempo.time_start_of_day)
-    }
-    _ ->
-      Error(tempo_error.NaiveDateTimeInvalidFormat(
-        "Unable to determine date and time delimiter in input: " <> datetime,
-      ))
+  }
+}
+
+fn parse_time(
+  input: BitArray,
+) -> Result(tempo.Time, tempo_error.TimeParseError) {
+  case internal.take_time_parts(input) {
+    Ok(#(#(hour, minute, second, microsecond), <<>>)) ->
+      tempo.validate_time(hour, minute, second, microsecond)
+      |> result.map_error(fn(error) {
+        tempo_error.TimeOutOfBounds(internal.remaining_string(input), error)
+      })
+    _ -> Error(tempo_error.TimeInvalidFormat(internal.remaining_string(input)))
   }
 }
 
@@ -248,7 +276,7 @@ pub fn parse(
 ) -> Result(tempo.NaiveDateTime, tempo_error.NaiveDateTimeParseError) {
   let format_str = tempo.get_naive_datetime_format_str(format)
 
-  use #(parts, _) <- result.try(
+  use parts <- result.try(
     tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.NaiveDateTimeInvalidFormat),
   )
@@ -356,31 +384,22 @@ pub fn format(
   naive_datetime: tempo.NaiveDateTime,
   in format: tempo.NaiveDateTimeFormat,
 ) -> String {
-  let format_str = tempo.get_naive_datetime_format_str(format)
+  let date = get_date(naive_datetime)
+  let time = get_time(naive_datetime)
 
-  let assert Ok(re) = regexp.from_string(tempo.format_regex)
+  tempo.get_naive_datetime_format_str(format)
+  |> tempo.tokenise_format
+  |> list.map(fn(token) {
+    case token {
+      tempo.Directive(directive) ->
+        directive
+        |> tempo.date_replace_format(date)
+        |> tempo.time_replace_format(time)
 
-  regexp.scan(re, format_str)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        content
-          |> tempo.date_replace_format(naive_datetime |> get_date)
-          |> tempo.time_replace_format(naive_datetime |> get_time),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape 
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it 
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
+      tempo.Escaped(literal) -> literal
     }
   })
-  |> string.join("")
+  |> string.concat
 }
 
 /// Sets a naive datetime's offset to UTC, leaving the date and time unchanged

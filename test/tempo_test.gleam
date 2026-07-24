@@ -190,3 +190,17 @@ pub fn format_utc_iso8601micros_test() {
   |> list.take(1)
   |> should.equal(["Z"])
 }
+
+pub fn negative_offset_with_minutes_test() {
+  tempo.parse_any("2024-06-21T10:00:00-04:30")
+  |> should.equal(#(
+    Some(date.literal("2024-06-21")),
+    Some(time.literal("10:00:00")),
+    Some(offset.literal("-04:30")),
+  ))
+}
+
+pub fn z_inside_word_test() {
+  tempo.parse_any("2024-06-21 zulu")
+  |> should.equal(#(Some(date.literal("2024-06-21")), None, None))
+}

@@ -33,15 +33,16 @@
 //// }
 //// ```
 
+import gleam/bit_array
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import gleam/string
 import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
+import gtempo/internal
 import tempo
 import tempo/date
 import tempo/error as tempo_error
@@ -114,37 +115,79 @@ pub fn literal(datetime: String) -> tempo.DateTime {
 pub fn from_string(
   datetime: String,
 ) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
-  let split_dt =
-    string.split_once(datetime, "T")
-    |> result.try_recover(fn(_) { string.split_once(datetime, "t") })
-    |> result.try_recover(fn(_) { string.split_once(datetime, "_") })
-    |> result.try_recover(fn(_) { string.split_once(datetime, " ") })
+  let input = bit_array.from_string(datetime)
 
-  case split_dt {
-    Ok(#(date, time)) -> {
-      use date: tempo.Date <- result.try(
-        date.from_string(date)
-        |> result.map_error(tempo_error.DateTimeDateParseError(datetime, _)),
+  // The date, the time, and the offset are taken off the front of the input one
+  // after the other, so the delimiter between the date and the time is whatever
+  // is left over once the date has been read.
+  use #(date_parts, after_date) <- result.try(
+    internal.take_date_parts(input)
+    |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime)),
+  )
+
+  use before_time <- result.try(
+    internal.accept_datetime_delimiter(after_date)
+    |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime)),
+  )
+
+  use #(time_parts, after_time) <- result.try(
+    internal.take_time_parts(before_time)
+    |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime)),
+  )
+
+  use date: tempo.Date <- result.try(
+    date.from_tuple(date_parts)
+    |> result.map_error(fn(error) {
+      tempo_error.DateTimeDateParseError(
+        datetime,
+        tempo_error.DateOutOfBounds(
+          internal.taken_string(from: input, to: after_date),
+          error,
+        ),
       )
+    }),
+  )
 
-      use #(time, offset): #(String, String) <- result.try(
-        split_time_and_offset(time)
-        |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime)),
+  let #(hour, minute, second, microsecond) = time_parts
+
+  use time: tempo.Time <- result.try(
+    tempo.validate_time(hour, minute, second, microsecond)
+    |> result.map_error(fn(error) {
+      tempo_error.DateTimeTimeParseError(
+        datetime,
+        tempo_error.TimeOutOfBounds(
+          internal.taken_string(from: before_time, to: after_time),
+          error,
+        ),
       )
+    }),
+  )
 
-      use time: tempo.Time <- result.try(
-        time.from_string(time)
-        |> result.map_error(tempo_error.DateTimeTimeParseError(datetime, _)),
+  use offset: tempo.Offset <- result.map(
+    parse_offset(after_time)
+    |> result.map_error(fn(error) {
+      case after_time {
+        // A datetime without an offset is a naive datetime, not a bad offset.
+        <<>> -> tempo_error.DateTimeInvalidFormat(datetime)
+        _ -> tempo_error.DateTimeOffsetParseError(datetime, error)
+      }
+    }),
+  )
+
+  new(date, time, offset)
+}
+
+fn parse_offset(
+  input: BitArray,
+) -> Result(tempo.Offset, tempo_error.OffsetParseError) {
+  case internal.take_offset_minutes(input) {
+    Ok(#(minutes, <<>>)) ->
+      tempo.validate_offset(tempo.offset(minutes))
+      |> result.replace_error(
+        tempo_error.OffsetOutOfBounds(internal.remaining_string(input)),
       )
-      use offset: tempo.Offset <- result.map(
-        offset.from_string(offset)
-        |> result.map_error(tempo_error.DateTimeOffsetParseError(datetime, _)),
-      )
-
-      new(date, time, offset)
-    }
-
-    _ -> Error(tempo_error.DateTimeInvalidFormat(datetime))
+    _ ->
+      Error(tempo_error.OffsetInvalidFormat(internal.remaining_string(input)))
   }
 }
 
@@ -153,22 +196,6 @@ pub fn from_string_fast(datetime: String) {
   timestamp.parse_rfc3339(datetime)
   |> result.map(from_timestamp)
   |> result.replace_error(tempo_error.DateTimeInvalidFormat(datetime))
-}
-
-fn split_time_and_offset(time_with_offset: String) {
-  case string.slice(time_with_offset, at_index: -1, length: 1) {
-    "Z" -> #(string.drop_end(time_with_offset, 1), "Z") |> Ok
-    "z" -> #(string.drop_end(time_with_offset, 1), "Z") |> Ok
-    _ ->
-      case string.split_once(time_with_offset, "-") {
-        Ok(#(time, offset)) -> #(time, "-" <> offset) |> Ok
-        _ ->
-          case string.split_once(time_with_offset, "+") {
-            Ok(#(time, offset)) -> #(time, "+" <> offset) |> Ok
-            _ -> Error(Nil)
-          }
-      }
-  }
 }
 
 /// Returns a string representation of a datetime value in the ISO 8601
@@ -248,7 +275,7 @@ pub fn parse(
 ) -> Result(tempo.DateTime, tempo_error.DateTimeParseError) {
   let format_str = tempo.get_datetime_format_str(format)
 
-  use #(parts, _) <- result.try(
+  use parts <- result.try(
     tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.DateTimeInvalidFormat),
   )

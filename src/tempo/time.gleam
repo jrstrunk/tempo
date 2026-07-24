@@ -23,17 +23,17 @@
 //// }
 //// ```
 
+import gleam/bit_array
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/string_tree
 import gleam/time/calendar
 import gleam/time/duration
-import gtempo/internal as unit
+import gtempo/internal
 import tempo
 import tempo/date
 import tempo/duration as tempo_duration
@@ -334,77 +334,20 @@ pub fn to_string(time: tempo.Time) -> String {
 pub fn from_string(
   time_str: String,
 ) -> Result(tempo.Time, tempo_error.TimeParseError) {
-  use #(hour, minute, second): #(String, String, String) <- result.try(
-    // Parse hh:mm:ss.s or hh:mm format
-    case string.split(time_str, ":") {
-      [hour, minute, second] -> Ok(#(hour, minute, second))
-      [hour, minute] -> Ok(#(hour, minute, "0"))
-      _ -> Error(Nil)
-    }
-    // Parse hhmmss.s or hhmm format
-    |> result.try_recover(fn(_) {
-      case string.length(time_str), string.contains(time_str, ".") {
-        6, False ->
-          Ok(#(
-            string.slice(time_str, at_index: 0, length: 2),
-            string.slice(time_str, at_index: 2, length: 2),
-            string.slice(time_str, at_index: 4, length: 2),
-          ))
-        4, False ->
-          Ok(#(
-            string.slice(time_str, at_index: 0, length: 2),
-            string.slice(time_str, at_index: 2, length: 2),
-            "0",
-          ))
-        l, True if l >= 7 ->
-          Ok(#(
-            string.slice(time_str, at_index: 0, length: 2),
-            string.slice(time_str, at_index: 2, length: 2),
-            string.slice(time_str, at_index: 4, length: 12),
-          ))
-        _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-      }
-    }),
+  use #(hour, minute, second, microsecond) <- result.try(
+    parse_time_parts(bit_array.from_string(time_str))
+    |> result.replace_error(tempo_error.TimeInvalidFormat(time_str)),
   )
 
-  use time <- result.try(
-    case int.parse(hour), int.parse(minute), string.split(second, ".") {
-      Ok(hour), Ok(minute), [second, second_fraction] -> {
-        let second_fraction_length = string.length(second_fraction)
-        case second_fraction_length {
-          len if len <= 3 ->
-            case
-              int.parse(second),
-              int.parse(second_fraction |> string.pad_end(3, with: "0"))
-            {
-              Ok(second), Ok(milli) ->
-                Ok(tempo.validate_time(hour, minute, second, milli * 1000))
-              _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-            }
-          len if len <= 6 ->
-            case
-              int.parse(second),
-              int.parse(second_fraction |> string.pad_end(6, with: "0"))
-            {
-              Ok(second), Ok(micro) ->
-                Ok(tempo.validate_time(hour, minute, second, micro))
-              _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-            }
-          _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-        }
-      }
+  tempo.validate_time(hour, minute, second, microsecond)
+  |> result.map_error(tempo_error.TimeOutOfBounds(time_str, _))
+}
 
-      Ok(hour), Ok(minute), _ ->
-        case int.parse(second) {
-          Ok(second) -> Ok(tempo.validate_time(hour, minute, second, 0))
-          _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-        }
+fn parse_time_parts(input: BitArray) -> Result(#(Int, Int, Int, Int), Nil) {
+  use #(parts, input) <- result.try(internal.take_time_parts(input))
+  use Nil <- result.map(internal.accept_empty(input))
 
-      _, _, _ -> Error(tempo_error.TimeInvalidFormat(time_str))
-    },
-  )
-
-  result.map_error(time, tempo_error.TimeOutOfBounds(time_str, _))
+  parts
 }
 
 /// Parses a time string in the provided format. Always prefer using
@@ -440,7 +383,7 @@ pub fn parse(
 ) -> Result(tempo.Time, tempo_error.TimeParseError) {
   let format_str = tempo.get_time_format_str(format)
 
-  use #(parts, _) <- result.try(
+  use parts <- result.try(
     tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.TimeInvalidFormat),
   )
@@ -513,29 +456,15 @@ pub fn describe_parse_error(error: tempo_error.TimeParseError) {
 /// // -------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(time: tempo.Time, in format: tempo.TimeFormat) -> String {
-  let format_str = tempo.get_time_format_str(format)
-
-  let assert Ok(re) = regexp.from_string(tempo.format_regex)
-
-  regexp.scan(re, format_str)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        tempo.time_replace_format(content, time),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape 
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it 
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
+  tempo.get_time_format_str(format)
+  |> tempo.tokenise_format
+  |> list.map(fn(token) {
+    case token {
+      tempo.Directive(directive) -> tempo.time_replace_format(directive, time)
+      tempo.Escaped(literal) -> literal
     }
   })
-  |> string.join("")
+  |> string.concat
 }
 
 /// Gets the UTC time value of a unix timestamp.
@@ -1025,7 +954,7 @@ pub fn subtract(a: tempo.Time, duration b: duration.Duration) -> tempo.Time {
 /// // -> time.literal("15:54:40")
 /// ```
 pub fn left_in_day(time: tempo.Time) -> tempo.Time {
-  unit.day_microseconds - { time |> tempo.time_to_microseconds }
+  internal.day_microseconds - { time |> tempo.time_to_microseconds }
   |> tempo.time_from_microseconds
 }
 

@@ -2,18 +2,18 @@
 //// purpose functions.
 //// Look in specific modules for more functionality!
 
+import gleam/bit_array
 import gleam/bool
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/string_tree
 import gleam/time/calendar
 import gleam/time/duration
-import gtempo/internal as unit
+import gtempo/internal
 import tempo/error as tempo_error
 
 // This is a big file. The contents are generally ordered (and searchable) by:
@@ -130,7 +130,7 @@ pub fn instant_since(start start: Instant) -> duration.Duration {
 pub fn instant_since_formatted(start start: Instant) -> String {
   instant_since(start:)
   |> duration_get_microseconds
-  |> unit.format
+  |> internal.format
 }
 
 /// Compares the current system time to the provided datetime value.
@@ -1004,32 +1004,20 @@ pub fn datetime_format(
   datetime: DateTime,
   in format: DateTimeFormat,
 ) -> String {
-  let format_str = get_datetime_format_str(format)
+  get_datetime_format_str(format)
+  |> tokenise_format
+  |> list.map(fn(token) {
+    case token {
+      Directive(directive) ->
+        directive
+        |> date_replace_format(datetime.date)
+        |> time_replace_format(datetime.time)
+        |> offset_replace_format(datetime.offset)
 
-  let assert Ok(re) = regexp.from_string(format_regex)
-
-  regexp.scan(re, format_str)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        content
-          |> date_replace_format(datetime.date)
-          |> time_replace_format(datetime.time)
-          |> offset_replace_format(datetime.offset),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
+      Escaped(literal) -> literal
     }
   })
-  |> string.join("")
+  |> string.concat
 }
 
 @internal
@@ -1269,9 +1257,9 @@ pub fn naive_datetime_add(
   // If the time to add crossed a day boundary, add an extra day to the
   // number of days to add and adjust the time to add.
   let #(new_time_as_micro, days_to_add): #(Int, Int) = case
-    new_time_as_micro >= unit.day_microseconds
+    new_time_as_micro >= internal.day_microseconds
   {
-    True -> #(new_time_as_micro - unit.day_microseconds, days_to_add + 1)
+    True -> #(new_time_as_micro - internal.day_microseconds, days_to_add + 1)
     False -> #(new_time_as_micro, days_to_add)
   }
 
@@ -1314,7 +1302,7 @@ pub fn naive_datetime_subtract(
   // If the time to subtract crossed a day boundary, add an extra day to the
   // number of days to subtract and adjust the time to subtract.
   let #(new_time_as_micro, days_to_sub) = case new_time_as_micro < 0 {
-    True -> #(new_time_as_micro + unit.day_microseconds, days_to_sub + 1)
+    True -> #(new_time_as_micro + internal.day_microseconds, days_to_sub + 1)
     False -> #(new_time_as_micro, days_to_sub)
   }
 
@@ -1368,63 +1356,20 @@ pub fn new_offset(from duration: duration.Duration) -> Result(Offset, Nil) {
 pub fn offset_from_string(
   offset_str: String,
 ) -> Result(Offset, tempo_error.OffsetParseError) {
-  use offset <- result.try(case offset_str {
-    // Parse Z format
-    "Z" -> Ok(utc)
-    "z" -> Ok(utc)
+  use offset <- result.try(
+    parse_offset_string(bit_array.from_string(offset_str))
+    |> result.replace_error(tempo_error.OffsetInvalidFormat(offset_str)),
+  )
 
-    // Parse +-hh:mm format
-    _ -> {
-      use #(sign, hour, minute): #(String, String, String) <- result.try(
-        case string.split(offset_str, ":") {
-          [hour, minute] ->
-            case string.length(hour), string.length(minute) {
-              3, 2 ->
-                Ok(#(
-                  string.slice(hour, at_index: 0, length: 1),
-                  string.slice(hour, at_index: 1, length: 2),
-                  minute,
-                ))
-              _, _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
-            }
-          _ ->
-            // Parse +-hhmm format, +-hh format, or +-h format
-            case string.length(offset_str) {
-              5 ->
-                Ok(#(
-                  string.slice(offset_str, at_index: 0, length: 1),
-                  string.slice(offset_str, at_index: 1, length: 2),
-                  string.slice(offset_str, at_index: 3, length: 2),
-                ))
-              3 ->
-                Ok(#(
-                  string.slice(offset_str, at_index: 0, length: 1),
-                  string.slice(offset_str, at_index: 1, length: 2),
-                  "0",
-                ))
-              2 ->
-                Ok(#(
-                  string.slice(offset_str, at_index: 0, length: 1),
-                  string.slice(offset_str, at_index: 1, length: 1),
-                  "0",
-                ))
-              _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
-            }
-        },
-      )
-
-      case sign, int.parse(hour), int.parse(minute) {
-        _, Ok(0), Ok(0) -> Ok(utc)
-        "-", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-          Ok(Offset(-{ hour * 60 + minute }))
-        "+", Ok(hour), Ok(minute) if hour <= 24 && minute <= 60 ->
-          Ok(Offset(hour * 60 + minute))
-        _, _, _ -> Error(tempo_error.OffsetInvalidFormat(offset_str))
-      }
-    }
-  })
   validate_offset(offset)
   |> result.replace_error(tempo_error.OffsetOutOfBounds(offset_str))
+}
+
+fn parse_offset_string(input: BitArray) -> Result(Offset, Nil) {
+  use #(minutes, input) <- result.try(internal.take_offset_minutes(input))
+  use Nil <- result.map(internal.accept_empty(input))
+
+  Offset(minutes)
 }
 
 @internal
@@ -1546,17 +1491,17 @@ pub fn date_get_year(date: Date) {
 
   let #(n400, r400) =
     // -- 400 * 365 + 97
-    unit.div_with_remainder(rd, 146_097)
+    internal.div_with_remainder(rd, 146_097)
 
   let #(n100, r100) =
     // -- 100 * 365 + 24
-    unit.div_with_remainder(r400, 36_524)
+    internal.div_with_remainder(r400, 36_524)
 
   let #(n4, r4) =
     // -- 4 * 365 + 1
-    unit.div_with_remainder(r100, 1461)
+    internal.div_with_remainder(r100, 1461)
 
-  let #(n1, r1) = unit.div_with_remainder(r4, 365)
+  let #(n1, r1) = internal.div_with_remainder(r4, 365)
 
   let n = case r1 == 0 {
     True -> 0
@@ -1597,7 +1542,7 @@ pub fn date_from_unix_milli(unix_milli) {
 
 @internal
 pub fn date_from_unix_micro(unix_micro) {
-  Date(unix_micro / unit.day_microseconds)
+  Date(unix_micro / internal.day_microseconds)
 }
 
 @internal
@@ -1907,9 +1852,9 @@ pub fn date_is_later_or_equal(a: Date, to b: Date) -> Bool {
 fn date_days_before_year(year1: Int) -> Int {
   let year = year1 - 1
   let leap_years =
-    unit.floor_div(year, 4)
-    - unit.floor_div(year, 100)
-    + unit.floor_div(year, 400)
+    internal.floor_div(year, 4)
+    - internal.floor_div(year, 100)
+    + internal.floor_div(year, 400)
 
   365 * year + leap_years
 }
@@ -2167,9 +2112,9 @@ pub fn time(hour hour, minute minute, second second, micro microsecond) {
         True -> EndOfDayLeapSecond(microsecond)
         False ->
           TimeOfDay(
-            { hour * unit.hour_microseconds }
-            + { minute * unit.minute_microseconds }
-            + { second * unit.second_microseconds }
+            { hour * internal.hour_microseconds }
+            + { minute * internal.minute_microseconds }
+            + { second * internal.second_microseconds }
             + microsecond,
           )
       }
@@ -2182,11 +2127,11 @@ fn time_normalise(time: Time) {
   case time {
     TimeOfDay(microseconds) if microseconds < 0 -> {
       TimeOfDay(
-        unit.day_microseconds + { microseconds % unit.day_microseconds },
+        internal.day_microseconds + { microseconds % internal.day_microseconds },
       )
     }
-    TimeOfDay(microseconds) if microseconds >= unit.day_microseconds -> {
-      TimeOfDay(microseconds % unit.day_microseconds)
+    TimeOfDay(microseconds) if microseconds >= internal.day_microseconds -> {
+      TimeOfDay(microseconds % internal.day_microseconds)
     }
     _ -> time
   }
@@ -2200,7 +2145,7 @@ pub fn time_from_microseconds(microseconds) {
 @internal
 pub fn time_get_hour(time: Time) {
   case time_normalise(time) {
-    TimeOfDay(microseconds) -> microseconds / unit.hour_microseconds
+    TimeOfDay(microseconds) -> microseconds / internal.hour_microseconds
     LastInstantOfDay -> 24
     EndOfDayLeapSecond(..) -> 23
   }
@@ -2210,10 +2155,10 @@ pub fn time_get_hour(time: Time) {
 pub fn time_get_minute(time: Time) {
   case time_normalise(time) {
     TimeOfDay(microseconds) -> {
-      let hour = microseconds / unit.hour_microseconds
+      let hour = microseconds / internal.hour_microseconds
 
-      { microseconds - hour * unit.hour_microseconds }
-      / unit.minute_microseconds
+      { microseconds - hour * internal.hour_microseconds }
+      / internal.minute_microseconds
     }
     LastInstantOfDay -> 0
     EndOfDayLeapSecond(..) -> 59
@@ -2224,20 +2169,20 @@ pub fn time_get_minute(time: Time) {
 pub fn time_get_second(time: Time) {
   case time_normalise(time) {
     TimeOfDay(microseconds) -> {
-      let hour = microseconds / unit.hour_microseconds
+      let hour = microseconds / internal.hour_microseconds
 
       let minute =
-        { microseconds - hour * unit.hour_microseconds }
-        / unit.minute_microseconds
+        { microseconds - hour * internal.hour_microseconds }
+        / internal.minute_microseconds
 
       {
         microseconds
         - hour
-        * unit.hour_microseconds
+        * internal.hour_microseconds
         - minute
-        * unit.minute_microseconds
+        * internal.minute_microseconds
       }
-      / unit.second_microseconds
+      / internal.second_microseconds
     }
     LastInstantOfDay -> 0
     EndOfDayLeapSecond(..) -> 60
@@ -2248,29 +2193,29 @@ pub fn time_get_second(time: Time) {
 pub fn time_get_micro(time: Time) {
   case time_normalise(time) {
     TimeOfDay(microseconds) -> {
-      let hour = microseconds / unit.hour_microseconds
+      let hour = microseconds / internal.hour_microseconds
 
       let minute =
-        { microseconds - hour * unit.hour_microseconds }
-        / unit.minute_microseconds
+        { microseconds - hour * internal.hour_microseconds }
+        / internal.minute_microseconds
 
       let second =
         {
           microseconds
           - hour
-          * unit.hour_microseconds
+          * internal.hour_microseconds
           - minute
-          * unit.minute_microseconds
+          * internal.minute_microseconds
         }
-        / unit.second_microseconds
+        / internal.second_microseconds
 
       microseconds
       - hour
-      * unit.hour_microseconds
+      * internal.hour_microseconds
       - minute
-      * unit.minute_microseconds
+      * internal.minute_microseconds
       - second
-      * unit.second_microseconds
+      * internal.second_microseconds
     }
     LastInstantOfDay -> 0
     EndOfDayLeapSecond(microsecond) -> microsecond
@@ -2507,8 +2452,8 @@ pub fn time_difference(from a: Time, to b: Time) -> duration.Duration {
 pub fn time_to_microseconds(time: Time) -> Int {
   case time_normalise(time) {
     TimeOfDay(microseconds) -> microseconds
-    LastInstantOfDay -> unit.day_microseconds
-    EndOfDayLeapSecond(microsecond) -> unit.day_microseconds + microsecond
+    LastInstantOfDay -> internal.day_microseconds
+    EndOfDayLeapSecond(microsecond) -> internal.day_microseconds + microsecond
   }
 }
 
@@ -2516,30 +2461,30 @@ pub fn time_to_microseconds(time: Time) -> Int {
 pub fn time_to_parts(time: Time) {
   case time_normalise(time) {
     TimeOfDay(microseconds) -> {
-      let hour = microseconds / unit.hour_microseconds
+      let hour = microseconds / internal.hour_microseconds
 
       let minute =
-        { microseconds - hour * unit.hour_microseconds }
-        / unit.minute_microseconds
+        { microseconds - hour * internal.hour_microseconds }
+        / internal.minute_microseconds
 
       let second =
         {
           microseconds
           - hour
-          * unit.hour_microseconds
+          * internal.hour_microseconds
           - minute
-          * unit.minute_microseconds
+          * internal.minute_microseconds
         }
-        / unit.second_microseconds
+        / internal.second_microseconds
 
       let microsecond =
         microseconds
         - hour
-        * unit.hour_microseconds
+        * internal.hour_microseconds
         - minute
-        * unit.minute_microseconds
+        * internal.minute_microseconds
         - second
-        * unit.second_microseconds
+        * internal.second_microseconds
 
       #(hour, minute, second, microsecond)
     }
@@ -2551,7 +2496,7 @@ pub fn time_to_parts(time: Time) {
 @internal
 pub fn time_from_unix_micro(unix_ts: Int) -> Time {
   // Subtract the microseconds that are responsible for the date.
-  time_from_microseconds(unix_ts % unit.day_microseconds)
+  time_from_microseconds(unix_ts % internal.day_microseconds)
 }
 
 @internal
@@ -2647,17 +2592,17 @@ pub fn duration_seconds_and_nanoseconds(seconds: Int, nanoseconds: Int) {
 
 @internal
 pub fn duration_as_mintues(duration: duration.Duration) -> Int {
-  duration_get_microseconds(duration) |> unit.as_minutes
+  duration_get_microseconds(duration) |> internal.as_minutes
 }
 
 @internal
 pub fn duration_minutes(minutes: Int) -> duration.Duration {
-  minutes |> unit.minutes |> duration_microseconds
+  minutes |> internal.minutes |> duration_microseconds
 }
 
 @internal
 pub fn duration_days(days: Int) -> duration.Duration {
-  days |> unit.imprecise_days |> duration_microseconds
+  days |> internal.imprecise_days |> duration_microseconds
 }
 
 @internal
@@ -2718,7 +2663,7 @@ pub fn duration_is_positive(dur: duration.Duration) -> Bool {
 
 @internal
 pub fn duration_as_days(duration: duration.Duration) -> Int {
-  duration_get_microseconds(duration) |> unit.as_days_imprecise
+  duration_get_microseconds(duration) |> internal.as_days_imprecise
 }
 
 @internal
@@ -3069,9 +3014,118 @@ pub fn get_date_format_str(format: DateFormat) {
   }
 }
 
-// regex to pull the supported formatting directives from a string
+/// A single piece of a format string.
 @internal
-pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|z{1,2}|S{3,4}|GMT|."
+pub type FormatToken {
+  /// A formatting directive like `YYYY`, or, when the character is not part of
+  /// any directive, the character itself.
+  Directive(String)
+  /// The contents of an escape sequence, `[like this]`, which is always taken
+  /// literally.
+  Escaped(String)
+}
+
+/// Splits a format string into the directives it is made of. Directives are
+/// matched greedily and longest first, so `"YYYYY"` is the `YYYY` directive
+/// followed by a lone `Y` character.
+@internal
+pub fn tokenise_format(format_str: String) -> List(FormatToken) {
+  do_tokenise_format(bit_array.from_string(format_str), [])
+}
+
+fn do_tokenise_format(
+  bytes: BitArray,
+  acc: List(FormatToken),
+) -> List(FormatToken) {
+  case bytes {
+    <<>> -> list.reverse(acc)
+
+    <<"[", rest:bytes>> ->
+      case take_escaped(rest) {
+        Ok(#(escaped, rest)) ->
+          do_tokenise_format(rest, [Escaped(escaped), ..acc])
+        // Without a closing bracket there is no escape sequence, so the
+        // bracket is just another character.
+        Error(Nil) -> do_tokenise_format(rest, [Directive("["), ..acc])
+      }
+
+    <<"YYYY", rest:bytes>> ->
+      do_tokenise_format(rest, [Directive("YYYY"), ..acc])
+    <<"YYY", rest:bytes>> -> do_tokenise_format(rest, [Directive("YYY"), ..acc])
+    <<"YY", rest:bytes>> -> do_tokenise_format(rest, [Directive("YY"), ..acc])
+    <<"Y", rest:bytes>> -> do_tokenise_format(rest, [Directive("Y"), ..acc])
+
+    // Checked before the month directives so that the "M" in "GMT" is not
+    // mistaken for one.
+    <<"GMT", rest:bytes>> -> do_tokenise_format(rest, [Directive("GMT"), ..acc])
+
+    <<"MMMM", rest:bytes>> ->
+      do_tokenise_format(rest, [Directive("MMMM"), ..acc])
+    <<"MMM", rest:bytes>> -> do_tokenise_format(rest, [Directive("MMM"), ..acc])
+    <<"MM", rest:bytes>> -> do_tokenise_format(rest, [Directive("MM"), ..acc])
+    <<"M", rest:bytes>> -> do_tokenise_format(rest, [Directive("M"), ..acc])
+
+    <<"DD", rest:bytes>> -> do_tokenise_format(rest, [Directive("DD"), ..acc])
+    <<"D", rest:bytes>> -> do_tokenise_format(rest, [Directive("D"), ..acc])
+
+    <<"dddd", rest:bytes>> ->
+      do_tokenise_format(rest, [Directive("dddd"), ..acc])
+    <<"ddd", rest:bytes>> -> do_tokenise_format(rest, [Directive("ddd"), ..acc])
+    <<"dd", rest:bytes>> -> do_tokenise_format(rest, [Directive("dd"), ..acc])
+    <<"d", rest:bytes>> -> do_tokenise_format(rest, [Directive("d"), ..acc])
+
+    <<"HH", rest:bytes>> -> do_tokenise_format(rest, [Directive("HH"), ..acc])
+    <<"H", rest:bytes>> -> do_tokenise_format(rest, [Directive("H"), ..acc])
+
+    <<"hh", rest:bytes>> -> do_tokenise_format(rest, [Directive("hh"), ..acc])
+    <<"h", rest:bytes>> -> do_tokenise_format(rest, [Directive("h"), ..acc])
+
+    <<"mm", rest:bytes>> -> do_tokenise_format(rest, [Directive("mm"), ..acc])
+    <<"m", rest:bytes>> -> do_tokenise_format(rest, [Directive("m"), ..acc])
+
+    <<"ss", rest:bytes>> -> do_tokenise_format(rest, [Directive("ss"), ..acc])
+    <<"s", rest:bytes>> -> do_tokenise_format(rest, [Directive("s"), ..acc])
+
+    <<"SSSS", rest:bytes>> ->
+      do_tokenise_format(rest, [Directive("SSSS"), ..acc])
+    <<"SSS", rest:bytes>> -> do_tokenise_format(rest, [Directive("SSS"), ..acc])
+
+    <<"ZZ", rest:bytes>> -> do_tokenise_format(rest, [Directive("ZZ"), ..acc])
+    <<"Z", rest:bytes>> -> do_tokenise_format(rest, [Directive("Z"), ..acc])
+
+    <<"zz", rest:bytes>> -> do_tokenise_format(rest, [Directive("zz"), ..acc])
+    <<"z", rest:bytes>> -> do_tokenise_format(rest, [Directive("z"), ..acc])
+
+    <<"a", rest:bytes>> -> do_tokenise_format(rest, [Directive("a"), ..acc])
+    <<"A", rest:bytes>> -> do_tokenise_format(rest, [Directive("A"), ..acc])
+
+    _ ->
+      case internal.take_character(bytes) {
+        Ok(#(character, rest)) ->
+          do_tokenise_format(rest, [Directive(character), ..acc])
+        // Not valid UTF-8, which a Gleam string can never be.
+        Error(Nil) -> list.reverse(acc)
+      }
+  }
+}
+
+/// Takes the contents of an escape sequence, everything up to the `]` that
+/// closes it. An empty escape sequence is not one.
+fn take_escaped(bytes: BitArray) -> Result(#(String, BitArray), Nil) {
+  use length <- result.try(escaped_length(bytes, 0))
+  use #(escaped, rest) <- result.try(internal.take_string(bytes, length))
+  use rest <- result.map(internal.skip(rest, 1))
+  #(escaped, rest)
+}
+
+fn escaped_length(bytes: BitArray, length: Int) -> Result(Int, Nil) {
+  case bytes {
+    <<"]", _:bytes>> if length > 0 -> Ok(length)
+    <<"]", _:bytes>> -> Error(Nil)
+    <<_, rest:bytes>> -> escaped_length(rest, length + 1)
+    _ -> Error(Nil)
+  }
+}
 
 /// Tries to parse a given date string without a known format. It will not
 /// parse two digit years and will assume the month always comes before the
@@ -3118,250 +3172,393 @@ pub const format_regex = "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1
 pub fn parse_any(
   str: String,
 ) -> #(option.Option(Date), option.Option(Time), option.Option(Offset)) {
-  let empty_result = #(None, None, None)
+  let input = bit_array.from_string(str)
 
-  // If there are 10 or more numbers in a row, then this is probably some
-  // serial number and not a date.
-  use serial_re <- result_guard(
-    when_error: regexp.from_string("\\d{10,}"),
-    return: empty_result,
-  )
+  // Ten or more digits in a row is much more likely to be a serial number
+  // than it is to be a date.
+  use <- bool.guard(when: internal.has_digit_run(in: input, of: 10), return: #(
+    None,
+    None,
+    None,
+  ))
 
-  use <- bool.guard(when: regexp.check(serial_re, str), return: empty_result)
-
-  use date_re <- result_guard(
-    when_error: regexp.from_string(
-      "(\\d{4})[-_/\\.\\s,]{0,2}(\\d{1,2})[-_/\\.\\s,]{0,2}(\\d{1,2})",
-    ),
-    return: empty_result,
-  )
-
-  use date_human_re <- result_guard(
-    when_error: regexp.from_string(
-      "(\\d{1,2}|January|Jan|january|jan|February|Feb|february|feb|March|Mar|march|mar|April|Apr|april|apr|May|may|June|Jun|june|jun|July|Jul|july|jul|August|Aug|august|aug|September|Sep|september|sep|October|Oct|october|oct|November|Nov|november|nov|December|Dec|december|dec)[-_/\\.\\s,]{0,2}(\\d{1,2})(?:st|nd|rd|th)?[-_/\\.\\s,]{0,2}(\\d{4})",
-    ),
-    return: empty_result,
-  )
-
-  use time_re <- result_guard(
-    when_error: regexp.from_string(
-      "(\\d{1,2})[:_\\.\\s]{0,1}(\\d{1,2})[:_\\.\\s]{0,1}(\\d{0,2})[\\.]{0,1}(\\d{0,9})\\s*(AM|PM|am|pm)?",
-    ),
-    return: empty_result,
-  )
-
-  use offset_re <- result_guard(
-    when_error: regexp.from_string("([-+]\\d{2}):{0,1}(\\d{0,2})?"),
-    return: empty_result,
-  )
-
-  use offset_char_re <- result_guard(
-    when_error: regexp.from_string("(?<![a-zA-Z])[Zz](?![a-zA-Z])"),
-    return: empty_result,
-  )
-
-  let unconsumed = str
-
-  let #(date, unconsumed): #(option.Option(Date), String) = {
-    case regexp.scan(date_re, unconsumed) {
-      [regexp.Match(content, [Some(year), Some(month), Some(day)]), ..] ->
-        case int.parse(year), int.parse(month), int.parse(day) {
-          Ok(year), Ok(month), Ok(day) ->
-            case new_date(year, month, day) {
-              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
-
-              _ -> #(None, unconsumed)
-            }
-
-          _, _, _ -> #(None, unconsumed)
-        }
-
-      _ -> #(None, unconsumed)
-    }
-  }
-
-  let #(date, unconsumed): #(option.Option(Date), String) = {
-    case date {
-      Some(d) -> #(Some(d), unconsumed)
-      None ->
-        case regexp.scan(date_human_re, unconsumed) {
-          [regexp.Match(content, [Some(month), Some(day), Some(year)]), ..] ->
-            case
-              int.parse(year),
-              // Parse an int month or a written month
-              int.parse(month)
-              |> result.try(month_from_int)
-              |> result.try_recover(fn(_) {
-                month_from_short_string(month)
-                |> result.try_recover(fn(_) { month_from_long_string(month) })
-              }),
-              int.parse(day)
-            {
-              Ok(year), Ok(month), Ok(day) ->
-                case new_date(year, month_to_int(month), day) {
-                  Ok(date) -> #(
-                    Some(date),
-                    string.replace(unconsumed, content, ""),
-                  )
-
-                  _ -> #(None, unconsumed)
-                }
-
-              _, _, _ -> #(None, unconsumed)
-            }
-
-          _ -> #(None, unconsumed)
-        }
-    }
-  }
-
-  let #(offset, unconsumed): #(option.Option(Offset), String) = {
-    case regexp.scan(offset_re, unconsumed) {
-      [regexp.Match(content, [Some(hours), Some(minutes)]), ..] ->
-        case int.parse(hours), int.parse(minutes) {
-          Ok(hour), Ok(minute) ->
-            case new_offset(duration_minutes(hour * 60 + minute)) {
-              Ok(offset) -> #(
-                Some(offset),
-                string.replace(unconsumed, content, ""),
-              )
-
-              _ -> #(None, unconsumed)
-            }
-
-          _, _ -> #(None, unconsumed)
-        }
-
-      // Erlang regex match
-      [regexp.Match(content, [Some(hours), None]), ..]
-      | // JavaScript regex match
-        [regexp.Match(content, [Some(hours)]), ..] ->
-        case int.parse(hours) {
-          Ok(hour) ->
-            case new_offset(duration_minutes(hour * 60)) {
-              Ok(offset) -> #(
-                Some(offset),
-                string.replace(unconsumed, content, ""),
-              )
-
-              _ -> #(None, unconsumed)
-            }
-
-          _ -> #(None, unconsumed)
-        }
-
-      _ -> #(None, unconsumed)
-    }
-  }
-
-  let #(offset, unconsumed): #(option.Option(Offset), String) = {
-    case offset {
-      Some(o) -> #(Some(o), unconsumed)
-      None ->
-        case regexp.scan(offset_char_re, unconsumed) {
-          [regexp.Match(content, _), ..] -> #(
-            Some(utc),
-            string.replace(unconsumed, content, ""),
-          )
-
-          _ -> #(None, unconsumed)
-        }
-    }
-  }
-
-  let #(time, _): #(option.Option(Time), String) = {
-    let scan_results = regexp.scan(time_re, unconsumed)
-
-    let adj_hour = case scan_results {
-      [regexp.Match(_, [_, _, _, _, Some("PM")]), ..] -> adjust_12_hour_to_24_hour(
-        _,
-        am: False,
-      )
-      [regexp.Match(_, [_, _, _, _, Some("pm")]), ..] -> adjust_12_hour_to_24_hour(
-        _,
-        am: False,
-      )
-      [regexp.Match(_, [_, _, _, _, Some("AM")]), ..] -> adjust_12_hour_to_24_hour(
-        _,
-        am: True,
-      )
-      [regexp.Match(_, [_, _, _, _, Some("am")]), ..] -> adjust_12_hour_to_24_hour(
-        _,
-        am: True,
-      )
-      _ -> fn(hour) { hour }
-    }
-
-    case scan_results {
-      [regexp.Match(content, [Some(h), Some(m), Some(s), Some(d), ..]), ..] ->
-        case int.parse(h), int.parse(m), int.parse(s) {
-          Ok(hour), Ok(minute), Ok(second) ->
-            case string.length(d), int.parse(d) {
-              3, Ok(milli) ->
-                case adj_hour(hour) |> new_time_milli(minute, second, milli) {
-                  Ok(date) -> #(
-                    Some(date),
-                    string.replace(unconsumed, content, ""),
-                  )
-
-                  _ -> #(None, unconsumed)
-                }
-              6, Ok(micro) ->
-                case adj_hour(hour) |> new_time_micro(minute, second, micro) {
-                  Ok(date) -> #(
-                    Some(date),
-                    string.replace(unconsumed, content, ""),
-                  )
-
-                  _ -> #(None, unconsumed)
-                }
-              9, Ok(nano) ->
-                case
-                  adj_hour(hour) |> new_time_micro(minute, second, nano / 1000)
-                {
-                  Ok(date) -> #(
-                    Some(date),
-                    string.replace(unconsumed, content, ""),
-                  )
-
-                  _ -> #(None, unconsumed)
-                }
-
-              _, _ -> #(None, unconsumed)
-            }
-
-          _, _, _ -> #(None, unconsumed)
-        }
-
-      [regexp.Match(content, [Some(h), Some(m), Some(s), ..]), ..] ->
-        case int.parse(h), int.parse(m), int.parse(s) {
-          Ok(hour), Ok(minute), Ok(second) ->
-            case adj_hour(hour) |> new_time(minute, second) {
-              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
-
-              _ -> #(None, unconsumed)
-            }
-
-          _, _, _ -> #(None, unconsumed)
-        }
-
-      [regexp.Match(content, [Some(h), Some(m), ..]), ..] ->
-        case int.parse(h), int.parse(m) {
-          Ok(hour), Ok(minute) ->
-            case adj_hour(hour) |> new_time(minute, 0) {
-              Ok(date) -> #(Some(date), string.replace(unconsumed, content, ""))
-
-              _ -> #(None, unconsumed)
-            }
-
-          _, _ -> #(None, unconsumed)
-        }
-
-      _ -> #(None, unconsumed)
-    }
-  }
+  // Each value is cut out of the input as it is found so that the values
+  // looked for after it cannot match the same characters again.
+  let #(date, input) = scan_date(input)
+  let #(offset, input) = scan_offset(input)
+  let #(time, _) = scan_time(input)
 
   #(date, time, offset)
+}
+
+/// Looks for the leftmost run of characters that `matcher` accepts and that
+/// `build` can make a real value out of, returning that value and the input
+/// with those characters cut out of it.
+///
+/// Text that is shaped like a date or a time but does not describe one, such
+/// as `2024 00:00`, is left in the input for a later pattern to make sense of.
+fn scan_for(
+  in input: BitArray,
+  with matcher: fn(BitArray) -> Result(#(a, BitArray), Nil),
+  build build: fn(a) -> Result(b, Nil),
+) -> #(option.Option(b), BitArray) {
+  case internal.scan(in: input, with: matcher) {
+    Error(Nil) -> #(None, input)
+    Ok(#(matched, rest)) ->
+      case build(matched) {
+        Ok(value) -> #(Some(value), rest)
+        Error(Nil) -> #(None, input)
+      }
+  }
+}
+
+fn scan_date(input: BitArray) -> #(option.Option(Date), BitArray) {
+  case scan_for(input, with: match_numeric_date, build: build_date) {
+    #(Some(date), input) -> #(Some(date), input)
+    #(None, input) ->
+      scan_for(input, with: match_written_date, build: build_date)
+  }
+}
+
+fn scan_offset(input: BitArray) -> #(option.Option(Offset), BitArray) {
+  case scan_for(input, with: match_offset, build: build_offset) {
+    #(Some(offset), input) -> #(Some(offset), input)
+    #(None, input) -> scan_utc_designator(input)
+  }
+}
+
+fn scan_time(input: BitArray) -> #(option.Option(Time), BitArray) {
+  scan_for(input, with: match_time, build: build_time)
+}
+
+/// Matches a date written with the year first, like `2024-06-21`, `2024.6.21`,
+/// or `20240621`.
+fn match_numeric_date(
+  input: BitArray,
+) -> Result(#(#(Int, Int, Int), BitArray), Nil) {
+  use #(year, input) <- result.try(internal.take_digits(input, count: 4))
+  use month, input <- take_separated_number(input)
+  use day, input <- take_separated_number(input)
+  Ok(#(#(year, month, day), input))
+}
+
+/// Matches a date written with the month first, like `06/21/2024` or
+/// `June 21st, 2024`.
+fn match_written_date(
+  input: BitArray,
+) -> Result(#(#(Int, Int, Int), BitArray), Nil) {
+  use month, input <- take_month(input)
+  use day, input <- take_separated_number(input)
+  let input = skip_ordinal_suffix(input)
+  use separators <- internal.backtrack(over: [2, 1, 0])
+  use input <- result.try(skip_date_separators(input, separators))
+  use #(year, input) <- result.map(internal.take_digits(input, count: 4))
+  #(#(year, month, day), input)
+}
+
+fn build_date(parts: #(Int, Int, Int)) -> Result(Date, Nil) {
+  let #(year, month, day) = parts
+  new_date(year, month, day) |> result.replace_error(Nil)
+}
+
+/// Matches a number of one or two digits, preceded by up to two of the
+/// characters that dates are commonly separated by.
+///
+/// Both the separators and the digits are matched greedily, backtracking into
+/// shorter matches when what comes after them does not fit, so that a date
+/// like `2024-6-21` is read the same way a regular expression would read it.
+fn take_separated_number(
+  from input: BitArray,
+  then continue: fn(Int, BitArray) -> Result(a, Nil),
+) -> Result(a, Nil) {
+  use separators <- internal.backtrack(over: [2, 1, 0])
+  use input <- result.try(skip_date_separators(input, separators))
+  use digits <- internal.backtrack(over: [2, 1])
+  use #(number, input) <- result.try(internal.take_digits(input, count: digits))
+  continue(number, input)
+}
+
+/// Matches a month written as a number, or written out in full or shortened,
+/// in either title case or lower case.
+fn take_month(
+  from input: BitArray,
+  then continue: fn(Int, BitArray) -> Result(a, Nil),
+) -> Result(a, Nil) {
+  use _ <- result.try_recover({
+    use digits <- internal.backtrack(over: [2, 1])
+    use #(month, input) <- result.try(internal.take_digits(input, count: digits))
+    continue(month, input)
+  })
+
+  use #(month, input) <- result.try(take_month_name(input))
+  continue(month, input)
+}
+
+fn take_month_name(input: BitArray) -> Result(#(Int, BitArray), Nil) {
+  case input {
+    <<"January", input:bytes>> | <<"january", input:bytes>> -> Ok(#(1, input))
+    <<"Jan", input:bytes>> | <<"jan", input:bytes>> -> Ok(#(1, input))
+    <<"February", input:bytes>> | <<"february", input:bytes>> -> Ok(#(2, input))
+    <<"Feb", input:bytes>> | <<"feb", input:bytes>> -> Ok(#(2, input))
+    <<"March", input:bytes>> | <<"march", input:bytes>> -> Ok(#(3, input))
+    <<"Mar", input:bytes>> | <<"mar", input:bytes>> -> Ok(#(3, input))
+    <<"April", input:bytes>> | <<"april", input:bytes>> -> Ok(#(4, input))
+    <<"Apr", input:bytes>> | <<"apr", input:bytes>> -> Ok(#(4, input))
+    <<"May", input:bytes>> | <<"may", input:bytes>> -> Ok(#(5, input))
+    <<"June", input:bytes>> | <<"june", input:bytes>> -> Ok(#(6, input))
+    <<"Jun", input:bytes>> | <<"jun", input:bytes>> -> Ok(#(6, input))
+    <<"July", input:bytes>> | <<"july", input:bytes>> -> Ok(#(7, input))
+    <<"Jul", input:bytes>> | <<"jul", input:bytes>> -> Ok(#(7, input))
+    <<"August", input:bytes>> | <<"august", input:bytes>> -> Ok(#(8, input))
+    <<"Aug", input:bytes>> | <<"aug", input:bytes>> -> Ok(#(8, input))
+    <<"September", input:bytes>> | <<"september", input:bytes>> ->
+      Ok(#(9, input))
+    <<"Sep", input:bytes>> | <<"sep", input:bytes>> -> Ok(#(9, input))
+    <<"October", input:bytes>> | <<"october", input:bytes>> -> Ok(#(10, input))
+    <<"Oct", input:bytes>> | <<"oct", input:bytes>> -> Ok(#(10, input))
+    <<"November", input:bytes>> | <<"november", input:bytes>> ->
+      Ok(#(11, input))
+    <<"Nov", input:bytes>> | <<"nov", input:bytes>> -> Ok(#(11, input))
+    <<"December", input:bytes>> | <<"december", input:bytes>> ->
+      Ok(#(12, input))
+    <<"Dec", input:bytes>> | <<"dec", input:bytes>> -> Ok(#(12, input))
+    _ -> Error(Nil)
+  }
+}
+
+fn skip_date_separators(input: BitArray, count: Int) -> Result(BitArray, Nil) {
+  case count <= 0 {
+    True -> Ok(input)
+    False ->
+      case input {
+        <<"-", input:bytes>>
+        | <<"_", input:bytes>>
+        | <<"/", input:bytes>>
+        | <<".", input:bytes>>
+        | <<",", input:bytes>>
+        | <<" ", input:bytes>>
+        | <<"\t", input:bytes>>
+        | <<"\n", input:bytes>>
+        | <<"\r", input:bytes>> -> skip_date_separators(input, count - 1)
+        _ -> Error(Nil)
+      }
+  }
+}
+
+/// Skips the `st` of `21st` and its friends, which say nothing the day did
+/// not already say.
+fn skip_ordinal_suffix(input: BitArray) -> BitArray {
+  case input {
+    <<"st", input:bytes>>
+    | <<"nd", input:bytes>>
+    | <<"rd", input:bytes>>
+    | <<"th", input:bytes>> -> input
+    input -> input
+  }
+}
+
+/// Matches an offset from UTC like `-04:00`, `+0530`, or `-05`, returning how
+/// many minutes it is.
+fn match_offset(input: BitArray) -> Result(#(Int, BitArray), Nil) {
+  use #(is_negative, input) <- result.try(take_offset_direction(input))
+  use #(hours, input) <- result.try(internal.take_digits(input, count: 2))
+  let input = skip_colon(input)
+  let #(minutes, _, input) = internal.take_digits_up_to(input, limit: 2)
+
+  let minutes = hours * 60 + minutes
+
+  Ok(#(
+    case is_negative {
+      True -> -minutes
+      False -> minutes
+    },
+    input,
+  ))
+}
+
+fn build_offset(minutes: Int) -> Result(Offset, Nil) {
+  new_offset(duration_minutes(minutes))
+}
+
+fn take_offset_direction(input: BitArray) -> Result(#(Bool, BitArray), Nil) {
+  case input {
+    <<"-", input:bytes>> -> Ok(#(True, input))
+    <<"+", input:bytes>> -> Ok(#(False, input))
+    _ -> Error(Nil)
+  }
+}
+
+fn skip_colon(input: BitArray) -> BitArray {
+  case input {
+    <<":", input:bytes>> -> input
+    input -> input
+  }
+}
+
+/// Finds a `Z` standing on its own, which means UTC. A `Z` with a letter on
+/// either side of it is part of a word, not an offset.
+fn scan_utc_designator(input: BitArray) -> #(option.Option(Offset), BitArray) {
+  case find_utc_designator(input, at: 0, after_letter: False) {
+    Error(Nil) -> #(None, input)
+    Ok(at) -> {
+      let size = bit_array.byte_size(input)
+      let assert Ok(before) = bit_array.slice(input, 0, at)
+      let assert Ok(after) = bit_array.slice(input, at + 1, size - at - 1)
+      #(Some(utc), <<before:bits, after:bits>>)
+    }
+  }
+}
+
+fn find_utc_designator(
+  input: BitArray,
+  at at: Int,
+  after_letter after_letter: Bool,
+) -> Result(Int, Nil) {
+  case input {
+    <<byte, rest:bytes>> -> {
+      let is_designator = case after_letter, byte, rest {
+        True, _, _ -> False
+        False, 0x5A, <<next, _:bytes>> | False, 0x7A, <<next, _:bytes>> ->
+          !internal.is_letter(next)
+        False, 0x5A, _ | False, 0x7A, _ -> True
+        False, _, _ -> False
+      }
+
+      case is_designator {
+        True -> Ok(at)
+        False -> find_utc_designator(rest, at + 1, internal.is_letter(byte))
+      }
+    }
+    _ -> Error(Nil)
+  }
+}
+
+/// The parts of a time as they were found in the input, before anything has
+/// checked that they describe a real time.
+type MatchedTime {
+  MatchedTime(
+    hour: Int,
+    minute: Int,
+    second: option.Option(Int),
+    /// The digits after the second and how many of them there were, which is
+    /// what says whether they are milliseconds, microseconds, or nanoseconds.
+    fraction: option.Option(#(Int, Int)),
+    /// `Some(True)` for AM and `Some(False)` for PM.
+    am: option.Option(Bool),
+  )
+}
+
+/// Matches a time like `13:42:11.314`, `1:42 PM`, or `134211`. Everything
+/// after the minute is optional.
+fn match_time(input: BitArray) -> Result(#(MatchedTime, BitArray), Nil) {
+  use hour, input <- take_clock_number(input)
+  use separators <- internal.backtrack(over: [1, 0])
+  use input <- result.try(skip_time_separators(input, separators))
+  use minute, input <- take_clock_number(input)
+
+  let input = skip_time_separators(input, 1) |> result.unwrap(input)
+  let #(second, second_digits, input) =
+    internal.take_digits_up_to(input, limit: 2)
+  let input = skip_decimal_point(input)
+  let #(fraction, fraction_digits, input) =
+    internal.take_digits_up_to(input, limit: 9)
+  let input = skip_whitespace(input)
+  let #(am, input) = take_period(input)
+
+  Ok(#(
+    MatchedTime(
+      hour:,
+      minute:,
+      second: case second_digits {
+        0 -> None
+        _ -> Some(second)
+      },
+      fraction: case fraction_digits {
+        0 -> None
+        _ -> Some(#(fraction, fraction_digits))
+      },
+      am:,
+    ),
+    input,
+  ))
+}
+
+fn build_time(matched: MatchedTime) -> Result(Time, Nil) {
+  let MatchedTime(hour:, minute:, second:, fraction:, am:) = matched
+
+  let hour = case am {
+    Some(am) -> adjust_12_hour_to_24_hour(hour, am:)
+    None -> hour
+  }
+
+  // A fraction is only a fraction when there is a second for it to be a
+  // fraction of, and how many digits it has is what says whether it is
+  // milliseconds, microseconds, or nanoseconds.
+  use #(second, microsecond) <- result.try(case second, fraction {
+    None, _ -> Ok(#(0, 0))
+    Some(second), None -> Ok(#(second, 0))
+    Some(second), Some(#(milli, 3)) -> Ok(#(second, milli * 1000))
+    Some(second), Some(#(micro, 6)) -> Ok(#(second, micro))
+    Some(second), Some(#(nano, 9)) -> Ok(#(second, nano / 1000))
+    // Any other number of digits is not a precision that can be represented.
+    Some(_), Some(_) -> Error(Nil)
+  })
+
+  new_time_micro(hour, minute, second, microsecond)
+  |> result.replace_error(Nil)
+}
+
+/// Matches an hour or a minute, which may be written with or without a
+/// leading zero.
+fn take_clock_number(
+  from input: BitArray,
+  then continue: fn(Int, BitArray) -> Result(a, Nil),
+) -> Result(a, Nil) {
+  use digits <- internal.backtrack(over: [2, 1])
+  use #(number, input) <- result.try(internal.take_digits(input, count: digits))
+  continue(number, input)
+}
+
+fn skip_time_separators(input: BitArray, count: Int) -> Result(BitArray, Nil) {
+  case count <= 0 {
+    True -> Ok(input)
+    False ->
+      case input {
+        <<":", input:bytes>>
+        | <<"_", input:bytes>>
+        | <<".", input:bytes>>
+        | <<" ", input:bytes>>
+        | <<"\t", input:bytes>>
+        | <<"\n", input:bytes>>
+        | <<"\r", input:bytes>> -> skip_time_separators(input, count - 1)
+        _ -> Error(Nil)
+      }
+  }
+}
+
+fn skip_decimal_point(input: BitArray) -> BitArray {
+  case input {
+    <<".", input:bytes>> -> input
+    input -> input
+  }
+}
+
+fn skip_whitespace(input: BitArray) -> BitArray {
+  case input {
+    <<" ", input:bytes>>
+    | <<"\t", input:bytes>>
+    | <<"\n", input:bytes>>
+    | <<"\r", input:bytes>> -> skip_whitespace(input)
+    input -> input
+  }
+}
+
+fn take_period(input: BitArray) -> #(option.Option(Bool), BitArray) {
+  case input {
+    <<"AM", input:bytes>> | <<"am", input:bytes>> -> #(Some(True), input)
+    <<"PM", input:bytes>> | <<"pm", input:bytes>> -> #(Some(False), input)
+    input -> #(None, input)
+  }
 }
 
 @internal
@@ -3383,322 +3580,280 @@ pub type DatetimePart {
 
 @internal
 pub fn consume_format(str: String, in fmt: String) {
-  let assert Ok(re) =
-    regexp.from_string(
-      "\\[([^\\]]+)\\]|Y{1,4}|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|z{1,2}|Z{1,2}|S{3,4}|GMT|.",
-    )
-
-  regexp.scan(re, fmt)
-  |> list.fold(from: Ok(#([], str)), with: fn(acc, match) {
-    case acc {
-      Ok(acc) -> {
-        let #(consumed, input) = acc
-
-        let res = case match {
-          regexp.Match(content, []) -> consume_part(content, input)
-
-          // If there is a non-empty subpattern, then the escape
-          // character "[ ... ]" matched, so we should not change anything here,
-          // but we should verify that the content matches the input.
-          regexp.Match(_, [Some(sub)]) ->
-            case string.starts_with(input, sub) {
-              True ->
-                Ok(#(Passthrough, string.drop_start(input, string.length(sub))))
-              False ->
-                Error(
-                  "Input does not match expected escape sequence \""
-                  <> sub
-                  <> "\"",
-                )
-            }
-
-          // This case is not expected, not really sure what to do with it
-          // so just pass through whatever was found
-          regexp.Match(content, _) ->
-            Ok(#(Passthrough, string.drop_start(input, string.length(content))))
-        }
-
-        case res {
-          Ok(#(part, not_consumed)) -> Ok(#([part, ..consumed], not_consumed))
-          Error(err) -> Error(err)
-        }
-      }
-      Error(err) -> Error(err)
-    }
-  })
+  do_consume_format(tokenise_format(fmt), bit_array.from_string(str), [])
 }
 
-fn consume_part(fmt, from str) {
-  case fmt {
+fn do_consume_format(
+  tokens: List(FormatToken),
+  input: BitArray,
+  consumed: List(DatetimePart),
+) -> Result(List(DatetimePart), String) {
+  case tokens {
+    [] -> Ok(consumed)
+
+    [Directive(directive), ..tokens] ->
+      case consume_part(directive, from: input) {
+        Ok(#(part, input)) ->
+          do_consume_format(tokens, input, [part, ..consumed])
+        Error(error) -> Error(error)
+      }
+
+    // An escape sequence consumes nothing, but the input still has to match it.
+    [Escaped(literal), ..tokens] ->
+      case consume_literal(literal, from: input) {
+        Ok(input) -> do_consume_format(tokens, input, [Passthrough, ..consumed])
+        Error(Nil) ->
+          Error(
+            "Input does not match expected escape sequence \""
+            <> literal
+            <> "\"",
+          )
+      }
+  }
+}
+
+/// Consumes the given literal text from the front of the input.
+fn consume_literal(
+  literal: String,
+  from input: BitArray,
+) -> Result(BitArray, Nil) {
+  let literal = bit_array.from_string(literal)
+  let length = bit_array.byte_size(literal)
+
+  case bit_array.slice(input, 0, length) == Ok(literal) {
+    True -> internal.skip(input, length)
+    False -> Error(Nil)
+  }
+}
+
+fn consume_part(
+  directive: String,
+  from input: BitArray,
+) -> Result(#(DatetimePart, BitArray), String) {
+  case directive {
     "YY" -> {
-      use val <- result.map(
-        string.slice(str, at_index: 0, length: 2) |> int.parse,
-      )
+      use #(year, input) <- result.map(internal.take_digits(input, count: 2))
 
+      // A two digit year is taken to be in the hundred years leading up to
+      // today, so "99" is 1999 rather than 2099.
       let current_year = current_year()
-
       let current_century = { current_year / 100 } * 100
-      let current_two_year_date = current_year % 100
 
-      case val > current_two_year_date {
-        True -> #(
-          Year({ current_century - 100 } + val),
-          string.drop_start(str, 2),
-        )
-        False -> #(Year(current_century + val), string.drop_start(str, 2))
+      case year > current_year % 100 {
+        True -> #(Year(current_century - 100 + year), input)
+        False -> #(Year(current_century + year), input)
       }
     }
     "YYYY" -> {
-      use year <- result.map(
-        string.slice(str, at_index: 0, length: 4) |> int.parse,
-      )
+      use #(year, input) <- result.map(internal.take_digits(input, count: 4))
+      #(Year(year), input)
+    }
 
-      #(Year(year), string.drop_start(str, 4))
-    }
-    "M" -> consume_one_or_two_digits(str, Month)
-    "MM" -> consume_two_digits(str, Month)
-    "MMM" -> {
-      case str {
-        "Jan" <> rest -> Ok(#(Month(1), rest))
-        "Feb" <> rest -> Ok(#(Month(2), rest))
-        "Mar" <> rest -> Ok(#(Month(3), rest))
-        "Apr" <> rest -> Ok(#(Month(4), rest))
-        "May" <> rest -> Ok(#(Month(5), rest))
-        "Jun" <> rest -> Ok(#(Month(6), rest))
-        "Jul" <> rest -> Ok(#(Month(7), rest))
-        "Aug" <> rest -> Ok(#(Month(8), rest))
-        "Sep" <> rest -> Ok(#(Month(9), rest))
-        "Oct" <> rest -> Ok(#(Month(10), rest))
-        "Nov" <> rest -> Ok(#(Month(11), rest))
-        "Dec" <> rest -> Ok(#(Month(12), rest))
+    "M" -> consume_one_or_two_digits(input, into: Month)
+    "MM" -> consume_two_digits(input, into: Month)
+    "MMM" ->
+      case input {
+        <<"Jan", input:bytes>> -> Ok(#(Month(1), input))
+        <<"Feb", input:bytes>> -> Ok(#(Month(2), input))
+        <<"Mar", input:bytes>> -> Ok(#(Month(3), input))
+        <<"Apr", input:bytes>> -> Ok(#(Month(4), input))
+        <<"May", input:bytes>> -> Ok(#(Month(5), input))
+        <<"Jun", input:bytes>> -> Ok(#(Month(6), input))
+        <<"Jul", input:bytes>> -> Ok(#(Month(7), input))
+        <<"Aug", input:bytes>> -> Ok(#(Month(8), input))
+        <<"Sep", input:bytes>> -> Ok(#(Month(9), input))
+        <<"Oct", input:bytes>> -> Ok(#(Month(10), input))
+        <<"Nov", input:bytes>> -> Ok(#(Month(11), input))
+        <<"Dec", input:bytes>> -> Ok(#(Month(12), input))
         _ -> Error(Nil)
       }
-    }
-    "MMMM" -> {
-      case str {
-        "January" <> rest -> Ok(#(Month(1), rest))
-        "February" <> rest -> Ok(#(Month(2), rest))
-        "March" <> rest -> Ok(#(Month(3), rest))
-        "April" <> rest -> Ok(#(Month(4), rest))
-        "May" <> rest -> Ok(#(Month(5), rest))
-        "June" <> rest -> Ok(#(Month(6), rest))
-        "July" <> rest -> Ok(#(Month(7), rest))
-        "August" <> rest -> Ok(#(Month(8), rest))
-        "September" <> rest -> Ok(#(Month(9), rest))
-        "October" <> rest -> Ok(#(Month(10), rest))
-        "November" <> rest -> Ok(#(Month(11), rest))
-        "December" <> rest -> Ok(#(Month(12), rest))
+    "MMMM" ->
+      case input {
+        <<"January", input:bytes>> -> Ok(#(Month(1), input))
+        <<"February", input:bytes>> -> Ok(#(Month(2), input))
+        <<"March", input:bytes>> -> Ok(#(Month(3), input))
+        <<"April", input:bytes>> -> Ok(#(Month(4), input))
+        <<"May", input:bytes>> -> Ok(#(Month(5), input))
+        <<"June", input:bytes>> -> Ok(#(Month(6), input))
+        <<"July", input:bytes>> -> Ok(#(Month(7), input))
+        <<"August", input:bytes>> -> Ok(#(Month(8), input))
+        <<"September", input:bytes>> -> Ok(#(Month(9), input))
+        <<"October", input:bytes>> -> Ok(#(Month(10), input))
+        <<"November", input:bytes>> -> Ok(#(Month(11), input))
+        <<"December", input:bytes>> -> Ok(#(Month(12), input))
         _ -> Error(Nil)
       }
-    }
-    "D" -> consume_one_or_two_digits(str, Day)
-    "DD" -> consume_two_digits(str, Day)
-    "d" ->
-      case str {
-        "0" <> rest -> Ok(#(Passthrough, rest))
-        "1" <> rest -> Ok(#(Passthrough, rest))
-        "2" <> rest -> Ok(#(Passthrough, rest))
-        "3" <> rest -> Ok(#(Passthrough, rest))
-        "4" <> rest -> Ok(#(Passthrough, rest))
-        "5" <> rest -> Ok(#(Passthrough, rest))
-        "6" <> rest -> Ok(#(Passthrough, rest))
-        _ -> Error(Nil)
-      }
-    "dd" ->
-      case str {
-        "Su" <> rest -> Ok(#(Passthrough, rest))
-        "Mo" <> rest -> Ok(#(Passthrough, rest))
-        "Tu" <> rest -> Ok(#(Passthrough, rest))
-        "We" <> rest -> Ok(#(Passthrough, rest))
-        "Th" <> rest -> Ok(#(Passthrough, rest))
-        "Fr" <> rest -> Ok(#(Passthrough, rest))
-        "Sa" <> rest -> Ok(#(Passthrough, rest))
-        _ -> Error(Nil)
-      }
+
+    "D" -> consume_one_or_two_digits(input, into: Day)
+    "DD" -> consume_two_digits(input, into: Day)
+
+    // The day of the week is implied by the rest of the date, so it only has
+    // to be recognised, not remembered.
+    "d" -> consume_any(["0", "1", "2", "3", "4", "5", "6"], from: input)
+    "dd" -> consume_any(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"], from: input)
     "ddd" ->
-      case str {
-        "Sun" <> rest -> Ok(#(Passthrough, rest))
-        "Mon" <> rest -> Ok(#(Passthrough, rest))
-        "Tue" <> rest -> Ok(#(Passthrough, rest))
-        "Wed" <> rest -> Ok(#(Passthrough, rest))
-        "Thu" <> rest -> Ok(#(Passthrough, rest))
-        "Fri" <> rest -> Ok(#(Passthrough, rest))
-        "Sat" <> rest -> Ok(#(Passthrough, rest))
-        _ -> Error(Nil)
-      }
+      consume_any(
+        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        from: input,
+      )
     "dddd" ->
-      case str {
-        "Sunday" <> rest -> Ok(#(Passthrough, rest))
-        "Monday" <> rest -> Ok(#(Passthrough, rest))
-        "Tuesday" <> rest -> Ok(#(Passthrough, rest))
-        "Wednesday" <> rest -> Ok(#(Passthrough, rest))
-        "Thursday" <> rest -> Ok(#(Passthrough, rest))
-        "Friday" <> rest -> Ok(#(Passthrough, rest))
-        "Saturday" <> rest -> Ok(#(Passthrough, rest))
-        _ -> Error(Nil)
-      }
-    "H" -> consume_one_or_two_digits(str, Hour)
-    "HH" -> consume_two_digits(str, Hour)
-    "h" -> consume_one_or_two_digits(str, TwelveHour)
-    "hh" -> consume_two_digits(str, TwelveHour)
-    "a" -> {
-      case str {
-        "am" <> rest -> Ok(#(AMPeriod, rest))
-        "pm" <> rest -> Ok(#(PMPeriod, rest))
-        _ -> Error(Nil)
-      }
-    }
-    "A" -> {
-      case str {
-        "AM" <> rest -> Ok(#(AMPeriod, rest))
-        "PM" <> rest -> Ok(#(PMPeriod, rest))
-        _ -> Error(Nil)
-      }
-    }
-    "m" -> consume_one_or_two_digits(str, Minute)
-    "mm" -> consume_two_digits(str, Minute)
-    "s" -> consume_one_or_two_digits(str, Second)
-    "ss" -> consume_two_digits(str, Second)
-    "SSS" -> {
-      use milli <- result.map(
-        string.slice(str, at_index: 0, length: 3) |> int.parse,
+      consume_any(
+        [
+          "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+          "Saturday",
+        ],
+        from: input,
       )
 
-      #(Millisecond(milli), string.drop_start(str, 3))
+    "H" -> consume_one_or_two_digits(input, into: Hour)
+    "HH" -> consume_two_digits(input, into: Hour)
+    "h" -> consume_one_or_two_digits(input, into: TwelveHour)
+    "hh" -> consume_two_digits(input, into: TwelveHour)
+
+    "a" ->
+      case input {
+        <<"am", input:bytes>> -> Ok(#(AMPeriod, input))
+        <<"pm", input:bytes>> -> Ok(#(PMPeriod, input))
+        _ -> Error(Nil)
+      }
+    "A" ->
+      case input {
+        <<"AM", input:bytes>> -> Ok(#(AMPeriod, input))
+        <<"PM", input:bytes>> -> Ok(#(PMPeriod, input))
+        _ -> Error(Nil)
+      }
+
+    "m" -> consume_one_or_two_digits(input, into: Minute)
+    "mm" -> consume_two_digits(input, into: Minute)
+    "s" -> consume_one_or_two_digits(input, into: Second)
+    "ss" -> consume_two_digits(input, into: Second)
+
+    "SSS" -> {
+      use #(milli, input) <- result.map(internal.take_digits(input, count: 3))
+      #(Millisecond(milli), input)
     }
     "SSSS" -> {
-      use micro <- result.map(
-        string.slice(str, at_index: 0, length: 6) |> int.parse,
-      )
-
-      #(Microsecond(micro), string.drop_start(str, 6))
+      use #(micro, input) <- result.map(internal.take_digits(input, count: 6))
+      #(Microsecond(micro), input)
     }
+
+    // Offsets can be 1, 3, 5, or 6 characters long. Try parsing from largest
+    // to smallest because a small pattern may incorrectly match a subset of a
+    // larger value.
     "z" -> {
-      // Offsets can be 1, 3, 5, or 6 characters long. Try parsing from
-      // largest to smallest because a small pattern may incorrectly match
-      // a subset of a larger value.
-      use _ <- result.try_recover(
-        string.slice(str, at_index: 0, length: 6)
-        |> fn(offset) {
-          use re <- result.try(
-            regexp.from_string("[-+]\\d\\d:\\d\\d") |> result.replace_error(Nil),
-          )
-
-          case regexp.check(re, offset) {
-            True -> Ok(offset)
-            False -> Error(Nil)
-          }
-        }
-        |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_start(str, 6))
-        }),
+      use #(offset, input) <- result.map(
+        internal.backtrack(
+          over: [
+            take_hour_colon_minute_offset,
+            take_hour_minute_offset,
+            take_hour_offset,
+            take_utc_designator,
+          ],
+          with: internal.take_matched(input, _),
+        ),
       )
-
-      use _ <- result.try_recover(
-        string.slice(str, at_index: 0, length: 5)
-        |> fn(offset) {
-          use re <- result.try(
-            regexp.from_string("[-+]\\d\\d\\d\\d") |> result.replace_error(Nil),
-          )
-
-          case regexp.check(re, offset) {
-            True -> Ok(offset)
-            False -> Error(Nil)
-          }
-        }
-        |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_start(str, 5))
-        }),
-      )
-
-      use _ <- result.try_recover(
-        string.slice(str, at_index: 0, length: 3)
-        |> fn(offset) {
-          use re <- result.try(
-            regexp.from_string("[-+]\\d\\d") |> result.replace_error(Nil),
-          )
-
-          case regexp.check(re, offset) {
-            True -> Ok(offset)
-            False -> Error(Nil)
-          }
-        }
-        |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_start(str, 3))
-        }),
-      )
-
-      use _ <- result.try_recover(
-        string.slice(str, at_index: 0, length: 1)
-        |> fn(offset) {
-          case offset == "Z" || offset == "z" {
-            True -> Ok(offset)
-            False -> Error(Nil)
-          }
-        }
-        |> result.map(fn(offset) {
-          #(OffsetStr(offset), string.drop_start(str, 1))
-        }),
-      )
-
-      Error(Nil)
+      #(OffsetStr(offset), input)
     }
-    "zz" -> {
-      case str {
-        "Z" -> Ok(#(OffsetStr("Z"), string.drop_start(str, 1)))
-        "z" -> Ok(#(OffsetStr("z"), string.drop_start(str, 1)))
-        _ ->
-          Ok(#(
-            OffsetStr(string.slice(str, at_index: 0, length: 6)),
-            string.drop_start(str, 6),
-          ))
+    "zz" ->
+      case input {
+        <<"Z">> -> Ok(#(OffsetStr("Z"), <<>>))
+        <<"z">> -> Ok(#(OffsetStr("z"), <<>>))
+        _ -> Ok(consume_offset_text(input, length: 6))
       }
-    }
-    "Z" -> {
-      Ok(#(
-        OffsetStr(string.slice(str, at_index: 0, length: 6)),
-        string.drop_start(str, 6),
-      ))
-    }
-    "ZZ" -> {
-      Ok(#(
-        OffsetStr(string.slice(str, at_index: 0, length: 5)),
-        string.drop_start(str, 5),
-      ))
-    }
+    "Z" -> Ok(consume_offset_text(input, length: 6))
+    "ZZ" -> Ok(consume_offset_text(input, length: 5))
+
     "GMT" ->
-      case str == "GMT" {
-        True -> Ok(#(OffsetStr("Z"), string.drop_start(str, 3)))
-        False -> Error(Nil)
+      case input {
+        <<"GMT">> -> Ok(#(OffsetStr("Z"), <<>>))
+        _ -> Error(Nil)
       }
-    passthrough -> {
-      let fmt_length = string.length(passthrough)
-      let str_slice = string.slice(str, at_index: 0, length: fmt_length)
 
-      case str_slice == passthrough {
-        True -> Ok(#(Passthrough, string.drop_start(str, fmt_length)))
-        False -> Error(Nil)
-      }
-    }
+    // Anything that is not a directive has to appear in the input as-is.
+    literal ->
+      consume_literal(literal, from: input)
+      |> result.map(fn(input) { #(Passthrough, input) })
   }
-  |> result.map_error(fn(_) { "Unable to parse directive " <> fmt })
+  |> result.replace_error("Unable to parse directive " <> directive)
 }
 
-fn consume_one_or_two_digits(str, constructor) {
-  case string.slice(str, at_index: 0, length: 2) |> int.parse {
-    Ok(val) -> Ok(#(constructor(val), string.drop_start(str, 2)))
-    Error(_) ->
-      case string.slice(str, at_index: 0, length: 1) |> int.parse {
-        Ok(val) -> Ok(#(constructor(val), string.drop_start(str, 1)))
-        Error(_) -> Error(Nil)
-      }
+/// Consumes whichever of the given literals comes next in the input, keeping
+/// none of it.
+fn consume_any(
+  literals: List(String),
+  from input: BitArray,
+) -> Result(#(DatetimePart, BitArray), Nil) {
+  use input <- result.map(
+    internal.backtrack(over: literals, with: consume_literal(_, from: input)),
+  )
+  #(Passthrough, input)
+}
+
+/// Takes an offset that has already been vouched for by its directive, so it
+/// is handed on as-is for `offset_from_string` to make sense of.
+fn consume_offset_text(
+  input: BitArray,
+  length length: Int,
+) -> #(DatetimePart, BitArray) {
+  let #(offset, input) = internal.take_string_up_to(input, length)
+  #(OffsetStr(offset), input)
+}
+
+/// Matches `+hh:mm`.
+fn take_hour_colon_minute_offset(input: BitArray) -> Result(BitArray, Nil) {
+  use input <- result.try(take_offset_sign(input))
+  use #(_, input) <- result.try(internal.take_digits(input, count: 2))
+  use input <- result.try(internal.accept_byte(
+    input,
+    value: internal.byte_colon,
+  ))
+  use #(_, input) <- result.map(internal.take_digits(input, count: 2))
+  input
+}
+
+/// Matches `+hhmm`.
+fn take_hour_minute_offset(input: BitArray) -> Result(BitArray, Nil) {
+  use input <- result.try(take_offset_sign(input))
+  use #(_, input) <- result.map(internal.take_digits(input, count: 4))
+  input
+}
+
+/// Matches `+hh`.
+fn take_hour_offset(input: BitArray) -> Result(BitArray, Nil) {
+  use input <- result.try(take_offset_sign(input))
+  use #(_, input) <- result.map(internal.take_digits(input, count: 2))
+  input
+}
+
+/// Matches the `Z` that stands for an offset of UTC.
+fn take_utc_designator(input: BitArray) -> Result(BitArray, Nil) {
+  case input {
+    <<"Z", input:bytes>> | <<"z", input:bytes>> -> Ok(input)
+    _ -> Error(Nil)
   }
 }
 
-fn consume_two_digits(str, constructor) {
-  use val <- result.map(string.slice(str, at_index: 0, length: 2) |> int.parse)
+fn take_offset_sign(input: BitArray) -> Result(BitArray, Nil) {
+  case input {
+    <<"+", input:bytes>> | <<"-", input:bytes>> -> Ok(input)
+    _ -> Error(Nil)
+  }
+}
 
-  #(constructor(val), string.drop_start(str, 2))
+fn consume_one_or_two_digits(
+  from input: BitArray,
+  into constructor: fn(Int) -> DatetimePart,
+) -> Result(#(DatetimePart, BitArray), Nil) {
+  use #(value, input) <- result.map(internal.take_one_or_two_digits(input))
+  #(constructor(value), input)
+}
+
+fn consume_two_digits(
+  from input: BitArray,
+  into constructor: fn(Int) -> DatetimePart,
+) -> Result(#(DatetimePart, BitArray), Nil) {
+  use #(value, input) <- result.map(internal.take_digits(input, count: 2))
+  #(constructor(value), input)
 }
 
 @internal
@@ -3842,13 +3997,6 @@ pub fn find_offset(in parts) {
   )
 
   offset_from_string(offset_str)
-}
-
-fn result_guard(when_error e, return v, or run) {
-  case e {
-    Error(_) -> v
-    Ok(ok) -> run(ok)
-  }
 }
 
 // -------------------------------------------------------------------------- //

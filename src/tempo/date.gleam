@@ -33,16 +33,16 @@
 //// }
 //// ```
 
+import gleam/bit_array
 import gleam/dynamic
 import gleam/dynamic/decode
-import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
-import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/time/calendar
+import gtempo/internal
 import tempo
 import tempo/error as tempo_error
 import tempo/month
@@ -223,42 +223,20 @@ pub fn get_month_year(date: tempo.Date) -> tempo.MonthYear {
 pub fn from_string(
   date: String,
 ) -> Result(tempo.Date, tempo_error.DateParseError) {
-  use parts <- result.try({
-    split_int_tuple(date, "-")
-    |> result.try_recover(fn(_) { split_int_tuple(date, on: "/") })
-    |> result.try_recover(fn(_) { split_int_tuple(date, on: ".") })
-    |> result.try_recover(fn(_) { split_int_tuple(date, on: "_") })
-    |> result.try_recover(fn(_) { split_int_tuple(date, on: " ") })
-    |> result.try_recover(fn(_) {
-      let year = string.slice(date, at_index: 0, length: 4) |> int.parse
-      let month = string.slice(date, at_index: 4, length: 2) |> int.parse
-      let day = string.slice(date, at_index: 6, length: 2) |> int.parse
-
-      case year, month, day {
-        Ok(year), Ok(month), Ok(day) -> Ok(#(year, month, day))
-        _, _, _ -> Error(tempo_error.DateInvalidFormat(date))
-      }
-    })
-  })
+  use parts <- result.try(
+    parse_date_parts(bit_array.from_string(date))
+    |> result.replace_error(tempo_error.DateInvalidFormat(date)),
+  )
 
   from_tuple(parts)
   |> result.map_error(tempo_error.DateOutOfBounds(date, _))
 }
 
-fn split_int_tuple(
-  date: String,
-  on delim: String,
-) -> Result(#(Int, Int, Int), tempo_error.DateParseError) {
-  string.split(date, delim)
-  |> list.map(int.parse)
-  |> result.all()
-  |> result.try(fn(date: List(Int)) {
-    case date {
-      [year, month, day] -> Ok(#(year, month, day))
-      _ -> Error(Nil)
-    }
-  })
-  |> result.replace_error(tempo_error.DateInvalidFormat(date))
+fn parse_date_parts(input: BitArray) -> Result(#(Int, Int, Int), Nil) {
+  use #(parts, input) <- result.try(internal.take_date_parts(input))
+  use Nil <- result.map(internal.accept_empty(input))
+
+  parts
 }
 
 /// Returns a string representation of a date value in the format `YYYY-MM-DD`.
@@ -305,7 +283,7 @@ pub fn parse(
 ) -> Result(tempo.Date, tempo_error.DateParseError) {
   let format_str = tempo.get_date_format_str(format)
 
-  use #(parts, _) <- result.try(
+  use parts <- result.try(
     tempo.consume_format(str, in: format_str)
     |> result.map_error(tempo_error.DateInvalidFormat),
   )
@@ -385,29 +363,15 @@ pub fn describe_parse_error(error: tempo_error.DateParseError) -> String {
 /// // -------------------------------> "13 13 1 01 2 02 1 01 pm PM An ant"
 /// ```
 pub fn format(date: tempo.Date, in format: tempo.DateFormat) -> String {
-  let format_str = tempo.get_date_format_str(format)
-
-  let assert Ok(re) = regexp.from_string(tempo.format_regex)
-
-  regexp.scan(re, format_str)
-  |> list.reverse
-  |> list.fold(from: [], with: fn(acc, match) {
-    case match {
-      regexp.Match(content, []) -> [
-        tempo.date_replace_format(content, date),
-        ..acc
-      ]
-
-      // If there is a non-empty subpattern, then the escape
-      // character "[ ... ]" matched, so we should not change anything here.
-      regexp.Match(_, [Some(sub)]) -> [sub, ..acc]
-
-      // This case is not expected, not really sure what to do with it
-      // so just prepend whatever was found
-      regexp.Match(content, _) -> [content, ..acc]
+  tempo.get_date_format_str(format)
+  |> tempo.tokenise_format
+  |> list.map(fn(token) {
+    case token {
+      tempo.Directive(directive) -> tempo.date_replace_format(directive, date)
+      tempo.Escaped(literal) -> literal
     }
   })
-  |> string.join("")
+  |> string.concat
 }
 
 /// Returns a date value from a tuple of ints if the values represent the

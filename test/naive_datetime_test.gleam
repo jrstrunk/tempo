@@ -189,6 +189,7 @@ pub fn large_time_left_in_day_test() {
   |> naive_datetime.time_left_in_day
   |> should.equal(time.literal("15:54:40"))
 }
+
 // pub fn monotonic_difference_override_test() {
 //   let start =
 //     tempo.naive_datetime(
@@ -344,3 +345,31 @@ pub fn large_time_left_in_day_test() {
 //   |> naive_datetime.compare(to: start)
 //   |> should.equal(order.Lt)
 // }
+
+pub fn from_string_underscore_delimiter_test() {
+  naive_datetime.from_string("2024-06-13_13:42:11")
+  |> should.be_ok
+  |> should.equal(naive_datetime.literal("2024-06-13T13:42:11"))
+}
+
+pub fn from_string_space_delimited_date_test() {
+  naive_datetime.from_string("2024 06 13 13:42:11")
+  |> should.be_ok
+  |> should.equal(naive_datetime.literal("2024-06-13T13:42:11"))
+}
+
+pub fn from_string_condensed_test() {
+  naive_datetime.from_string("20240613T134211")
+  |> should.be_ok
+  |> should.equal(naive_datetime.literal("2024-06-13T13:42:11"))
+}
+
+pub fn from_string_with_offset_test() {
+  naive_datetime.from_string("2024-06-13T13:42:11-04:00")
+  |> should.be_error
+}
+
+pub fn from_string_trailing_junk_test() {
+  naive_datetime.from_string("2024-06-13T13:42:11junk")
+  |> should.be_error
+}

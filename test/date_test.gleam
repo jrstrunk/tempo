@@ -674,3 +674,21 @@ pub fn date_of_week_prior_epoch_test() {
   let assert Ok(my_date) = date.parse("1901-01-01", tempo.ISO8601Date)
   assert date.Tue == date.to_day_of_week(my_date)
 }
+
+pub fn unicode_format_test() {
+  date.literal("2024-06-21")
+  |> date.format(tempo.CustomDate("YYYY→MM→DD ✨"))
+  |> should.equal("2024→06→21 ✨")
+}
+
+pub fn greedy_directive_test() {
+  date.literal("2024-06-21")
+  |> date.format(tempo.CustomDate("YYYYY [YYYY] SS"))
+  |> should.equal("2024Y YYYY SS")
+}
+
+pub fn unclosed_escape_test() {
+  date.literal("2024-06-21")
+  |> date.format(tempo.CustomDate("[oops YYYY"))
+  |> should.equal("[oops 2024")
+}

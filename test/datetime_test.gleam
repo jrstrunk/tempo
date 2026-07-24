@@ -741,3 +741,53 @@ pub fn datetime_parse_custom_malformed_test() {
     )),
   )
 }
+
+pub fn roundtrip_written_month_test() {
+  datetime.parse("Sat, 21 Jun 2024 10:00:00 GMT", in: tempo.HTTP)
+  |> should.equal(Ok(datetime.literal("2024-06-21T10:00:00Z")))
+}
+
+pub fn from_string_lowercase_delimiter_test() {
+  datetime.from_string("2024-06-13t13:42:11Z")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11Z"))
+}
+
+pub fn from_string_underscore_delimiter_test() {
+  datetime.from_string("2024-06-13_13:42:11Z")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11Z"))
+}
+
+pub fn from_string_space_delimited_date_test() {
+  datetime.from_string("2024 06 13 13:42:11-04:00")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:11-04:00"))
+}
+
+pub fn from_string_condensed_test() {
+  datetime.from_string("20240613T230400.009+00:00")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T23:04:00.009Z"))
+}
+
+pub fn from_string_no_seconds_test() {
+  datetime.from_string("2024-06-13T13:42-04:00")
+  |> should.be_ok
+  |> should.equal(datetime.literal("2024-06-13T13:42:00-04:00"))
+}
+
+pub fn from_string_offset_out_of_bounds_test() {
+  datetime.from_string("2024-06-13T13:42:11+15:00")
+  |> should.equal(
+    Error(tempo_error.DateTimeOffsetParseError(
+      "2024-06-13T13:42:11+15:00",
+      tempo_error.OffsetOutOfBounds("+15:00"),
+    )),
+  )
+}
+
+pub fn from_string_trailing_junk_test() {
+  datetime.from_string("2024-06-13T13:42:11Zjunk")
+  |> should.be_error
+}
