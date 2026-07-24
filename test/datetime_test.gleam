@@ -791,3 +791,432 @@ pub fn from_string_trailing_junk_test() {
   datetime.from_string("2024-06-13T13:42:11Zjunk")
   |> should.be_error
 }
+
+// ========================================================================= //
+//                       Extensive format directive tests                    //
+//                                                                           //
+// Exercises every format directive across the date, time, naive_datetime,   //
+// and datetime modules, plus the format tokeniser and built-in named        //
+// formats. Expected day-of-week values were verified against the civil       //
+// calendar independently of the implementation.                             //
+// ========================================================================= //
+// -------------------------------------------------------------------------- //
+//                              Date directives                               //
+// -------------------------------------------------------------------------- //
+
+pub fn date_year_directives_test() {
+  // A lone "Y" is not a directive, so it is emitted verbatim.
+  date.literal("2024-06-13")
+  |> date.format(tempo.CustomDate("Y YY YYYY"))
+  |> should.equal("Y 24 2024")
+}
+
+pub fn date_year_short_takes_last_two_digits_test() {
+  date.literal("2007-01-05")
+  |> date.format(tempo.CustomDate("YY YYYY"))
+  |> should.equal("07 2007")
+}
+
+pub fn date_year_short_century_boundary_test() {
+  date.literal("2000-01-05")
+  |> date.format(tempo.CustomDate("YY YYYY"))
+  |> should.equal("00 2000")
+}
+
+pub fn date_month_number_directives_test() {
+  date.literal("2024-06-13")
+  |> date.format(tempo.CustomDate("M MM"))
+  |> should.equal("6 06")
+
+  date.literal("2024-11-13")
+  |> date.format(tempo.CustomDate("M MM"))
+  |> should.equal("11 11")
+}
+
+pub fn date_month_name_directives_test() {
+  date.literal("2024-01-13")
+  |> date.format(tempo.CustomDate("MMM MMMM"))
+  |> should.equal("Jan January")
+
+  date.literal("2024-09-13")
+  |> date.format(tempo.CustomDate("MMM MMMM"))
+  |> should.equal("Sep September")
+}
+
+pub fn date_all_month_names_test() {
+  let names = [
+    #("2024-01-15", "Jan January"),
+    #("2024-02-15", "Feb February"),
+    #("2024-03-15", "Mar March"),
+    #("2024-04-15", "Apr April"),
+    #("2024-05-15", "May May"),
+    #("2024-06-15", "Jun June"),
+    #("2024-07-15", "Jul July"),
+    #("2024-08-15", "Aug August"),
+    #("2024-09-15", "Sep September"),
+    #("2024-10-15", "Oct October"),
+    #("2024-11-15", "Nov November"),
+    #("2024-12-15", "Dec December"),
+  ]
+
+  names
+  |> should.equal(
+    names
+    |> list_map(fn(pair) {
+      #(
+        pair.0,
+        date.literal(pair.0) |> date.format(tempo.CustomDate("MMM MMMM")),
+      )
+    }),
+  )
+}
+
+pub fn date_day_directives_test() {
+  date.literal("2024-06-03")
+  |> date.format(tempo.CustomDate("D DD"))
+  |> should.equal("3 03")
+
+  date.literal("2024-06-13")
+  |> date.format(tempo.CustomDate("D DD"))
+  |> should.equal("13 13")
+}
+
+pub fn date_day_of_week_saturday_test() {
+  // 2000-01-01 is a Saturday.
+  date.literal("2000-01-01")
+  |> date.format(tempo.CustomDate("d dd ddd dddd"))
+  |> should.equal("6 Sa Sat Saturday")
+}
+
+pub fn date_day_of_week_sunday_test() {
+  // 2023-11-05 is a Sunday.
+  date.literal("2023-11-05")
+  |> date.format(tempo.CustomDate("d dd ddd dddd"))
+  |> should.equal("0 Su Sun Sunday")
+}
+
+pub fn date_day_of_week_thursday_leap_day_test() {
+  // 2024-02-29 is a Thursday.
+  date.literal("2024-02-29")
+  |> date.format(tempo.CustomDate("d dd ddd dddd"))
+  |> should.equal("4 Th Thu Thursday")
+}
+
+pub fn date_day_of_week_friday_test() {
+  // 1999-12-31 is a Friday.
+  date.literal("1999-12-31")
+  |> date.format(tempo.CustomDate("d dd ddd dddd"))
+  |> should.equal("5 Fr Fri Friday")
+}
+
+pub fn date_full_us_style_test() {
+  date.literal("2024-07-04")
+  |> date.format(tempo.CustomDate("dddd, MMMM D, YYYY"))
+  |> should.equal("Thursday, July 4, 2024")
+}
+
+pub fn date_iso_named_format_test() {
+  date.literal("2024-06-03")
+  |> date.format(tempo.ISO8601Date)
+  |> should.equal("2024-06-03")
+}
+
+// -------------------------------------------------------------------------- //
+//                              Time directives                               //
+// -------------------------------------------------------------------------- //
+
+pub fn time_hour_24_directives_test() {
+  time.literal("09:02:01")
+  |> time.format(tempo.CustomTime("H HH"))
+  |> should.equal("9 09")
+
+  time.literal("21:02:01")
+  |> time.format(tempo.CustomTime("H HH"))
+  |> should.equal("21 21")
+}
+
+pub fn time_hour_12_midnight_test() {
+  time.literal("00:15:00")
+  |> time.format(tempo.CustomTime("h hh a A"))
+  |> should.equal("12 12 am AM")
+}
+
+pub fn time_hour_12_noon_test() {
+  time.literal("12:15:00")
+  |> time.format(tempo.CustomTime("h hh a A"))
+  |> should.equal("12 12 pm PM")
+}
+
+pub fn time_hour_12_afternoon_test() {
+  time.literal("13:05:00")
+  |> time.format(tempo.CustomTime("h hh a A"))
+  |> should.equal("1 01 pm PM")
+}
+
+pub fn time_hour_12_late_evening_test() {
+  time.literal("23:05:00")
+  |> time.format(tempo.CustomTime("h hh a A"))
+  |> should.equal("11 11 pm PM")
+}
+
+pub fn time_minute_second_directives_test() {
+  time.literal("09:07:04")
+  |> time.format(tempo.CustomTime("m mm s ss"))
+  |> should.equal("7 07 4 04")
+
+  time.literal("09:47:59")
+  |> time.format(tempo.CustomTime("m mm s ss"))
+  |> should.equal("47 47 59 59")
+}
+
+pub fn time_fractional_directives_test() {
+  time.literal("09:02:01.014920")
+  |> time.format(tempo.CustomTime("SSS SSSS"))
+  |> should.equal("014 014920")
+}
+
+pub fn time_fractional_zero_test() {
+  time.literal("09:02:01.000000")
+  |> time.format(tempo.CustomTime("SSS SSSS"))
+  |> should.equal("000 000000")
+}
+
+pub fn time_fractional_milli_only_test() {
+  time.literal("09:02:01.123")
+  |> time.format(tempo.CustomTime("SSS SSSS"))
+  |> should.equal("123 123000")
+}
+
+pub fn time_iso_seconds_named_test() {
+  time.literal("13:42:11.314920")
+  |> time.format(tempo.ISO8601TimeSeconds)
+  |> should.equal("13:42:11")
+}
+
+pub fn time_iso_milli_named_test() {
+  time.literal("13:42:11.314920")
+  |> time.format(tempo.ISO8601TimeMilli)
+  |> should.equal("13:42:11.314")
+}
+
+pub fn time_iso_micro_named_test() {
+  time.literal("13:42:11.314920")
+  |> time.format(tempo.ISO8601TimeMicro)
+  |> should.equal("13:42:11.314920")
+}
+
+// -------------------------------------------------------------------------- //
+//                             Offset directives                              //
+// -------------------------------------------------------------------------- //
+
+pub fn offset_zero_directives_test() {
+  datetime.literal("2024-06-13T13:42:11.314Z")
+  |> datetime.format(tempo.Custom("z zz Z ZZ"))
+  |> should.equal("Z Z +00:00 +0000")
+}
+
+pub fn offset_whole_hour_negative_test() {
+  datetime.literal("2024-06-13T13:42:11.314-04:00")
+  |> datetime.format(tempo.Custom("z zz Z ZZ"))
+  |> should.equal("-04 -04:00 -04:00 -0400")
+}
+
+pub fn offset_whole_hour_positive_test() {
+  datetime.literal("2024-06-13T13:42:11.314+05:00")
+  |> datetime.format(tempo.Custom("z zz Z ZZ"))
+  |> should.equal("+05 +05:00 +05:00 +0500")
+}
+
+pub fn offset_sub_hour_negative_test() {
+  datetime.literal("2024-06-13T13:42:11.314-04:30")
+  |> datetime.format(tempo.Custom("z zz Z ZZ"))
+  |> should.equal("-04:30 -04:30 -04:30 -0430")
+}
+
+pub fn offset_sub_hour_positive_test() {
+  datetime.literal("2024-06-13T13:42:11.314+05:30")
+  |> datetime.format(tempo.Custom("z zz Z ZZ"))
+  |> should.equal("+05:30 +05:30 +05:30 +0530")
+}
+
+pub fn offset_sub_hour_only_negative_test() {
+  datetime.literal("2024-06-13T13:42:11.314-00:30")
+  |> datetime.format(tempo.Custom("z zz Z ZZ"))
+  |> should.equal("-00:30 -00:30 -00:30 -0030")
+}
+
+// -------------------------------------------------------------------------- //
+//                          Escapes and literals                              //
+// -------------------------------------------------------------------------- //
+
+pub fn escape_sequence_test() {
+  datetime.literal("2024-06-13T13:42:11.314-04:00")
+  |> datetime.format(tempo.Custom("[Year:] YYYY"))
+  |> should.equal("Year: 2024")
+}
+
+pub fn escape_sequence_with_directive_chars_test() {
+  // Characters inside the escape must be taken literally, including ones that
+  // would otherwise be directives.
+  datetime.literal("2024-06-13T13:42:11.314-04:00")
+  |> datetime.format(tempo.Custom("[YYYY MM DD] YYYY"))
+  |> should.equal("YYYY MM DD 2024")
+}
+
+pub fn unclosed_escape_is_literal_bracket_test() {
+  // Without a closing bracket the "[" is just a literal character. Note the
+  // trailing letters are still scanned for directives, so we use letters that
+  // are not directives here.
+  datetime.literal("2024-06-13T13:42:11.314-04:00")
+  |> datetime.format(tempo.Custom("[note YYYY"))
+  |> should.equal("[note 2024")
+}
+
+pub fn literal_punctuation_passthrough_test() {
+  datetime.literal("2024-06-13T13:42:11.314-04:00")
+  |> datetime.format(tempo.Custom("YYYY/MM/DD @ HH:mm"))
+  |> should.equal("2024/06/13 @ 13:42")
+}
+
+pub fn gmt_literal_directive_test() {
+  // "GMT" is its own directive so the "M" inside it is not read as a month.
+  naive_datetime.literal("2024-06-13T13:42:11")
+  |> naive_datetime.format(tempo.CustomNaive("HH:mm:ss GMT"))
+  |> should.equal("13:42:11 GMT")
+}
+
+// -------------------------------------------------------------------------- //
+//                          Naive datetime directives                         //
+// -------------------------------------------------------------------------- //
+
+pub fn naive_full_directive_sweep_test() {
+  naive_datetime.literal("2001-12-25T22:52:21.914920")
+  |> naive_datetime.format(tempo.CustomNaive(
+    "YY YYYY M MM MMM MMMM D DD d dd ddd dddd H HH h hh a A m mm s ss SSS SSSS",
+  ))
+  |> should.equal(
+    "01 2001 12 12 Dec December 25 25 2 Tu Tue Tuesday 22 22 10 10 pm PM 52 52 21 21 914 914920",
+  )
+}
+
+pub fn naive_iso_seconds_named_test() {
+  naive_datetime.literal("2024-06-13T13:42:11.314920")
+  |> naive_datetime.format(tempo.NaiveISO8601Seconds)
+  |> should.equal("2024-06-13T13:42:11")
+}
+
+pub fn naive_iso_milli_named_test() {
+  naive_datetime.literal("2024-06-13T13:42:11.314920")
+  |> naive_datetime.format(tempo.NaiveISO8601Milli)
+  |> should.equal("2024-06-13T13:42:11.314")
+}
+
+pub fn naive_iso_micro_named_test() {
+  naive_datetime.literal("2024-06-13T13:42:11.314920")
+  |> naive_datetime.format(tempo.NaiveISO8601Micro)
+  |> should.equal("2024-06-13T13:42:11.314920")
+}
+
+// -------------------------------------------------------------------------- //
+//                          Datetime named formats                            //
+// -------------------------------------------------------------------------- //
+
+pub fn datetime_iso_seconds_named_test() {
+  datetime.literal("2024-06-13T13:42:11.314920-04:00")
+  |> datetime.format(tempo.ISO8601Seconds)
+  |> should.equal("2024-06-13T13:42:11-04:00")
+}
+
+pub fn datetime_iso_milli_named_test() {
+  datetime.literal("2024-06-13T13:42:11.314920-04:00")
+  |> datetime.format(tempo.ISO8601Milli)
+  |> should.equal("2024-06-13T13:42:11.314-04:00")
+}
+
+pub fn datetime_iso_micro_named_test() {
+  datetime.literal("2024-06-13T13:42:11.314920-04:00")
+  |> datetime.format(tempo.ISO8601Micro)
+  |> should.equal("2024-06-13T13:42:11.314920-04:00")
+}
+
+pub fn datetime_http_named_utc_test() {
+  // 2025-01-05 is a Sunday.
+  datetime.literal("2025-01-05T13:02:01Z")
+  |> datetime.format(tempo.HTTP)
+  |> should.equal("Sun, 05 Jan 2025 13:02:01 GMT")
+}
+
+pub fn datetime_http_named_converts_to_gmt_test() {
+  // 2024-12-26 13:02 -04:30 is 17:32 GMT, still a Thursday.
+  datetime.literal("2024-12-26T13:02:01-04:30")
+  |> datetime.format(tempo.HTTP)
+  |> should.equal("Thu, 26 Dec 2024 17:32:01 GMT")
+}
+
+// -------------------------------------------------------------------------- //
+//                             Format tokeniser                               //
+// -------------------------------------------------------------------------- //
+
+pub fn tokenise_greedy_longest_first_test() {
+  tempo.tokenise_format("YYYYY")
+  |> should.equal([tempo.Directive("YYYY"), tempo.Directive("Y")])
+}
+
+pub fn tokenise_gmt_before_month_test() {
+  tempo.tokenise_format("GMT")
+  |> should.equal([tempo.Directive("GMT")])
+}
+
+pub fn tokenise_escape_then_directive_test() {
+  tempo.tokenise_format("[hi]YY")
+  |> should.equal([tempo.Escaped("hi"), tempo.Directive("YY")])
+}
+
+pub fn tokenise_unclosed_bracket_test() {
+  tempo.tokenise_format("[hi")
+  |> should.equal([
+    tempo.Directive("["),
+    tempo.Directive("h"),
+    tempo.Directive("i"),
+  ])
+}
+
+pub fn tokenise_mixed_directives_and_literals_test() {
+  tempo.tokenise_format("YYYY-MM")
+  |> should.equal([
+    tempo.Directive("YYYY"),
+    tempo.Directive("-"),
+    tempo.Directive("MM"),
+  ])
+}
+
+pub fn tokenise_empty_string_test() {
+  tempo.tokenise_format("")
+  |> should.equal([])
+}
+
+// -------------------------------------------------------------------------- //
+//                              Round trips                                    //
+// -------------------------------------------------------------------------- //
+
+pub fn datetime_custom_round_trip_micro_test() {
+  datetime.literal("2025-03-09T14:53:45.123456-04:30")
+  |> datetime.format(tempo.Custom("YYYY-MM-DD[T]HH:mm:ss.SSSSZ"))
+  |> datetime.parse(in: tempo.Custom("YYYY-MM-DD[T]HH:mm:ss.SSSSZ"))
+  |> should.equal(Ok(datetime.literal("2025-03-09T14:53:45.123456-04:30")))
+}
+
+pub fn date_custom_round_trip_test() {
+  date.literal("2024-06-13")
+  |> date.format(tempo.CustomDate("MM/DD/YYYY"))
+  |> date.parse(in: tempo.CustomDate("MM/DD/YYYY"))
+  |> should.equal(Ok(date.literal("2024-06-13")))
+}
+
+// A tiny local list.map so this file needs no extra imports.
+fn list_map(items: List(a), with fun: fn(a) -> b) -> List(b) {
+  case items {
+    [] -> []
+    [first, ..rest] -> [fun(first), ..list_map(rest, fun)]
+  }
+}
