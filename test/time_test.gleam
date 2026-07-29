@@ -762,3 +762,28 @@ pub fn time_calendar_round_trip_test() {
   |> time.from_calendar_time_of_day
   |> should.equal(Ok(ref))
 }
+
+/// The time of day of a pre-epoch timestamp is the offset into the day the
+/// timestamp falls in, so it is always in `[00:00:00, 24:00:00)` and never
+/// runs backwards from the epoch.
+pub fn from_unix_before_epoch_test() {
+  time.from_unix_seconds(-1)
+  |> time.to_string
+  |> should.equal("23:59:59.000000")
+
+  time.from_unix_seconds(-86_400)
+  |> time.to_string
+  |> should.equal("00:00:00.000000")
+
+  time.from_unix_seconds(-86_401)
+  |> time.to_string
+  |> should.equal("23:59:59.000000")
+
+  time.from_unix_milli(-1)
+  |> time.to_string
+  |> should.equal("23:59:59.999000")
+
+  time.from_unix_micro(-1)
+  |> time.to_string
+  |> should.equal("23:59:59.999999")
+}

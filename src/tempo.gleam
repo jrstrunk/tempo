@@ -1570,19 +1570,25 @@ pub fn new_date(
   date_from_tuple(#(year, month, day))
 }
 
+// The divisions below floor rather than truncate. Integer division in Gleam
+// truncates toward zero, which for a pre-epoch timestamp would land on the day
+// after the one the timestamp falls in: -1 is a second before the epoch, so it
+// belongs to day -1 (1969-12-31), not to day 0. Only exact multiples of a day
+// come out the same either way, which is what made this easy to miss.
+
 @internal
 pub fn date_from_unix_seconds(unix_ts) {
-  Date(unix_ts / 86_400)
+  Date(internal.floor_div(unix_ts, 86_400))
 }
 
 @internal
 pub fn date_from_unix_milli(unix_milli) {
-  Date(unix_milli / 86_400_000)
+  Date(internal.floor_div(unix_milli, 86_400_000))
 }
 
 @internal
 pub fn date_from_unix_micro(unix_micro) {
-  Date(unix_micro / internal.day_microseconds)
+  Date(internal.floor_div(unix_micro, internal.day_microseconds))
 }
 
 @internal
@@ -1789,7 +1795,7 @@ fn do_calculate_rata_die(year: Int, month: calendar.Month, ordinal_day: Int) {
 
 @internal
 pub fn date_calendar_from_unix_seconds(unix_ts: Int) {
-  date_calendar_from_unix_days(unix_ts / 86_400)
+  date_calendar_from_unix_days(internal.floor_div(unix_ts, 86_400))
 }
 
 @internal
@@ -2551,8 +2557,14 @@ pub fn time_to_parts(time: Time) {
 
 @internal
 pub fn time_from_unix_micro(unix_ts: Int) -> Time {
-  // Subtract the microseconds that are responsible for the date.
-  time_from_microseconds(unix_ts % internal.day_microseconds)
+  // Subtract the microseconds that are responsible for the date. This is the
+  // counterpart to the floored division in `date_from_unix_micro`, so it takes
+  // the floored remainder: always in `[0, day)`, never negative for a pre-epoch
+  // timestamp. The two together satisfy `date * day + time == unix_ts`.
+  time_from_microseconds(internal.modulo_unwrap(
+    unix_ts,
+    internal.day_microseconds,
+  ))
 }
 
 @internal

@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/dynamic/decode
+import gleam/list
 import gleam/order
 import gleam/string
 import gleeunit/should
@@ -337,6 +338,99 @@ pub fn from_unix_seconds_test() {
 
   date.from_unix_milli(267_839_999_999)
   |> should.equal(date.literal("1978-06-27"))
+}
+
+/// A pre-epoch timestamp falls on the day it is *inside*, which means the
+/// division by a day has to floor rather than truncate toward zero. -1 is one
+/// second before the epoch, so it belongs to 1969-12-31, not 1970-01-01.
+pub fn from_unix_seconds_before_epoch_test() {
+  date.from_unix_seconds(-1)
+  |> should.equal(date.literal("1969-12-31"))
+
+  date.from_unix_seconds(-86_399)
+  |> should.equal(date.literal("1969-12-31"))
+
+  date.from_unix_seconds(-86_400)
+  |> should.equal(date.literal("1969-12-31"))
+
+  date.from_unix_seconds(-86_401)
+  |> should.equal(date.literal("1969-12-30"))
+
+  date.from_unix_seconds(-172_800)
+  |> should.equal(date.literal("1969-12-30"))
+
+  date.from_unix_seconds(-172_801)
+  |> should.equal(date.literal("1969-12-29"))
+}
+
+/// Exact multiples of a day were always right, since truncation and flooring
+/// agree when the remainder is zero. That is what kept the bug hidden.
+pub fn from_unix_seconds_before_epoch_day_multiples_test() {
+  date.from_unix_seconds(-86_400 * 365)
+  |> should.equal(date.literal("1969-01-01"))
+
+  date.from_unix_seconds(-86_400 * 366)
+  |> should.equal(date.literal("1968-12-31"))
+}
+
+pub fn from_unix_milli_before_epoch_test() {
+  date.from_unix_milli(-1)
+  |> should.equal(date.literal("1969-12-31"))
+
+  date.from_unix_milli(-86_400_000)
+  |> should.equal(date.literal("1969-12-31"))
+
+  date.from_unix_milli(-86_400_001)
+  |> should.equal(date.literal("1969-12-30"))
+}
+
+pub fn from_unix_micro_before_epoch_test() {
+  date.from_unix_micro(-1)
+  |> should.equal(date.literal("1969-12-31"))
+
+  date.from_unix_micro(-86_400_000_000)
+  |> should.equal(date.literal("1969-12-31"))
+
+  date.from_unix_micro(-86_400_000_001)
+  |> should.equal(date.literal("1969-12-30"))
+}
+
+/// Dates well before the epoch, on the proleptic Gregorian calendar. 1900 is
+/// not a leap year (divisible by 100 but not 400) while 1600 is, so these pin
+/// the century rules on the pre-epoch path too.
+pub fn from_unix_seconds_historical_test() {
+  // 1900-02-28T00:00:00Z
+  date.from_unix_seconds(-2_203_977_600)
+  |> should.equal(date.literal("1900-02-28"))
+
+  // One second later is still the 28th, and the next day is March, because
+  // 1900 had no 29 February.
+  date.from_unix_seconds(-2_203_977_599)
+  |> should.equal(date.literal("1900-02-28"))
+
+  date.from_unix_seconds(-2_203_891_200)
+  |> should.equal(date.literal("1900-03-01"))
+}
+
+/// Round tripping through unix seconds must be the identity for every date,
+/// on either side of the epoch.
+pub fn unix_seconds_round_trip_test() {
+  use date <- list.each([
+    date.literal("1969-12-29"),
+    date.literal("1969-12-30"),
+    date.literal("1969-12-31"),
+    date.literal("1970-01-01"),
+    date.literal("1970-01-02"),
+    date.literal("1900-06-15"),
+    date.literal("1600-02-29"),
+    date.literal("1200-01-01"),
+    date.literal("2024-02-29"),
+    date.literal("9999-12-31"),
+  ])
+
+  date.to_unix_seconds(date)
+  |> date.from_unix_seconds
+  |> should.equal(date)
 }
 
 pub fn add_day_test() {

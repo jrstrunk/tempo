@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/dynamic/decode
+import gleam/list
 import gleam/order
 import gleam/time/duration as dur
 import gleam/time/timestamp
@@ -1219,4 +1220,116 @@ fn list_map(items: List(a), with fun: fn(a) -> b) -> List(b) {
     [] -> []
     [first, ..rest] -> [fun(first), ..list_map(rest, fun)]
   }
+}
+
+// --- Pre-epoch unix timestamps ---------------------------------------------
+//
+// Dividing a timestamp by a day to get the date has to floor, not truncate
+// toward zero. Truncation puts every negative timestamp that is not an exact
+// multiple of a day on the following day, an hour-for-hour correct time on the
+// wrong date. Exact multiples agree either way, which is what hid this.
+
+pub fn from_unix_seconds_before_epoch_test() {
+  datetime.from_unix_seconds(-1)
+  |> datetime.to_string
+  |> should.equal("1969-12-31T23:59:59.000000Z")
+
+  datetime.from_unix_seconds(-86_399)
+  |> datetime.to_string
+  |> should.equal("1969-12-31T00:00:01.000000Z")
+
+  datetime.from_unix_seconds(-86_400)
+  |> datetime.to_string
+  |> should.equal("1969-12-31T00:00:00.000000Z")
+
+  datetime.from_unix_seconds(-86_401)
+  |> datetime.to_string
+  |> should.equal("1969-12-30T23:59:59.000000Z")
+}
+
+pub fn from_unix_milli_before_epoch_test() {
+  datetime.from_unix_milli(-1)
+  |> datetime.to_string
+  |> should.equal("1969-12-31T23:59:59.999000Z")
+
+  datetime.from_unix_milli(-86_400_001)
+  |> datetime.to_string
+  |> should.equal("1969-12-30T23:59:59.999000Z")
+}
+
+pub fn from_unix_micro_before_epoch_test() {
+  datetime.from_unix_micro(-1)
+  |> datetime.to_string
+  |> should.equal("1969-12-31T23:59:59.999999Z")
+
+  datetime.from_unix_micro(-1_000_001)
+  |> datetime.to_string
+  |> should.equal("1969-12-31T23:59:58.999999Z")
+
+  datetime.from_unix_micro(-86_400_000_001)
+  |> datetime.to_string
+  |> should.equal("1969-12-30T23:59:59.999999Z")
+}
+
+/// 1900-01-01T00:00:00Z is an exact multiple of a day, so it was always right.
+/// Anything with a time of day on it was not.
+pub fn from_unix_seconds_historical_test() {
+  datetime.from_unix_seconds(-2_208_988_800)
+  |> datetime.to_string
+  |> should.equal("1900-01-01T00:00:00.000000Z")
+
+  datetime.from_unix_seconds(-2_208_988_799)
+  |> datetime.to_string
+  |> should.equal("1900-01-01T00:00:01.000000Z")
+
+  datetime.from_unix_seconds(-2_208_988_801)
+  |> datetime.to_string
+  |> should.equal("1899-12-31T23:59:59.000000Z")
+}
+
+pub fn unix_micro_round_trip_before_epoch_test() {
+  use micro <- list.each([
+    -1,
+    -999_999,
+    -1_000_000,
+    -1_000_001,
+    -86_400_000_000,
+    -86_400_000_001,
+    -2_208_988_800_000_000,
+    -2_208_988_799_999_999,
+    0,
+    1,
+    1_718_629_314_334_000,
+  ])
+
+  datetime.from_unix_micro(micro)
+  |> datetime.to_unix_micro
+  |> should.equal(micro)
+}
+
+pub fn unix_seconds_round_trip_before_epoch_test() {
+  use seconds <- list.each([
+    -1, -86_399, -86_400, -86_401, -2_208_988_800, -2_208_988_799, 0, 1,
+    1_718_629_314,
+  ])
+
+  datetime.from_unix_seconds(seconds)
+  |> datetime.to_unix_seconds
+  |> should.equal(seconds)
+}
+
+/// The reported symptom: a pre-epoch datetime taken out to a timestamp and
+/// back came home a day late.
+pub fn timestamp_round_trip_before_epoch_test() {
+  use literal <- list.each([
+    "1900-06-15T12:00:00Z", "1969-12-31T23:59:59Z", "1969-12-31T00:00:00Z",
+    "1970-01-01T00:00:00Z", "1970-01-01T00:00:01Z", "2024-06-15T12:34:56Z",
+  ])
+
+  let moment = datetime.literal(literal)
+
+  datetime.to_timestamp(moment)
+  |> datetime.from_timestamp
+  |> datetime.is_equal(moment)
+  |> should.be_true
 }

@@ -668,7 +668,9 @@ pub fn to_unix_seconds(date: tempo.Date) -> Int {
 /// instead and get the date from there if they need it.
 @internal
 pub fn from_unix_milli(unix_ts: Int) -> tempo.Date {
-  from_unix_seconds(unix_ts / 1000)
+  // Not `from_unix_seconds(unix_ts / 1000)`: that truncates toward zero, which
+  // for a pre-epoch timestamp rounds up into the following day.
+  tempo.date_from_unix_milli(unix_ts)
 }
 
 /// Returns the UTC unix timestamp in milliseconds of a date, assuming the
