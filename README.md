@@ -31,6 +31,8 @@ gleam add gleam_time
 
 #### Parsing and Formatting
 
+This should not be used to format dates and times to users of an international audience. For that, a package like `g18n` or `intldate` should be used for locale-sensitive formatting.
+
 ```gleam
 import tempo
 import tempo/datetime
