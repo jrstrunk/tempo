@@ -14,11 +14,7 @@ Supports both the Erlang and JavaScript targets.
 gleam add gtempo
 ```
 
-Supports timezones only through the `gtz` package. Add it with:
-
-```sh
-gleam add gtz
-```
+Supports time zones through the built-in `tempo/time_zone` module, which reads time zone data from the host system: `/usr/share/zoneinfo` on Erlang (macOS and other Unix systems), and the native `Intl` API on JavaScript.
 
 Supports the core gleam time package via conversion functions. Add it with:
 
@@ -31,14 +27,14 @@ gleam add gleam_time
 
 #### Parsing and Formatting
 
-This should not be used to format dates and times to users of an international audience. For that, a package like `g18n` or `intldate` should be used for locale-sensitive formatting.
+This should not be used to format dates and times to users of an international audience. For that, a package like `g18n` or `intldate` should be used for locale-sensitive formatting.new mo
 
 ```gleam
 import tempo
 import tempo/datetime
 
 pub fn main() {
-  // Parses any format of date, time, and/or timezone
+  // Parses any format of date, time, and/or time zone
   tempo.parse_any("Dec 25, 2024 at 1:00 PM")
   // -> Ok(#(Some(date), Some(time), None))
 
@@ -127,21 +123,21 @@ pub fn main() {
 
 #### Time Zone Conversion
 
-Time zone conversion is only supported with an external package like `gtz` to provide timezone information.
+Time zone conversion is supported by the `tempo/time_zone` module, which provides time zone information from the host system. On the Erlang target (macOS and other Unix systems) it reads the operating system's TZif database from `/usr/share/zoneinfo`, parsing it once and caching the result. On the JavaScript target it uses the runtime's native `Intl` API instead, so no filesystem access is needed.
 
 ```gleam
-import gtz
 import tempo/datetime
+import tempo/time_zone
 
 pub fn main() {
-  let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
+  let assert Ok(local_tz) = time_zone.local_name() |> time_zone.new
 
   datetime.from_unix_seconds(1_729_257_776)
   |> datetime.to_timezone(local_tz)
   |> datetime.to_string
   // -> "2024-10-18T14:22:56.000+01:00"
 
-  let assert Ok(tz) = gtz.timezone("America/New_York")
+  let assert Ok(tz) = time_zone.new("America/New_York")
 
   datetime.literal("2024-01-03T05:30:02.334Z")
   |> datetime.to_timezone(tz)
@@ -192,30 +188,19 @@ pub fn main() {
 
 Further documentation can be found at <https://hexdocs.pm/gtempo>.
 
+## Calendar and Date Range
+
+Every date in this package is a [proleptic Gregorian calendar](https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar) date, using Gregorian month lengths and the Gregorian leap year rule (divisible by 4, except century years, which must be divisible by 400). "Proleptic" means those rules are applied to dates before the calendar was adopted in 1582 too, so early dates will not line up with what was recorded historically on the Julian calendar. No other calendar system is supported, and month and day names are the English Gregorian ones.
+
+Constructing a date from calendar parts is limited to **years 1000 through 9999**, so that a year is always four digits. Years below 1000 are usually a mistyped or two-digit year rather than a real one, and are rejected for that reason. Date arithmetic is not range checked, so `add`, `subtract` and `from_rata_die` can carry a date outside that range, where it still compares correctly but no longer formats as valid ISO 8601.
+
+Times run from `00:00:00.000000` through `23:59:59.999999`, with `24:00:00` and the leap second `23:59:60` additionally accepted. Offsets run from `-12:00` through `+14:00`. Durations are a fixed number of microseconds with no calendar context at all, so their `Week` is always 7 days and their `YearImprecise` is always 364 days, neither of which tracks the calendar.
+
 ## Time Zone and Leap Second Considerations
 
-This package purposefully **ignores leap seconds** and **will not convert between time zones unless given a timezone provider**. Try to design your application so time zones do not have to be converted between and leap seconds are trivial. More below.
-
-Both time zones and leap seconds require maintaining a manually updated database of location offsets and leap seconds. This burdens any application that uses them to keep their dependencies up to date and burdens the package by either invalidating all previous versions when an update needs to be made or providing hot timezone data updates.
-
-If possible, try to design your application so that time zones do not have to be converted between. Client machines should have information about their time zone offset that can be polled and used for current time-zone conversions. This package will allow you to convert between local time and UTC time natively on the same date as the system date.
+This package purposefully **ignores leap seconds** and does not have a zoned datetime type. Try to design your application so time zones do not have to be converted between, relying instead on UTC time for time logic.
 
 Since this package ignores leap seconds, historical leap seconds are ignored when comparing and calculating durations. Please keep this in mind when designing your applications. Leap seconds can still be parsed from ISO 8601 strings and will be compared correctly to other times but will not be preserved when converting to any other time representation (including changing the offset).
-
-Leap second accounting depends on the host's time implementation when getting the system time.
-
-To account for leap seconds with this package, use a separate leap seconds provider package to compare dates (this leap second provider is fictional):
-
-```gleam
-import tempo/datetime
-import leap_second
-
-pub fn main() {
-  datetime.literal("1972-06-30T23:59:59Z")
-  |> leap_second.difference(from: datetime.literal("1972-07-01T00:00:00Z"))
-  // -> "00:00:02"
-}
-```
 
 ## Development
 

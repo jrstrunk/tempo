@@ -800,7 +800,7 @@ pub fn to_offset(
 }
 
 /// Converts a datetime to the equivalent local datetime. Prefer to either
-/// design your application to not need this, or add an external timezone
+/// design your application to not need this, or add an external time zone
 /// provider to use with the `to_timezone` function.
 ///
 /// Conversion is based on the host's current offset. We can not be
@@ -833,7 +833,7 @@ pub fn to_local_imprecise(datetime: tempo.DateTime) -> tempo.DateTime {
 }
 
 /// Converts a datetime to the equivalent local time. Prefer to either
-/// design your application to not need this, or add an external timezone
+/// design your application to not need this, or add an external time zone
 /// provider to use with the `to_timezone` function.
 ///
 /// Conversion is based on the host's current offset. We can not be
@@ -870,7 +870,7 @@ pub fn to_local_time_imprecise(datetime: tempo.DateTime) -> tempo.Time {
 }
 
 /// Converts a datetime to the equivalent local time imprecisely. Prefer to either
-/// design your application to not need this, or add an external timezone
+/// design your application to not need this, or add an external time zone
 /// provider to use with the `to_timezone` function.
 ///
 /// Conversion is based on the host's current offset. We can not be
@@ -906,14 +906,19 @@ pub fn to_local_date_imprecise(datetime: tempo.DateTime) -> tempo.Date {
   to_local_imprecise(datetime).date
 }
 
-/// Converts a datetime to the specified timezone. Relies on an external
-/// package like `gtz` to provide timezone information.
+/// Converts a datetime to the specified time zone with a
+/// `tempo.TimeZoneProvider` to supply time zone information, which the
+/// `tempo/time_zone` module provides. This function converts the datetime
+/// one time, with the zone information not stored in the datetime value itself.
+/// Because the zone information is not stored in the datetime value, if you
+/// add or subtract time from the resulting datetime, this function should be
+/// called again to update the new datetime value for the given zone.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// import gtz
-/// let assert Ok(tz) = gtz.timezone("America/New_York")
+/// import tempo/time_zone
+/// let assert Ok(tz) = time_zone.new("America/New_York")
 /// datetime.literal("2024-06-21T06:30:02.334Z")
 /// |> datetime.to_timezone(tz)
 /// |> datetime.to_string
@@ -921,8 +926,8 @@ pub fn to_local_date_imprecise(datetime: tempo.DateTime) -> tempo.Date {
 /// ```
 ///
 /// ```gleam
-/// import gtz
-/// let assert Ok(local_tz) = gtz.local_name() |> gtz.timezone
+/// import tempo/time_zone
+/// let assert Ok(local_tz) = time_zone.local_name() |> time_zone.new
 /// datetime.from_unix_seconds(1_729_257_776)
 /// |> datetime.to_timezone(local_tz)
 /// |> datetime.to_string
@@ -946,8 +951,8 @@ pub fn to_timezone(
 /// ```
 ///
 /// ```gleam
-/// import gtz
-/// let assert Ok(tz) = gtz.timezone("Europe/London")
+/// import tempo/time_zone
+/// let assert Ok(tz) = time_zone.new("Europe/London")
 /// datetime.to_timezone(my_datetime, tz)
 /// |> datetime.get_timezone_name
 /// // -> Some("Europe/London")

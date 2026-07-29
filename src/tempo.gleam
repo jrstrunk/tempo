@@ -906,7 +906,7 @@ pub fn instant_difference(from a: Instant, to b: Instant) -> duration.Duration {
 //                            DateTime Logic                                  //
 // -------------------------------------------------------------------------- //
 
-/// A datetime value with a timezone offset associated with it. It has the
+/// A datetime value with a time zone offset associated with it. It has the
 /// most amount of information about a point in time, and can be compared to
 /// all other types in this package by getting its lesser parts.
 pub type DateTime {
@@ -1146,8 +1146,8 @@ pub fn datetime_subtract(
 //                         Naive DateTime Logic                               //
 // -------------------------------------------------------------------------- //
 
-/// A datetime value with no timezone or offset associated with it.
-/// It cannot be compared to datetimes with a timezone offset accurately, but
+/// A datetime value with no time zone or offset associated with it.
+/// It cannot be compared to datetimes with a time zone offset accurately, but
 /// can be compared to dates, times, and other naive datetimes.
 pub type NaiveDateTime {
   NaiveDateTime(date: Date, time: Time)
@@ -1350,6 +1350,11 @@ pub const utc = Offset(0)
 @internal
 pub fn new_offset(from duration: duration.Duration) -> Result(Offset, Nil) {
   duration_as_mintues(duration) |> Offset |> validate_offset
+}
+
+@internal
+pub fn new_offset_unchecked(from duration: duration.Duration) -> Offset {
+  duration_as_mintues(duration) |> Offset
 }
 
 @internal
