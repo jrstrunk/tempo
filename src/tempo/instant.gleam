@@ -23,6 +23,18 @@
 ////   // -> "42 minutes"
 //// }
 //// ```
+////
+//// ## Calendar and range of valid dates
+////
+//// An `Instant` itself is a point on the host's clock and carries no calendar.
+//// The conversions that produce a date or a formatted string
+//// (`as_utc_date`, `as_local_date`, `as_utc_datetime`, `as_local_datetime`,
+//// `format_utc`, `format_local` and friends) produce proleptic Gregorian
+//// calendar values with English month and day names.
+////
+//// Those conversions are not range checked, but a host clock only reports
+//// times near the present, so in practice they always land well inside the
+//// 1000 to 9999 year range described in the `tempo/date` module docs.
 //// 
 //// ## Sorting Times
 //// 

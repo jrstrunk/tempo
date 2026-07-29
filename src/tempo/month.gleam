@@ -1,4 +1,8 @@
 //// Functions to use with the `Month` type in Tempo.
+////
+//// The months here are the twelve months of the Gregorian calendar, in their
+//// Gregorian order, and their names are the English ones. Month lengths follow
+//// the Gregorian rules, including the leap year rule for February.
 
 import gleam/result
 import gleam/time/calendar
@@ -89,7 +93,8 @@ pub fn from_long_string(month: String) -> Result(calendar.Month, Nil) {
   tempo.month_from_long_string(month)
 }
 
-/// Returns a month's number on the civil calendar.
+/// Returns a month's number on the Gregorian calendar, from 1 for January
+/// through 12 for December.
 /// 
 /// ## Example
 /// 
@@ -103,8 +108,9 @@ pub fn to_int(month: calendar.Month) -> Int {
   tempo.month_to_int(month)
 }
 
-/// Gets a month from an integer representing the order of the month on the 
-/// civil calendar.
+/// Gets a month from an integer representing the order of the month on the
+/// Gregorian calendar, so 1 for January through 12 for December. Any value
+/// outside 1 to 12 returns an error.
 /// 
 /// ## Example
 /// 
@@ -121,8 +127,13 @@ pub fn from_int(month: Int) -> Result(calendar.Month, Nil) {
   tempo.month_from_int(month)
 }
 
-/// Returns the number of days in a month.
-/// 
+/// Returns the number of days in a month of the proleptic Gregorian calendar.
+/// The year is required because February has 29 days in a Gregorian leap year
+/// and 28 otherwise.
+///
+/// Any year value is accepted, not just the 1000 to 9999 range that the
+/// `tempo/date` constructors are limited to.
+///
 /// ## Example
 /// 
 /// ```gleam
@@ -137,6 +148,16 @@ pub fn from_int(month: Int) -> Result(calendar.Month, Nil) {
 /// |> date.get_month
 /// |> month.days
 /// // -> 31
+/// ```
+///
+/// ```gleam
+/// month.days(calendar.February, in: 2024)
+/// // -> 29
+/// ```
+///
+/// ```gleam
+/// month.days(calendar.February, in: 1900)
+/// // -> 28
 /// ```
 pub fn days(of month: calendar.Month, in year: Int) -> Int {
   tempo.month_days_of(month, in: year)

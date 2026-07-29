@@ -32,6 +32,22 @@
 ////   // -> ["2024-06-21", "2024-06-28", "2024-07-05"]
 //// }
 //// ```
+////
+//// ## Calendar and range of valid dates
+////
+//// The date part of a datetime is a
+//// [proleptic Gregorian calendar](https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar)
+//// date, with Gregorian month lengths and the Gregorian leap year rule
+//// (divisible by 4, except century years, which must be divisible by 400).
+//// Those rules are applied to dates before the calendar's 1582 adoption too,
+//// so early dates do not match what was historically recorded on the Julian
+//// calendar. No other calendar system is supported.
+////
+//// Constructing a datetime from calendar parts is limited to **years 1000
+//// through 9999**, so that a year is always four digits. Arithmetic is not
+//// range checked and can carry a value outside that range, where it still
+//// compares correctly but no longer formats as valid ISO 8601. See the
+//// `tempo/date` module docs for the details.
 
 import gleam/bit_array
 import gleam/dynamic
@@ -53,7 +69,9 @@ import tempo/time
 /// Starting point of unix timestamps
 pub const unix_epoch = tempo.unix_epoch
 
-/// Create a new datetime from a date, time, and offset.
+/// Create a new datetime from a date, time, and offset. The date carries the
+/// proleptic Gregorian calendar year, month and day; see the `tempo/date`
+/// module docs for its 1000 to 9999 year range.
 ///
 /// ## Examples
 ///
@@ -75,7 +93,11 @@ pub fn new(
 
 /// Create a new datetime value from a string literal, but will panic if
 /// the string is invalid. Accepted formats are `YYYY-MM-DDThh:mm:ss.sTZD` or
-/// `YYYYMMDDThhmmss.sTZD`
+/// `YYYYMMDDThhmmss.sTZD`///
+/// The date part is read as a proleptic Gregorian calendar date and must have
+/// a year between 1000 and 9999, with a day that exists in that Gregorian
+/// month. The time part must be a valid time of day, and the offset must be
+/// between -12:00 and +14:00.
 ///
 /// Useful for declaring datetime literals that you know are valid within your
 /// program.
@@ -105,6 +127,10 @@ pub fn literal(datetime: String) -> tempo.DateTime {
 /// `YYYYMMDD hhmmss.sTZD`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`,
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`,
 /// `YYYY MM DD`, `YYYY M D`, or `YYYYMMDD`.
+///
+/// The date part is read as a proleptic Gregorian calendar date and must have
+/// a year between 1000 and 9999, with a day that exists in that Gregorian
+/// month. The offset must be between -12:00 and +14:00.
 ///
 /// ## Examples
 ///
@@ -241,6 +267,12 @@ pub fn to_calendar_parts(
 /// datetime (date, time, offset). Use the other modules for parsing lesser
 /// date time values.
 ///
+/// The date part is read as a proleptic Gregorian calendar date, with month
+/// names matched against the English Gregorian ones. The parsed year must
+/// land between 1000 and 9999, and the day must exist in that Gregorian
+/// month. A `YY` two-digit year is resolved into the hundred years leading up
+/// to the current date, so `"99"` parses as 1999 rather than 2099.
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
 ///
 /// Available directives: YY (two-digit year), YYYY (four-digit year), M (month),
@@ -342,6 +374,9 @@ pub fn describe_parse_error(error: tempo_error.DateTimeParseError) {
 }
 
 /// Formats a datetime value into a string using the provided format.
+///
+/// All calendar directives render proleptic Gregorian calendar values, and
+/// the month and day names are the English Gregorian ones.
 ///
 /// ## Examples
 ///

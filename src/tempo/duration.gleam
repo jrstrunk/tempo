@@ -14,6 +14,29 @@
 ////   // -> "1 hour, 42 minutes, 10 seconds"
 //// }
 //// ```
+////
+//// ## Calendar
+////
+//// Durations are a fixed number of microseconds and carry no calendar
+//// context, so no function in this module depends on the Gregorian calendar
+//// or on any other. There is no range of valid dates because a duration is
+//// not tied to a point in time.
+////
+//// The consequence is that the units larger than a day are fixed lengths
+//// rather than calendar ones, which is what the `imprecise` in their names
+//// refers to:
+////
+//// | Unit | Length |
+//// | --- | --- |
+//// | `Day` | 24 hours |
+//// | `Week` | 7 days |
+//// | `YearImprecise` | 364 days, that is 52 weeks |
+////
+//// A Gregorian calendar year is 365 or 366 days, so converting a duration to
+//// years will not agree with calendar arithmetic. A `Day` is likewise always
+//// 24 hours, which is not true of a calendar day in a time zone that observes
+//// daylight saving time. When you need the calendar-accurate answer, work from
+//// dates with `tempo/date` or `tempo/period` instead.
 
 import gleam/list
 import gleam/order
@@ -132,7 +155,12 @@ pub fn new(duration: Int, unit: Unit) -> duration.Duration {
 }
 
 /// Creates a new duration value of the specified number of whole years,
-/// assuming a year is 365 days.
+/// assuming a year is exactly 364 days (52 weeks).
+///
+/// This is deliberately not a calendar year. Durations here are a fixed number
+/// of microseconds and carry no calendar context, so they cannot know whether
+/// a given Gregorian year is 365 or 366 days long. Use `tempo/period` or add
+/// days to a date if you need calendar-accurate year arithmetic.
 ///
 /// ## Example
 /// 
@@ -311,8 +339,8 @@ pub fn as_unit_fractional(duration: duration.Duration, unit: Unit) -> Float {
   |> unit.as_unit_fractional(duration |> tempo.duration_get_microseconds, _)
 }
 
-/// Converts a duration to the equivalent number of whole years, assuming 
-/// a year is 365 days.
+/// Converts a duration to the equivalent number of whole years, assuming
+/// a year is exactly 364 days (52 weeks), not a Gregorian calendar year.
 /// 
 /// ## Example
 /// 
@@ -325,15 +353,15 @@ pub fn as_years_imprecise(duration: duration.Duration) -> Int {
   duration |> tempo.duration_get_microseconds |> unit.as_years_imprecise
 }
 
-/// Converts a duration to the equivalent number of fractional years, 
-/// assuming a year is 365 days.
+/// Converts a duration to the equivalent number of fractional years, assuming
+/// a year is exactly 364 days (52 weeks), not a Gregorian calendar year.
 /// 
 /// ## Example
 /// 
 /// ```gleam
 /// duration.days(375)
 /// |> duration.as_years_fractional_imprecise
-/// // -> 1.02739726
+/// // -> 1.0302197802197801
 /// ```
 pub fn as_years_fractional_imprecise(duration: duration.Duration) -> Float {
   duration

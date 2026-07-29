@@ -32,6 +32,32 @@
 ////   )
 //// }
 //// ```
+////
+//// ## Calendar
+////
+//// Dates in this module are
+//// [proleptic Gregorian calendar](https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar)
+//// dates. Every year-month-day these functions accept or produce is a
+//// Gregorian one, with Gregorian month lengths and the Gregorian leap year
+//// rule (divisible by 4, except century years, which must be divisible by
+//// 400). "Proleptic" means those rules are applied to dates before the
+//// calendar was adopted in 1582 as well, so a date such as `1500-01-01` is not
+//// the day that was recorded as such at the time, when the Julian calendar was
+//// in use. No other calendar system is supported.
+////
+//// ## Range of valid dates
+////
+//// Constructing a date from calendar parts is limited to **years 1000 through
+//// 9999**, so that a year is always four digits. `new`, `from_tuple`,
+//// `from_calendar_date`, `from_string`, `parse`, `parse_any` and `literal` all
+//// reject years outside that range.
+////
+//// Date arithmetic is not range checked. `add`, `subtract` and `from_rata_die`
+//// will happily produce dates outside 1000 to 9999, including year zero and
+//// negative years. Such dates still compare and do arithmetic correctly, but
+//// `to_string` and `format` will render their years without four-digit zero
+//// padding, which is not valid ISO 8601. Keep results within 1000 to 9999 if
+//// you intend to format them.
 
 import gleam/bit_array
 import gleam/dynamic
@@ -61,7 +87,11 @@ pub type DayOfWeek {
   Sat
 }
 
-/// Creates a new date and validates it.
+/// Creates a new proleptic Gregorian calendar date and validates it.
+///
+/// The year must be between 1000 and 9999, the month between 1 and 12, and the
+/// day between 1 and the number of days that month has in that Gregorian year.
+/// Anything else returns an error.
 ///
 /// ## Examples
 ///
@@ -72,6 +102,20 @@ pub type DayOfWeek {
 ///
 /// ```gleam
 /// date.new(2024, 6, 31)
+/// // -> Error(tempo_error.DateOutOfBounds)
+/// ```
+///
+/// ```gleam
+/// // 2024 is a Gregorian leap year, 2023 is not
+/// date.new(2024, 2, 29)
+/// // -> Ok(date.literal("2024-02-29"))
+/// date.new(2023, 2, 29)
+/// // -> Error(tempo_error.DateOutOfBounds)
+/// ```
+///
+/// ```gleam
+/// // Years outside 1000 to 9999 are rejected
+/// date.new(999, 1, 1)
 /// // -> Error(tempo_error.DateOutOfBounds)
 /// ```
 pub fn new(
@@ -89,6 +133,10 @@ pub fn new(
 ///
 /// Useful for declaring date literals that you know are valid within your
 /// program.
+///
+/// The string is read as a proleptic Gregorian calendar date, and must have a
+/// year between 1000 and 9999. A year outside that range panics, as does a day
+/// that does not exist in that Gregorian month, such as `"2023-02-29"`.
 ///
 /// ## Examples
 ///
@@ -122,7 +170,8 @@ pub fn literal(date: String) -> tempo.Date {
   }
 }
 
-/// Gets the current local date of the host.
+/// Gets the current local date of the host, as a proleptic Gregorian calendar
+/// date.
 ///
 /// ## Examples
 ///
@@ -135,7 +184,8 @@ pub fn current_local() {
   { tempo.now_utc_ffi() + tempo.offset_local_micro() } |> from_unix_micro
 }
 
-/// Gets the current UTC date of the host.
+/// Gets the current UTC date of the host, as a proleptic Gregorian calendar
+/// date.
 ///
 /// ## Examples
 ///
@@ -148,7 +198,7 @@ pub fn current_utc() {
   tempo.now_utc_ffi() |> from_unix_micro
 }
 
-/// Gets the year value of a date.
+/// Gets the proleptic Gregorian calendar year of a date.
 ///
 /// ## Examples
 ///
@@ -161,7 +211,7 @@ pub fn get_year(date: tempo.Date) -> Int {
   date |> tempo.date_get_year
 }
 
-/// Gets the month value of a date.
+/// Gets the Gregorian calendar month of a date.
 ///
 /// ## Examples
 ///
@@ -174,7 +224,7 @@ pub fn get_month(date: tempo.Date) -> calendar.Month {
   date |> tempo.date_get_month
 }
 
-/// Gets the day value of a date.
+/// Gets the day of the Gregorian calendar month of a date, from 1 to 31.
 ///
 /// ## Examples
 ///
@@ -187,7 +237,7 @@ pub fn get_day(date: tempo.Date) -> Int {
   date |> tempo.date_get_day
 }
 
-/// Gets the month value of a date.
+/// Gets the Gregorian calendar month and year of a date.
 ///
 /// ## Examples
 ///
@@ -203,6 +253,10 @@ pub fn get_month_year(date: tempo.Date) -> tempo.MonthYear {
 /// Parses a date string in the format `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`,
 /// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, `YYYY MM DD`,
 /// `YYYY M D`, or `YYYYMMDD`.
+///
+/// The string is read as a proleptic Gregorian calendar date. The year must be
+/// between 1000 and 9999, and the day must exist in that Gregorian month, so
+/// `"2023-02-29"` is an error while `"2024-02-29"` is not.
 ///
 /// ## Examples
 ///
@@ -239,7 +293,14 @@ fn parse_date_parts(input: BitArray) -> Result(#(Int, Int, Int), Nil) {
   parts
 }
 
-/// Returns a string representation of a date value in the format `YYYY-MM-DD`.
+/// Returns a string representation of a proleptic Gregorian calendar date in
+/// the format `YYYY-MM-DD`.
+///
+/// Dates built by the constructors always have a year between 1000 and 9999
+/// and so always render as four digits. Date arithmetic is not range checked
+/// though, so a date pushed outside that range by `add`, `subtract` or
+/// `from_rata_die` renders its year without four-digit zero padding, which is
+/// not valid ISO 8601.
 ///
 /// ## Examples
 ///
@@ -247,6 +308,14 @@ fn parse_date_parts(input: BitArray) -> Result(#(Int, Int, Int), Nil) {
 /// date.literal("2024-06-13")
 /// |> date.to_string
 /// // -> "2024-06-13"
+/// ```
+///
+/// ```gleam
+/// // Outside the 1000 to 9999 range the year is not padded
+/// date.literal("1000-01-01")
+/// |> date.subtract(days: 1)
+/// |> date.to_string
+/// // -> "999-12-31"
 /// ```
 pub fn to_string(date: tempo.Date) -> String {
   tempo.date_to_string(date)
@@ -260,6 +329,12 @@ pub fn to_string(date: tempo.Date) -> String {
 /// Available directives: YY (two-digit year), YYYY (four-digit year), M (month),
 /// MM (two-digit month), MMM (short month name), MMMM (full month name),
 /// D (day of the month), DD (two-digit day of the month),
+///
+/// The result is a proleptic Gregorian calendar date, and the month names the
+/// directives accept are the English Gregorian ones. The parsed year must land
+/// between 1000 and 9999, and the day must exist in that Gregorian month, or an
+/// error is returned. A `YY` two-digit year is resolved into the hundred years
+/// leading up to the current date, so `"99"` parses as 1999 rather than 2099.
 ///
 /// ## Example
 ///
@@ -294,6 +369,10 @@ pub fn parse(
 /// Tries to parse a given date string without a known format. It will not
 /// parse two digit years and will assume the month always comes before the
 /// day in a date. Will leave out any time or offset values present.
+///
+/// The result is a proleptic Gregorian calendar date with a year between 1000
+/// and 9999. Since two digit years are not parsed, the year in the string must
+/// already be four digits.
 ///
 /// ## Example
 ///
@@ -330,6 +409,12 @@ pub fn describe_parse_error(error: tempo_error.DateParseError) -> String {
 }
 
 /// Formats a date value into a string using the provided date format.
+///
+/// All calendar directives render proleptic Gregorian calendar values, and the
+/// month and day names are the English Gregorian ones. Dates built by the
+/// constructors always have a four-digit year, but a date pushed outside 1000
+/// to 9999 by `add`, `subtract` or `from_rata_die` renders its year without
+/// four-digit zero padding.
 ///
 /// ## Example
 ///
@@ -375,12 +460,15 @@ pub fn format(date: tempo.Date, in format: tempo.DateFormat) -> String {
 }
 
 /// Returns a date value from a tuple of ints if the values represent the
-/// years, month, and day of a valid date. The year must be greater than 1000.
+/// year, month, and day of a valid proleptic Gregorian calendar date. The year
+/// must be between 1000 and 9999, the month between 1 and 12, and the day
+/// between 1 and the number of days that month has in that Gregorian year.
 ///
 /// Years less than 1000 are technically valid years, but are not common
 /// and usually indicate that either a non-year value was passed as the year
 /// or a two digit year was passed (which are too abiguous to be confidently
-/// accepted).
+/// accepted). Years above 9999 are rejected so that a year is always four
+/// digits.
 ///
 /// ## Examples
 ///
@@ -391,6 +479,12 @@ pub fn format(date: tempo.Date, in format: tempo.DateFormat) -> String {
 ///
 /// ```gleam
 /// date.from_tuple(#(98, 6, 13))
+/// // -> Error(tempo_error.DateOutOfBounds)
+/// ```
+///
+/// ```gleam
+/// // Feb 29 exists in Gregorian leap years only
+/// date.from_tuple(#(2023, 2, 29))
 /// // -> Error(tempo_error.DateOutOfBounds)
 /// ```
 pub fn from_tuple(
@@ -413,7 +507,8 @@ pub fn describe_out_of_bounds_error(error: tempo_error.DateOutOfBoundsError) {
 }
 
 /// Returns a tuple of ints from a date value that represent the year, month,
-/// and day of the date.
+/// and day of the date on the proleptic Gregorian calendar, where the month is
+/// 1 for January through 12 for December.
 ///
 /// ## Examples
 ///
@@ -430,12 +525,33 @@ pub fn to_tuple(date: tempo.Date) -> #(Int, Int, Int) {
   )
 }
 
-/// Converts a tempo date to a calendar date.
+/// Converts a tempo date to a `gleam_time` calendar date. Both represent the
+/// same proleptic Gregorian calendar year, month, and day, so no calendar
+/// conversion takes place.
+///
+/// ## Example
+///
+/// ```gleam
+/// date.literal("2024-06-13")
+/// |> date.to_calendar_date
+/// // -> calendar.Date(2024, calendar.June, 13)
+/// ```
 pub fn to_calendar_date(date: tempo.Date) -> calendar.Date {
   tempo.date_to_calendar_date(date)
 }
 
-/// Converts a calendar date to a tempo date.
+/// Converts a `gleam_time` calendar date to a tempo date. Both represent the
+/// same proleptic Gregorian calendar year, month, and day, so no calendar
+/// conversion takes place, but the year must be between 1000 and 9999 or an
+/// error is returned.
+///
+/// ## Example
+///
+/// ```gleam
+/// calendar.Date(2024, calendar.June, 13)
+/// |> date.from_calendar_date
+/// // -> Ok(date.literal("2024-06-13"))
+/// ```
 pub fn from_calendar_date(
   date: calendar.Date,
 ) -> Result(tempo.Date, tempo_error.DateOutOfBoundsError) {
@@ -615,8 +731,16 @@ pub fn to_unix_micro(date: tempo.Date) -> Int {
   tempo.date_to_unix_micro(date)
 }
 
-/// Creates a date from a Rata Die value.
+/// Creates a date from a Rata Die value, the number of days since the day
+/// before `0001-01-01` on the proleptic Gregorian calendar, so Rata Die 1 is
+/// `0001-01-01` and `1970-01-01` is 719_163.
+///
 /// Adapted from the very nice Rada Gleam library!
+///
+/// This is not range checked, so unlike the calendar-part constructors it will
+/// return dates outside the 1000 to 9999 year range, including year zero and
+/// negative years for values of 0 and below. Those dates compare and do
+/// arithmetic correctly but do not format as valid ISO 8601.
 ///
 /// ## Example
 ///
@@ -628,7 +752,10 @@ pub fn from_rata_die(rata_die: Int) -> tempo.Date {
   tempo.date_from_rata_die(rata_die)
 }
 
-/// Returns the Rata Die value of the date as an Int.
+/// Returns the Rata Die value of the date as an Int, the number of days since
+/// the day before `0001-01-01` on the proleptic Gregorian calendar, so
+/// `0001-01-01` is 1 and `1970-01-01` is 719_163.
+///
 /// Adapted from the very nice Rada Gleam library!
 ///
 /// ## Example
@@ -637,6 +764,12 @@ pub fn from_rata_die(rata_die: Int) -> tempo.Date {
 /// date.literal("2024-06-13")
 /// |> date.to_rata_die
 /// // -> 739_050
+/// ```
+///
+/// ```gleam
+/// date.literal("1970-01-01")
+/// |> date.to_rata_die
+/// // -> 719_163
 /// ```
 pub fn to_rata_die(date: tempo.Date) -> Int {
   tempo.date_to_rata_die(date)
@@ -794,7 +927,13 @@ pub fn as_period(start start: tempo.Date, end end: tempo.Date) -> tempo.Period {
   tempo.period_new_date(start:, end:)
 }
 
-/// Adds a number of days to a date.
+/// Adds a number of days to a date, rolling over month and year boundaries
+/// according to proleptic Gregorian month lengths and leap years.
+///
+/// This is not range checked. Adding enough days will push the date past year
+/// 9999, and adding a negative number can push it below year 1000, down through
+/// year zero into negative years. Such dates compare and do arithmetic
+/// correctly but do not format as valid ISO 8601.
 ///
 /// ## Examples
 ///
@@ -813,7 +952,13 @@ pub fn add(date: tempo.Date, days days: Int) -> tempo.Date {
   tempo.date_add(date, days: days)
 }
 
-/// Subtracts a number of days from a date.
+/// Subtracts a number of days from a date, rolling back over month and year
+/// boundaries according to proleptic Gregorian month lengths and leap years.
+///
+/// This is not range checked. Subtracting enough days will push the date below
+/// year 1000, down through year zero into negative years, and subtracting a
+/// negative number can push it past year 9999. Such dates compare and do
+/// arithmetic correctly but do not format as valid ISO 8601.
 ///
 /// ## Examples
 ///
@@ -834,17 +979,29 @@ pub fn subtract(date: tempo.Date, days days: Int) -> tempo.Date {
 
 /// Returns the number of the day of week a date falls on, using the US
 /// convention of counting Sunday as `0` through Saturday as `6`.
-/// Will be incorrect for dates before 1752 and dates after 2300.
 ///
 /// This does *not* follow the ISO 8601 day-of-week numbering (Monday as `1`
 /// through Sunday as `7`).
+///
+/// The result is the day of the week on the proleptic Gregorian calendar, and
+/// is exact for every date, with no restricted range. Note though that for
+/// dates before a region adopted the Gregorian calendar (1582 in Catholic
+/// Europe, as late as 1923 elsewhere), the result will not match the day of the
+/// week recorded historically, because those dates were written on the Julian
+/// calendar and this library reads every date as Gregorian.
 @deprecated("Use `to_day_of_week` for a non-ambiguous named day of week value. If you need a corresponding number, prefer using a case statement to derive one in your application so that it is explicit, as different regions assume different conventions.")
 pub fn to_day_of_week_number(date: tempo.Date) -> Int {
   tempo.date_to_day_of_week_number_us_convention(date)
 }
 
-/// Returns the day of week a date falls on.
-/// Will be incorrect for dates before 1752 and dates after 2300.
+/// Returns the day of week a date falls on, on the proleptic Gregorian
+/// calendar.
+///
+/// The result is exact for every date, with no restricted range. Note though
+/// that for dates before a region adopted the Gregorian calendar (1582 in
+/// Catholic Europe, as late as 1923 elsewhere), the result will not match the
+/// day of the week recorded historically, because those dates were written on
+/// the Julian calendar and this library reads every date as Gregorian.
 ///
 /// ## Examples
 ///
@@ -907,7 +1064,10 @@ pub fn day_of_week_to_long_string(day_of_week: DayOfWeek) -> String {
 }
 
 /// Gets the date of the next specified day of the week, exclusive of
-/// the passed date.
+/// the passed date. The result is always 1 to 7 days after the given date.
+///
+/// Days of the week are those of the proleptic Gregorian calendar, as
+/// described in `to_day_of_week`.
 ///
 /// ## Examples
 ///
@@ -935,7 +1095,10 @@ pub fn next_day_of_week(
 }
 
 /// Gets the date of the prior specified day of the week, exclusive of
-/// the passed date.
+/// the passed date. The result is always 1 to 7 days before the given date.
+///
+/// Days of the week are those of the proleptic Gregorian calendar, as
+/// described in `to_day_of_week`.
 ///
 /// ## Examples
 ///
@@ -962,7 +1125,9 @@ pub fn prior_day_of_week(
   }
 }
 
-/// Checks if a date falls in a weekend.
+/// Checks if a date falls in a weekend, taking the weekend to be Saturday and
+/// Sunday of the proleptic Gregorian calendar week. Regions that treat other
+/// days as the weekend are not accounted for.
 ///
 /// ## Examples
 ///
@@ -978,7 +1143,8 @@ pub fn is_weekend(date: tempo.Date) -> Bool {
   }
 }
 
-/// Gets the first date of the month a date occurs in.
+/// Gets the first date of the Gregorian calendar month a date occurs in, so
+/// always day 1 of that month.
 ///
 /// ## Examples
 ///
@@ -993,7 +1159,9 @@ pub fn first_of_month(for date: tempo.Date) -> tempo.Date {
   |> tempo.date_from_calendar_date
 }
 
-/// Gets the last date of the month a date occurs in.
+/// Gets the last date of the Gregorian calendar month a date occurs in, so day
+/// 28, 29, 30 or 31 depending on the month and whether it is a Gregorian leap
+/// year.
 ///
 /// ## Examples
 ///

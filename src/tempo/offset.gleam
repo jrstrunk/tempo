@@ -12,6 +12,16 @@
 ////   // -> "+05:00"
 //// }
 //// ```
+////
+//// ## Calendar and range of valid offsets
+////
+//// An offset is a signed number of minutes from UTC with no date attached, so
+//// nothing in this module depends on the Gregorian calendar or on any other,
+//// and there is no range of valid dates.
+////
+//// The range of valid offsets is **-12:00 through +14:00**, which covers every
+//// offset in current use, including the 30 and 45 minute ones. `new`,
+//// `from_string` and `from_duration` reject anything outside it.
 
 import gleam/time/duration
 import tempo

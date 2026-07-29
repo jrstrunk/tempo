@@ -1,18 +1,34 @@
 //// Functions to use with the `NaiveDateTime` type in Tempo. Naive datetimes
-//// are datetime values without an offset or timezone value.
-//// 
+//// are datetime values without an offset or time zone value.
+////
 //// ## Example
-//// 
+////
 //// ```gleam
 //// import tempo/naive_datetime
 //// import tempo/date
 //// import tempo/time
-//// 
+////
 //// pub fn get_date_and_time() {
 ////   naive_datetime.now_local()
 ////   |> naive_datetime.to_string
 ////   // -> "2024-06-21T13:42:11"
 //// }
+////
+//// ## Calendar and range of valid dates
+////
+//// The date part of a naive datetime is a
+//// [proleptic Gregorian calendar](https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar)
+//// date, with Gregorian month lengths and the Gregorian leap year rule
+//// (divisible by 4, except century years, which must be divisible by 400).
+//// Those rules are applied to dates before the calendar's 1582 adoption too,
+//// so early dates do not match what was historically recorded on the Julian
+//// calendar. No other calendar system is supported.
+////
+//// Constructing a naive datetime from calendar parts is limited to **years 1000
+//// through 9999**, so that a year is always four digits. Arithmetic is not
+//// range checked and can carry a value outside that range, where it still
+//// compares correctly but no longer formats as valid ISO 8601. See the
+//// `tempo/date` module docs for the details.
 
 import gleam/bit_array
 import gleam/list
@@ -29,13 +45,15 @@ import tempo/month
 import tempo/offset
 import tempo/time
 
-/// Creates a new naive datetime from a date and time value.
-/// 
+/// Creates a new naive datetime from a date and time value. The date carries
+/// the proleptic Gregorian calendar year, month and day; see the `tempo/date`
+/// module docs for its 1000 to 9999 year range.
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.new(
-///   date.literal("2024-06-21"), 
+///   date.literal("2024-06-21"),
 ///   time.literal("23:04:00.009"),
 /// )
 /// // -> naive_datetime.literal("2024-06-21T23:04:00.009")
@@ -44,20 +62,24 @@ pub fn new(date: tempo.Date, time: tempo.Time) -> tempo.NaiveDateTime {
   tempo.naive_datetime(date, time)
 }
 
-/// Creates a new naive datetime value from a string literal, but will panic 
+/// Creates a new naive datetime value from a string literal, but will panic
 /// if the string is invalid.
-/// 
-/// Useful for declaring date literals that you know are valid within your  
+///
+/// The date part is read as a proleptic Gregorian calendar date and must have
+/// a year between 1000 and 9999, with a day that exists in that Gregorian
+/// month. The time part must be a valid time of day.
+///
+/// Useful for declaring date literals that you know are valid within your
 /// program.
 ///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:04:00.009")
 /// |> naive_datetime.to_string
 /// // -> "2024-06-21T23:04:00.009"
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:04:00.009-04:00")
 /// // panic
@@ -107,21 +129,25 @@ pub fn literal(naive_datetime: String) -> tempo.NaiveDateTime {
 }
 
 /// Parses a naive datetime string in the format `YYYY-MM-DDThh:mm:ss.s`,
-/// `YYYY-MM-DD hh:mm:ss.s`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`, 
-/// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`, 
+/// `YYYY-MM-DD hh:mm:ss.s`, `YYYY-MM-DD`, `YYYY-M-D`, `YYYY/MM/DD`,
+/// `YYYY/M/D`, `YYYY.MM.DD`, `YYYY.M.D`, `YYYY_MM_DD`, `YYYY_M_D`,
 /// `YYYY MM DD`, `YYYY M D`, or `YYYYMMDD`.
-/// 
+///
+/// The date part is read as a proleptic Gregorian calendar date and must have
+/// a year between 1000 and 9999, with a day that exists in that Gregorian
+/// month.
+///
 /// ## Examples
 /// ```gleam
 /// naive_datetime.from_string("20240612")
 /// // -> Ok(naive_datetime.literal("2024-06-12T00:00:00"))
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.from_string("2024-06-21 23:17:00")
 /// // -> Ok(naive_datetime.literal("2024-06-21T23:17:00"))
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.from_string("24-06-12|23:17:00")
 /// // -> Error(tempo.NaiveDateTimeInvalidFormat)
@@ -197,11 +223,11 @@ fn parse_time(
 }
 
 /// Returns a string representation of a naive datetime value in the ISO 8601
-/// format with millisecond precision. If a different precision is needed, 
-/// use the `format` function. 
-/// 
+/// format with millisecond precision. If a different precision is needed,
+/// use the `format` function.
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.to_string
@@ -212,9 +238,9 @@ pub fn to_string(datetime: tempo.NaiveDateTime) -> String {
 }
 
 /// Returns a tuple of the date and time values in the format used in Erlang.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:07")
 /// |> naive_datetime.to_tuple
@@ -243,29 +269,35 @@ pub fn to_tuple(
 /// this over `parse_any`. All parsed formats must have all parts of a naive
 /// datetime (date and time). Use the other modules for parsing lesser
 /// date time values.
-/// 
+///
+/// The date part is read as a proleptic Gregorian calendar date, with month
+/// names matched against the English Gregorian ones. The parsed year must
+/// land between 1000 and 9999, and the day must exist in that Gregorian
+/// month. A `YY` two-digit year is resolved into the hundred years leading up
+/// to the current date, so `"99"` parses as 1999 rather than 2099.
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
+///
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month),
+/// MM (two-digit month), MMM (short month name), MMMM (full month name),
 /// D (day of the month), DD (two-digit day of the month),
-/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
 /// A (AM/PM), a (am/pm).
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// naive_datetime.parse("2024/06/08, 13:42:11", "YYYY/MM/DD, HH:mm:ss")
 /// // -> Ok(naive_datetime.literal("2024-06-08T13:42:11"))
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.parse("January 13, 2024. 3:42:11", "MMMM DD, YYYY. H:mm:ss")
 /// // -> Ok(naive_datetime.literal("2024-01-13T03:42:11"))
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.parse("Hi! 2024 11 13 12 2 am", "[Hi!] YYYY M D h m a")
 /// // -> Ok(naive_datetime.literal("2024-11-13T00:02:00"))
@@ -294,17 +326,17 @@ pub fn parse(
   Ok(new(date, time))
 }
 
-/// Tries to parse a given date string without a known format. It will not 
-/// parse two digit years and will assume the month always comes before the 
+/// Tries to parse a given date string without a known format. It will not
+/// parse two digit years and will assume the month always comes before the
 /// day in a date. Will leave off any time offset values present.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// naive_datetime.parse_any("2024.06.21 01:32 PM -04:00")
 /// // -> Ok(naive_datetime.literal("2024-06-21T13:32:00"))
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.parse_any("2024.06.21")
 /// // -> Error(tempo.ParseMissingTime)
@@ -326,9 +358,9 @@ pub fn parse_any(
 }
 
 /// Converts a naive datetime parse error to a human readable error message.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// naive_datetime.parse("2024 06 21 23:17:00")
 /// |> snag.map_error(with: naive_datetime.describe_parse_error)
@@ -341,40 +373,43 @@ pub fn describe_parse_error(
 }
 
 /// Formats a naive datetime value using the provided format string.
-/// Implements the same formatting directives as the great Day.js 
+/// Implements the same formatting directives as the great Day.js
 /// library: https://day.js.org/docs/en/display/format.
-/// 
+///
+/// All calendar directives render proleptic Gregorian calendar values, and
+/// the month and day names are the English Gregorian ones.
+///
 /// Values can be escaped by putting brackets around them, like "[Hello!] YYYY".
-/// 
-/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month), 
-/// MM (two-digit month), MMM (short month name), MMMM (full month name), 
-/// D (day of the month), DD (two-digit day of the month), d (day of the week), 
-/// dd (min day of the week), ddd (short day of week), dddd (full day of the week), 
-/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh 
+///
+/// Available directives: YY (two-digit year), YYYY (four-digit year), M (month),
+/// MM (two-digit month), MMM (short month name), MMMM (full month name),
+/// D (day of the month), DD (two-digit day of the month), d (day of the week),
+/// dd (min day of the week), ddd (short day of week), dddd (full day of the week),
+/// H (hour), HH (two-digit hour), h (12-hour clock hour), hh
 /// (two-digit 12-hour clock hour), m (minute), mm (two-digit minute),
-/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond), 
+/// s (second), ss (two-digit second), SSS (millisecond), SSSS (microsecond),
 /// A (AM/PM), a (am/pm).
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T13:42:11.314")
 /// |> naive_datetime.format("ddd @ h:mm A")
 /// // -> "Fri @ 1:42 PM"
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-03T09:02:01")
 /// |> naive_datetime.format("YY YYYY M MM MMM MMMM D DD d dd ddd")
 /// // --------------------> "24 2024 6 06 Jun June 3 03 1 Mo Mon"
 /// ```
-/// 
-/// ```gleam 
+///
+/// ```gleam
 /// naive_datetime.literal("2024-06-03T09:02:01.014920202")
 /// |> naive_datetime.format("dddd SSS SSSS SSSSS")
 /// // -> "Monday 014 014920 014920202"
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-03T13:02:01")
 /// |> naive_datetime.format("H HH h hh m mm s ss a A [An ant]")
@@ -403,11 +438,11 @@ pub fn format(
 }
 
 /// Sets a naive datetime's offset to UTC, leaving the date and time unchanged
-/// while returning a datetime value. 
+/// while returning a datetime value.
 /// Alias for `set_offset(naive_datetime, offset.utc)`.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.as_utc
@@ -417,12 +452,12 @@ pub fn as_utc(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
   set_offset(datetime, tempo.utc)
 }
 
-/// Sets a naive datetime's offset to the host's local offset, leaving the 
-/// date and time unchanged while returning a datetime value. 
+/// Sets a naive datetime's offset to the host's local offset, leaving the
+/// date and time unchanged while returning a datetime value.
 /// Alias for `set_offset(naive_datetime, offset.local())`.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.as_local
@@ -433,9 +468,9 @@ pub fn as_local(datetime: tempo.NaiveDateTime) -> tempo.DateTime {
 }
 
 /// Gets the date of a naive datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.get_date
@@ -446,9 +481,9 @@ pub fn get_date(datetime: tempo.NaiveDateTime) -> tempo.Date {
 }
 
 /// Gets the time of a naive datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.get_time
@@ -459,9 +494,9 @@ pub fn get_time(datetime: tempo.NaiveDateTime) -> tempo.Time {
 }
 
 /// Drops the time of a naive datetime, setting it to zero.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-13T23:17:00")
 /// |> naive_datetime.drop_time
@@ -473,10 +508,10 @@ pub fn drop_time(datetime: tempo.NaiveDateTime) -> tempo.NaiveDateTime {
 }
 
 /// Sets a naive datetime's offset to the provided offset, leaving the date and
-/// time unchanged while returning a datetime value. 
-/// 
+/// time unchanged while returning a datetime value.
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.set_offset(offset.literal("+10:00"))
@@ -490,15 +525,15 @@ pub fn set_offset(
 }
 
 /// Compares two naive datetimes.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-21T23:17:00"))
 /// // -> order.Eq
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2023-05-11T13:15:00")
 /// |> naive_datetime.compare(to: naive_datetime.literal("2024-06-21T23:17:00"))
@@ -508,11 +543,11 @@ pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
   tempo.naive_datetime_compare(a, b)
 }
 
-/// Checks if the first naive datetime is earlier than the second naive 
+/// Checks if the first naive datetime is earlier than the second naive
 /// datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_earlier(
@@ -520,7 +555,7 @@ pub fn compare(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) {
 /// )
 /// // -> False
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2013-06-12T23:17:00")
 /// |> naive_datetime.is_earlier(
@@ -532,11 +567,11 @@ pub fn is_earlier(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
   tempo.naive_datetime_is_earlier(a, b)
 }
 
-/// Checks if the first naive datetime is earlier or equal to the second naive 
+/// Checks if the first naive datetime is earlier or equal to the second naive
 /// datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-08-12T23:17:00")
 /// |> naive_datetime.is_earlier_or_equal(
@@ -544,7 +579,7 @@ pub fn is_earlier(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
 /// )
 /// // -> False
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_earlier_or_equal(
@@ -560,9 +595,9 @@ pub fn is_earlier_or_equal(
 }
 
 /// Checks if the first naive datetime is equal to the second naive datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_equal(
@@ -570,7 +605,7 @@ pub fn is_earlier_or_equal(
 /// )
 /// // -> True
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_equal(
@@ -583,9 +618,9 @@ pub fn is_equal(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) -> Bool {
 }
 
 /// Checks if the first naive datetime is later than the second naive datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_later(
@@ -593,7 +628,7 @@ pub fn is_equal(a: tempo.NaiveDateTime, to b: tempo.NaiveDateTime) -> Bool {
 /// )
 /// // -> False
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_later(
@@ -605,11 +640,11 @@ pub fn is_later(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
   compare(a, b) == order.Gt
 }
 
-/// Checks if the first naive datetime is later or equal to the second naive 
+/// Checks if the first naive datetime is later or equal to the second naive
 /// datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.is_later_or_equal(
@@ -617,7 +652,7 @@ pub fn is_later(a: tempo.NaiveDateTime, than b: tempo.NaiveDateTime) -> Bool {
 /// )
 /// // -> True
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2022-04-12T00:00:00")
 /// |> naive_datetime.is_later_or_equal(
@@ -633,9 +668,9 @@ pub fn is_later_or_equal(
 }
 
 /// Returns the difference between two naive datetimes as a duration.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-12T23:17:00")
 /// |> naive_datetime.difference(
@@ -663,9 +698,9 @@ pub fn difference(
 /// Creates a period between two naive datetimes. The specified start and end
 /// datetimes will be swapped if the start datetime is later than the end
 /// datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.to_period(
 ///   start: naive_datetime.literal("2024-06-12T23:17:00")
@@ -674,7 +709,7 @@ pub fn difference(
 /// |> period.as_days
 /// // -> 3
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.to_period(
 ///   start: naive_datetime.literal("2024-06-12T23:17:00"),
@@ -691,9 +726,9 @@ pub fn as_period(
 }
 
 /// Adds a duration to a naive datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-21T23:17:00")
 /// |> naive_datetime.add(duration.minutes(3))
@@ -707,9 +742,9 @@ pub fn add(
 }
 
 /// Subtracts a duration from a naive datetime.
-/// 
+///
 /// ## Examples
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-12T23:17:00")
 /// |> naive_datetime.subtract(duration.days(3))
@@ -723,9 +758,9 @@ pub fn subtract(
 }
 
 /// Gets the time left in the day.
-/// 
+///
 /// Does **not** account for leap seconds like the rest of the package.
-/// 
+///
 /// ## Examples
 ///
 /// ```gleam
@@ -733,7 +768,7 @@ pub fn subtract(
 /// |> naive_datetime |> tempo.naive_datetime_get_time_left_in_day
 /// // -> time.literal("00:00:57")
 /// ```
-/// 
+///
 /// ```gleam
 /// naive_datetime.literal("2024-06-18T08:05:20")
 /// |> naive_datetime |> tempo.naive_datetime_get_time_left_in_day

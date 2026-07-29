@@ -22,6 +22,25 @@
 ////   // -> "The hour is: 13, wow! And even better the minute is: 42!"
 //// }
 //// ```
+////
+//// ## Calendar and range of valid times
+////
+//// A `Time` is a time of day on its own, with no date attached, so nothing in
+//// this module depends on the Gregorian calendar or on any other, and there
+//// is no range of valid dates.
+////
+//// The range of valid times is 00:00:00.000000 through 23:59:59.999999, with
+//// two additions allowed by ISO 8601:
+////
+//// - `24:00:00` exactly, as the end-of-day marker. Any non-zero minute,
+////   second or microsecond alongside hour 24 is rejected.
+//// - `23:59:60`, a leap second. Leap seconds can be constructed and parsed,
+////   and compare correctly against other times, but this package otherwise
+////   ignores leap seconds and will not preserve one through a conversion.
+////
+//// Sub-second precision is microseconds, so the microsecond component runs
+//// from 0 to 999_999. Values with more precision than that are rejected
+//// rather than rounded.
 
 import gleam/bit_array
 import gleam/int
@@ -74,6 +93,9 @@ pub const start_of_day = tempo.time_start_of_day
 pub const end_of_day = tempo.time_end_of_day
 
 /// Creates a new time value with second precision.
+///
+/// Valid times run from 00:00:00 through 23:59:59, plus `24:00:00` as the
+/// end-of-day marker and `23:59:60` as a leap second.
 /// 
 /// ## Example
 /// 
@@ -94,7 +116,11 @@ pub fn new(
   tempo.new_time(hour, minute, second)
 }
 
-/// Creates a new time value with millisecond precision.
+/// Creates a new time value with millisecond precision. The millisecond
+/// component must be between 0 and 999.
+///
+/// Valid times run from 00:00:00 through 23:59:59, plus `24:00:00` as the
+/// end-of-day marker and `23:59:60` as a leap second.
 /// 
 /// ## Example
 /// 
@@ -121,7 +147,12 @@ pub fn new_milli(
   tempo.new_time_milli(hour, minute, second, millisecond)
 }
 
-/// Creates a new time value with microsecond precision.
+/// Creates a new time value with microsecond precision. The microsecond
+/// component must be between 0 and 999_999, which is the finest precision
+/// this package represents.
+///
+/// Valid times run from 00:00:00 through 23:59:59, plus `24:00:00` as the
+/// end-of-day marker and `23:59:60` as a leap second.
 /// 
 /// ## Example
 /// 
@@ -167,6 +198,10 @@ pub fn describe_out_of_bounds_error(error: tempo_error.TimeOutOfBoundsError) {
 /// 
 /// Useful for declaring time literals that you know are valid within your 
 /// program.
+///
+/// Valid times run from 00:00:00 through 23:59:59, plus `24:00:00` as the
+/// end-of-day marker and `23:59:60` as a leap second. Anything else panics,
+/// including a sub-second value finer than microseconds.
 /// 
 /// ## Example
 /// 
@@ -319,6 +354,10 @@ pub fn to_string(time: tempo.Time) -> String {
 
 /// Converts a string to a time value. Accepted formats are `hh:mm:ss.s`, 
 /// `hhmmss.s`, `hh:mm:ss`, `hhmmss`, `hh:mm`, or `hhmm`.
+///
+/// Valid times run from 00:00:00 through 23:59:59, plus `24:00:00` as the
+/// end-of-day marker and `23:59:60` as a leap second. A sub-second value
+/// finer than microseconds is rejected rather than rounded.
 /// 
 /// ## Example
 /// 

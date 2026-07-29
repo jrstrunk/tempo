@@ -1,6 +1,35 @@
 //// The main module of this package. Contains most package types and general
 //// purpose functions.
 //// Look in specific modules for more functionality!
+////
+//// ## Calendar
+////
+//// Every date this package accepts or produces is a
+//// [proleptic Gregorian calendar](https://en.wikipedia.org/wiki/Proleptic_Gregorian_calendar)
+//// date, with Gregorian month lengths and the Gregorian leap year rule
+//// (divisible by 4, except century years, which must be divisible by 400).
+//// "Proleptic" means those rules are applied to dates before the calendar's
+//// 1582 adoption too, so early dates do not line up with what was recorded
+//// historically on the Julian calendar. No other calendar system is supported.
+////
+//// Month and day names, and the formatting and parsing directives that use
+//// them, are the English Gregorian ones. This package is not a localisation
+//// library; for a user-facing international audience use alternative packages
+//// like `g18n` or `intldate`.
+////
+//// ## Range of valid dates
+////
+//// Constructing a date from calendar parts is limited to **years 1000 through
+//// 9999**, so that a year is always four digits. Every constructor that takes
+//// a year, a tuple, or a string rejects years outside that range. Date
+//// arithmetic is not range checked and can carry a value outside it, where it
+//// still compares correctly but no longer formats as valid ISO 8601. See the
+//// `tempo/date` module docs for the details.
+////
+//// Times run from 00:00:00.000000 through 23:59:59.999999, with `24:00:00` and
+//// the leap second `23:59:60` additionally accepted; see the `tempo/time`
+//// module docs. Offsets run from -12:00 through +14:00; see `tempo/offset`.
+//// Durations carry no calendar context at all; see `tempo/duration`.
 
 import gleam/bit_array
 import gleam/bool
@@ -75,7 +104,8 @@ pub fn now_adjusted(by duration: duration.Duration) -> DateTime {
   )
 }
 
-/// Formats the current UTC system time using the provided format.
+/// Formats the current UTC system time using the provided format, rendering
+/// proleptic Gregorian calendar values with English month and day names.
 ///
 /// ## Example
 ///
@@ -87,7 +117,8 @@ pub fn format_utc(in format: DateTimeFormat) -> String {
   now() |> instant_as_utc_datetime |> datetime_format(format)
 }
 
-/// Formats the current local system time using the provided format.
+/// Formats the current local system time using the provided format, rendering
+/// proleptic Gregorian calendar values with English month and day names.
 ///
 /// ## Example
 ///
@@ -920,9 +951,13 @@ pub const unix_epoch = DateTime(Date(0), TimeOfDay(0), utc)
 @internal
 pub const unix_epoch_date = Date(0)
 
-/// A type for external packages to provide so that datetimes can be converted
-/// between timezones. The package `gtz` was created to provide this and must
-/// be added as a project dependency separately.
+/// A type that provides the information needed to convert datetimes between
+/// time zones. Use the `tempo/time_zone` module to construct one, or provide
+/// your own if you have another source of time zone data.
+///
+/// The `tempo/time_zone` module sources its data from the host: the operating
+/// system's TZif database in `/usr/share/zoneinfo` on Erlang (macOS and other
+/// Unix systems), and the native `Intl` API on JavaScript.
 pub type TimeZoneProvider {
   TimeZoneProvider(
     get_name: fn() -> String,
@@ -1801,10 +1836,26 @@ pub fn date_to_unix_micro(date: Date) -> Int {
 
 const unix_epoch_in_rata_die = 719_163
 
+/// Returns the Rata Die value of a date, the number of days since the day
+/// before `0001-01-01` on the proleptic Gregorian calendar. So `0001-01-01` is
+/// 1, and the Unix epoch `1970-01-01` is 719_163.
+///
+/// Prefer `date.to_rata_die`, which is the same function exposed on the date
+/// module.
 pub fn date_to_rata_die(date: Date) -> Int {
   date.unix_days + unix_epoch_in_rata_die
 }
 
+/// Creates a date from a Rata Die value, the number of days since the day
+/// before `0001-01-01` on the proleptic Gregorian calendar. So Rata Die 1 is
+/// `0001-01-01`, and 719_163 is the Unix epoch `1970-01-01`.
+///
+/// This is not range checked, so unlike the calendar-part constructors it will
+/// return dates outside the 1000 to 9999 year range, including year zero and
+/// negative years for values of 0 and below.
+///
+/// Prefer `date.from_rata_die`, which is the same function exposed on the date
+/// module.
 pub fn date_from_rata_die(rata_die: Int) -> Date {
   Date(rata_die - unix_epoch_in_rata_die)
 }
@@ -3141,6 +3192,10 @@ fn escaped_length(bytes: BitArray, length: Int) -> Result(Int, Nil) {
 /// missing values from the input. Many libaries will assume a missing time
 /// value means 00:00:00 or a missing offset means UTC. This design
 /// lets the user decide how fallbacks are handled.
+///
+/// Any date found is read as a proleptic Gregorian calendar date and must have
+/// a four-digit year between 1000 and 9999, since two digit years are not
+/// parsed. Month names are matched against the English Gregorian ones.
 ///
 /// ## Example
 ///

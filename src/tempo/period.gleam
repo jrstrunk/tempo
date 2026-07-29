@@ -27,6 +27,18 @@
 ////   // -> ["2024-06-21", "2024-06-28", "2024-07-05"]
 //// }
 //// ```
+////
+//// ## Calendar and range of valid dates
+////
+//// The dates bounding a period are proleptic Gregorian calendar dates, and
+//// the functions that walk a period by calendar unit (`comprising_dates`,
+//// `comprising_months`, `from_month`) use Gregorian month lengths and the
+//// Gregorian leap year rule. `as_days` and `as_seconds` are plain elapsed
+//// counts and do not depend on the calendar.
+////
+//// Periods are built from dates and datetimes, so they inherit the **years
+//// 1000 through 9999** construction range described in the `tempo/date`
+//// module docs.
 
 import gleam/int
 import gleam/time/calendar
@@ -256,6 +268,9 @@ pub fn as_duration(period: tempo.Period) -> duration.Duration {
 
 /// Creates a period of the specified month year, starting at 00:00:00 on the
 /// first day of the month and ending at 24:00:00 on the last day of the month.
+///
+/// The month is a Gregorian calendar month, so the last day is 28, 29, 30 or
+/// 31 depending on the month and whether it is a Gregorian leap year.
 /// 
 /// 
 /// ## Examples
@@ -407,7 +422,8 @@ pub fn contains_datetime(
   tempo.period_contains_datetime(period, datetime)
 }
 
-/// Returns a list over all the dates in the period, inclusive of the 
+/// Returns a list over all the proleptic Gregorian calendar dates in the
+/// period, inclusive of the 
 /// dates of both the start and end datetimes and ignoring the offset.
 ///
 /// ## Examples
@@ -439,6 +455,9 @@ pub fn comprising_dates(period: tempo.Period) -> List(tempo.Date) {
 
 /// Returns list over all the months in the period, inclusive of the
 /// months of both the start and end datetimes and ignoring the offset.
+///
+/// The months are Gregorian calendar months, walked in Gregorian order and
+/// rolling over from December to January.
 ///
 /// ## Examples
 /// 
